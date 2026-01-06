@@ -9,7 +9,7 @@ const SHEET_ID1 = "1fKSwGBIpzWEFk566WRQ4bzQ0anJlmasoY8TwrTLQHXI";
 
 const MAX_ROWS = 10000;
 const GAS_WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbwQtP1YEUpTTrzXddez5Dp3kwb08Ezlpc7KQzWY13mSb-RsWThand5LooEBmiAaNNV2lA/exec";
+  "https://script.google.com/macros/s/AKfycbzEx67RgS6dLt1DOVTrYlyVZw0jciNtlA00ZG49xHMS1Uuk6Am8xS_2HszrbvkfPrl5/exec";
 
 const HEADER_MAP = {
   partyName: "Party Name",
