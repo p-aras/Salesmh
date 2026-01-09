@@ -194,6 +194,7 @@ const JobOrders = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [pdfLandscapeBusy, setPdfLandscapeBusy] = useState(null);
 
   // fetch window control
   const [rowLimit, setRowLimit] = useState(INITIAL_LIMIT);
@@ -469,11 +470,654 @@ const clearFilters = () => {
   setJoStart(""); setJoEnd("");
   setLotStart(""); setLotEnd("");
 };
+const exportLandscapePages = async () => {
+  if (pdfLandscapeBusy) return;
+  setPdfLandscapeBusy(true);
 
-  /* =================== LIGHT PDF (A4, async save, compressed) =================== */
-/* =================== A3 “Card + Band” PDF — performance tuned =================== */
-// ========================= generatePdf (UPDATED) =========================
-// ========================= generatePdf (UPDATED) =========================
+  try {
+    await pause(0);
+    
+    // Load jsPDF - using your existing method
+    const jsPDFConstructor = await loadJsPDF();
+
+    // Create main document
+    const doc = new jsPDFConstructor({
+      orientation: "landscape",
+      unit: "pt",
+      format: "a4",
+      compress: true,
+    });
+
+    // ====== LANDSCAPE PRODUCTION TABLE PAGE FUNCTION ======
+    const renderLandscapeTablePage = async (doc, row, isFirstPage = false) => {
+      // For first row, use existing page. For subsequent rows, create new page
+      if (!isFirstPage) {
+        try {
+          if (typeof doc.addPage === 'function') {
+            doc.addPage("a4", "landscape");
+          }
+        } catch (error) {
+          console.warn("Could not add page:", error);
+        }
+      }
+      
+      const LANDSCAPE_W = doc.internal.pageSize.getWidth();
+      const LANDSCAPE_H = doc.internal.pageSize.getHeight();
+      
+      // ====== SHADES INFORMATION ======
+      const parseShadesForTable = (value) => {
+        return String(value || "")
+          .split(/[,;|/]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+      };
+      
+      const shades = parseShadesForTable(row["Shade"] || "");
+      
+      // Parse sizes for column headers
+      const parseSizes = (sizeText) => {
+        if (!sizeText || sizeText === "—") return [];
+        const sizes = String(sizeText).split(/[,;|/]+/).map(s => s.trim()).filter(Boolean);
+        return sizes;
+      };
+      
+      const sizes = parseSizes(row["Size"] || "");
+      
+      // Calculate table dimensions
+      const M = 42; // Margin
+      const tableX = M;
+      const tableWidth = LANDSCAPE_W - 2 * M;
+      const tableMaxHeight = LANDSCAPE_H - 100 - 90;
+      
+      const ROW_HEIGHT = 36;
+      const HEADER_HEIGHT = ROW_HEIGHT * 1.1;
+      
+      const maxRowsPerPage = Math.floor(tableMaxHeight / ROW_HEIGHT) - 1;
+      const colorsPerPage = Math.min(7, maxRowsPerPage - 1);
+      
+      const shadeBatches = [];
+      for (let i = 0; i < shades.length; i += colorsPerPage) {
+        shadeBatches.push(shades.slice(i, i + colorsPerPage));
+      }
+      
+      if (shadeBatches.length === 0) {
+        shadeBatches.push([]);
+      }
+      
+      const C = {
+        black: [0, 0, 0],
+        white: [255, 255, 255],
+      };
+      
+      const setFont = (weight, size) => {
+        doc.setFont("Helvetica", weight);
+        doc.setFontSize(size);
+        doc.setTextColor(...C.black);
+      };
+      
+      const val = (k) => (row?.[k] ?? "").toString().trim() || "—";
+      const joNum = val("Job Order No");
+      
+      // Helper function to format date
+    // Helper function to format date as "9 Dec 2026"
+const formatJobDate = (dateValue) => {
+  if (!dateValue) return "—";
+  
+  // Try to parse different date formats
+  let date;
+  
+  // Try parsing as "9/27/202" format (month/day/year)
+  if (typeof dateValue === 'string') {
+    const parts = dateValue.split('/');
+    if (parts.length === 3) {
+      const month = parseInt(parts[0], 10);
+      const day = parseInt(parts[1], 10);
+      let year = parseInt(parts[2], 10);
+      
+      // Handle 3-digit year (like 202 for 2020, 226 for 2026)
+      if (year < 1000) {
+        // Assuming 2000s for years like 202, 226
+        year = 2000 + year;
+      }
+      
+      // Return formatted as "Sep 27 2022" or "27 Sep 2022"
+      if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthName = monthNames[month - 1] || '';
+        
+        // Format 1: "Sep 27 2022" (Month Day Year)
+        // return `${monthName} ${day} ${year}`;
+        
+        // Format 2: "27 Sep 2022" (Day Month Year) - as per your requirement
+        return `${day} ${monthName} ${year}`;
+      }
+    }
+  }
+  
+  // Fallback to original value
+  return String(dateValue);
+};
+
+// OR update the existing vDate function to accept row parameter:
+const vDate = (k, rowData) => {
+  const value = rowData?.[k];
+  if (!value) return "—";
+  
+  // Try to parse different date formats
+  let date;
+  
+  // Try parsing as "9/27/202" format (month/day/year)
+  if (typeof value === 'string') {
+    const parts = value.split('/');
+    if (parts.length === 3) {
+      const month = parseInt(parts[0], 10);
+      const day = parseInt(parts[1], 10);
+      let year = parseInt(parts[2], 10);
+      
+      // Handle 3-digit year
+      if (year < 1000) {
+        year = 2000 + year;
+      }
+      
+      // Return formatted as "27 Sep 2022"
+      if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthName = monthNames[month - 1] || '';
+        return `${day} ${monthName} ${year}`;
+      }
+    }
+  }
+  
+  // Fallback: try the existing method
+  const iso = tryParseDateToISO(value);
+  if (!iso) return value;
+  const d = new Date(iso);
+  
+  // Format: "27 Dec 2026"
+  const day = d.getDate(); // No leading zero
+  const month = d.toLocaleDateString('en-US', { month: 'short' });
+  const year = d.getFullYear();
+  
+  return `${day} ${month} ${year}`;
+};
+      
+      // Helper function to shorten text
+      const shortenText = (text, maxLength) => {
+        if (!text || text === "—") return "—";
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength - 3) + "...";
+      };
+      
+
+const drawPageHeader = (pageNumber, totalPages) => {
+  // Add top margin
+  const TOP_MARGIN = 15; // Add 15pt margin from top
+  
+  // Set white background for header area - extend height by TOP_MARGIN
+  doc.setFillColor(...C.white);
+  doc.rect(0, 0, LANDSCAPE_W, 85 + TOP_MARGIN, "F");
+  
+  const quantity = val("Quantity");
+  const unit = val("Unit") || "sets";
+  const lotNumber = val("Lot Number");
+  
+  // LEFT SIDE: Basic Info + Style - Add TOP_MARGIN to all Y positions
+  let leftY = 22 + TOP_MARGIN;
+  
+  setFont("bold", 10);
+  doc.text(`JOB: ${joNum} | ${vDate("Date", row)}`, M, leftY);
+  leftY += 14;
+  
+  // STYLE on left side
+  const style = val("Style");
+  setFont("normal", 10);
+  doc.text(`STYLE: ${style}`, M, leftY);
+  leftY += 14;
+  
+  if (quantity) {
+    setFont("bold", 10);
+    doc.text(`QTY: ${quantity} ${unit}`, M, leftY);
+    leftY += 14;
+  }
+  const season = val("Season");
+if (season && season !== "—") {
+  setFont("normal", 9);
+  doc.text(`SEASON: ${season}`, M, leftY);
+  leftY += 12;
+}
+   const section = val("Section");
+  if (section && section !== "—") {
+    setFont("normal", 9);
+    doc.text(`SECTION: ${section}`, M, leftY);
+    leftY += 12;
+  }
+  
+  // RIGHT SIDE: Brand + NEW FIELDS (Tape/Lace, Zip, Bottom Type) - Add TOP_MARGIN
+  let rightY = 22 + TOP_MARGIN;
+  
+  setFont("bold", 10);
+  const brand = val("Brand");
+  doc.text(`BRAND: ${brand}`, LANDSCAPE_W - M, rightY, { align: "right" });
+  rightY += 14;
+  
+  // NEW FIELDS: Tape/Lace, Zip, Bottom Type
+  const tapeLace = val("Tape/Lace") || val("Tape Lace") || val("Tape") || val("Lace") || "—";
+  const zip = val("Zip") || val("Zipper") || "—";
+  const bottomType = val("Bottom Type") || val("Bottom") || "—";
+  
+  // Add Tape/Lace if available
+  if (tapeLace && tapeLace !== "—") {
+    setFont("normal", 9);
+    doc.text(`Tape/Lace: ${shortenText(tapeLace, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 12;
+  }
+  
+  // Add Zip if available
+  if (zip && zip !== "—") {
+    setFont("normal", 9);
+    doc.text(`Zip: ${shortenText(zip, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 12;
+  }
+  
+  // Add Bottom Type if available
+  if (bottomType && bottomType !== "—") {
+    setFont("normal", 9);
+    doc.text(`Bottom: ${shortenText(bottomType, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 12;
+  }
+  
+  // Pattern | Garment Type on right side
+  setFont("normal", 9);
+  const pattern = val("Pattern");
+  const garmentType = val("Garment Type");
+  const patternGarment = `${pattern} | ${garmentType}`;
+  if (patternGarment !== "— | —") {
+    doc.text(patternGarment, LANDSCAPE_W - M, rightY, { align: "right" });
+  }
+  
+  // CENTER: Main Heading with LOT NUMBER - Add TOP_MARGIN
+  let centerY = 22 + TOP_MARGIN;
+  
+  setFont("bold", 16);
+  doc.text("CUTTING TABLE ______", LANDSCAPE_W / 2, centerY, { align: "center" });
+  centerY += 16;
+  
+  // LOT NUMBER in center
+  setFont("bold", 14);
+  doc.text(`LOT NUMBER: ${lotNumber}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+  centerY += 16;
+  
+  // Fabric information
+  setFont("bold", 10);
+  const fabric = val("Fabric");
+  doc.text(`Fabric: ${fabric}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+  centerY += 14;
+  
+  // REMARKS
+  setFont("normal", 9);
+  const remarksText = row?.["Remarks"] ? String(row["Remarks"]).trim() : "";
+  if (remarksText && remarksText !== "") {
+    const maxRemarksLength = 80;
+    const displayRemarks = remarksText.length > maxRemarksLength 
+      ? remarksText.substring(0, maxRemarksLength - 3) + "..." 
+      : remarksText;
+    
+    doc.text(`Remarks: ${displayRemarks}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+    centerY += 14;
+  }
+  
+  // Calculate header height - Add TOP_MARGIN to base
+  let headerHeight = 75 + TOP_MARGIN; // Add TOP_MARGIN
+  
+  // Adjust header height for content
+  if (remarksText && remarksText !== "") headerHeight += 14;
+  
+  // Separator line under header - PROPER GAP
+  const separatorY = headerHeight + 5;
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.5);
+  doc.line(M, separatorY, LANDSCAPE_W - M, separatorY);
+  
+  return separatorY + 10; // Good space between header and table
+};
+
+const drawStickerBox = (startY, pageNumber) => {
+  const boxWidth = 140;
+  const boxHeight = 80;
+  const boxX = LANDSCAPE_W - boxWidth - M; // RIGHT side
+  const boxY = startY;
+  
+  // NORMAL STICKER BOX (your original design)
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1.5);
+  doc.rect(boxX, boxY, boxWidth, boxHeight);
+  
+  doc.setFillColor(255, 255, 255);
+  doc.rect(boxX, boxY, boxWidth, boxHeight, "F");
+  
+  let contentY = boxY + 12;
+  
+  setFont("bold", 12);
+  doc.text("PARTA CHECKED", boxX + boxWidth / 2, contentY, { align: "center" });
+  contentY += 18;
+  
+  // DATE section
+  setFont("bold", 10);
+  doc.text("DATE :", boxX + 15, contentY);
+  
+  const dateLineY = contentY + 4;
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  doc.line(boxX + 50, dateLineY, boxX + boxWidth - 15, dateLineY);
+  contentY += 16;
+  
+  setFont("bold", 11);
+  doc.text("Cutting Head Sign", boxX + boxWidth / 2, contentY, { align: "center" });
+  
+  // SIMPLE SIGNATURE ON LEFT SIDE (no box, just text and line)
+const signatureBottomY = LANDSCAPE_H - 60; // Position at bottom of page
+setFont("bold", 12);
+doc.text("SIGNATURE", M + 70, signatureBottomY, { align: "center" });
+
+// Signature line
+const signatureLineY = signatureBottomY + 20;
+doc.setDrawColor(...C.black);
+doc.setLineWidth(0.8);
+doc.line(M + 10, signatureLineY, M + 130, signatureLineY);
+  
+  return boxY + boxHeight;
+};
+      
+      // Function to draw a table page
+      const drawTablePage = (shadeBatch, pageIndex, totalPages, startSrNo) => {
+        const tableStartY = drawPageHeader(pageIndex + 1, totalPages);
+        let y = tableStartY;
+        
+        const tableData = [];
+        const rowsNeeded = Math.max(colorsPerPage, shadeBatch.length);
+        
+        for (let i = 0; i < rowsNeeded; i++) {
+          const srNo = startSrNo + i;
+          const rowData = { 
+            sr_no: srNo.toString(),
+            shade: i < shadeBatch.length ? shadeBatch[i] : "",
+            rolls: "",
+            kgs: ""
+          };
+          
+          if (sizes.length > 0) {
+            sizes.forEach(size => {
+              rowData[`size_${size}`] = "";
+            });
+          }
+          
+          rowData.total_pcs = "";
+          rowData.kapda_layer_weight = "";
+          rowData.layer_piece = "";
+          rowData.layer_inch = "";
+          rowData.daya = "";
+          rowData.cutting_weight = "";
+          rowData.kapda_vapsi = "";
+          
+          tableData.push(rowData);
+        }
+        
+        if (pageIndex === totalPages - 1) {
+          const totalRow = {
+            sr_no: "TOTAL",
+            shade: "",
+            rolls: "",
+            kgs: "",
+            total_pcs: "",
+            kapda_layer_weight: "",
+            layer_piece: "",
+            layer_inch: "",
+            daya: "",
+            cutting_weight: "",
+            kapda_vapsi: "",
+            isTotalRow: true
+          };
+          
+          sizes.forEach(size => {
+            totalRow[`size_${size}`] = "";
+          });
+          
+          tableData.push(totalRow);
+        }
+        
+        const generateTableHeaders = () => {
+          const headers = [
+            { label: "SR", key: "sr_no", width: 0.5 },
+            { label: "SHADE", key: "shade", width: 2.0 },
+            { label: "ROLLS", key: "rolls", width: 0.7 },
+            { label: "KGS", key: "kgs", width: 0.7 },
+          ];
+          
+          sizes.forEach(size => {
+            headers.push({ 
+              label: size, 
+              key: `size_${size}`, 
+              width: 0.6
+            });
+          });
+          
+          headers.push(
+            { label: "TOTAL PCS", key: "total_pcs", width: 0.7 },
+            { label: "KAPDA LAYER WT", key: "kapda_layer_weight", width: 1.0 },
+            { label: "LAYER PCS", key: "layer_piece", width: 0.8 },
+            { label: "LAYER INCH", key: "layer_inch", width: 0.8 },
+            { label: "DIA", key: "daya", width: 0.7 },
+            { label: "CUTTING WEIGHT", key: "cutting_weight", width: 0.9 },
+            { label: "KAPDA VAPSI", key: "kapda_vapsi", width: 0.8 }
+          );
+          
+          return headers;
+        };
+        
+        const tableHeaders = generateTableHeaders();
+        
+        // Draw table header
+        const drawTableHeader = () => {
+          doc.setFillColor(...C.white);
+          doc.rect(tableX, y, tableWidth, HEADER_HEIGHT, "F");
+          
+          let currentX = tableX;
+          const totalRatio = tableHeaders.reduce((sum, h) => sum + (h.width || 1), 0);
+          
+          tableHeaders.forEach((h, i) => {
+            const colWidth = (h.width / totalRatio) * tableWidth;
+            
+            doc.setDrawColor(...C.black);
+            doc.setLineWidth(0.5);
+            doc.rect(currentX, y, colWidth, HEADER_HEIGHT);
+            
+            setFont("bold", 8);
+            
+            if (h.label.length <= 3 && /^[A-Z0-9]+$/.test(h.label)) {
+              doc.text(h.label, currentX + colWidth / 2, y + HEADER_HEIGHT / 2 - 4, { align: "center" });
+              
+              doc.setDrawColor(...C.black);
+              doc.setLineWidth(0.3);
+              doc.line(currentX + 2, y + HEADER_HEIGHT / 2, 
+                      currentX + colWidth - 2, y + HEADER_HEIGHT / 2);
+            } else {
+              const lines = doc.splitTextToSize(h.label, colWidth - 6);
+              const lineHeight = 8;
+              const startY = y + (HEADER_HEIGHT - (lines.length * lineHeight)) / 2 + 5;
+              
+              lines.forEach((line, lineIdx) => {
+                doc.text(line, currentX + colWidth / 2, startY + (lineIdx * lineHeight), { align: "center" });
+              });
+            }
+            
+            currentX += colWidth;
+          });
+          
+          doc.setDrawColor(...C.black);
+          doc.setLineWidth(1.5);
+          doc.line(tableX, y + HEADER_HEIGHT, tableX + tableWidth, y + HEADER_HEIGHT);
+          
+          return HEADER_HEIGHT;
+        };
+        
+        // Draw table rows
+        const drawTableRows = (headerHeight) => {
+          const totalRatio = tableHeaders.reduce((sum, h) => sum + (h.width || 1), 0);
+          const tableStartRowY = y + headerHeight;
+          
+          for (let rowIndex = 0; rowIndex < tableData.length; rowIndex++) {
+            const rowData = tableData[rowIndex];
+            const rowY = tableStartRowY + (rowIndex * ROW_HEIGHT);
+            
+            if (rowIndex % 2 === 0) {
+              doc.setFillColor(...C.white);
+            } else {
+              doc.setFillColor(245, 245, 245);
+            }
+            doc.rect(tableX, rowY, tableWidth, ROW_HEIGHT, "F");
+            
+            if (rowData.isTotalRow) {
+              doc.setDrawColor(...C.black);
+              doc.setLineWidth(1.5);
+              doc.line(tableX, rowY, tableX + tableWidth, rowY);
+            }
+            
+            let currentX = tableX;
+            
+            tableHeaders.forEach((h, i) => {
+              const colWidth = (h.width / totalRatio) * tableWidth;
+              
+              doc.setDrawColor(...C.black);
+              doc.setLineWidth(0.3);
+              doc.rect(currentX, rowY, colWidth, ROW_HEIGHT);
+              
+              const cellValue = rowData[h.key] || "";
+              
+              if (rowData.isTotalRow) {
+                setFont("bold", 9);
+              } else {
+                setFont("normal", 9);
+              }
+              
+              if (h.key === "shade") {
+                const shadeText = String(cellValue);
+                const maxWidth = colWidth - 10;
+                const lines = doc.splitTextToSize(shadeText, maxWidth);
+                const lineHeight = 9;
+                const totalTextHeight = lines.length * lineHeight;
+                const startY = rowY + (ROW_HEIGHT - totalTextHeight) / 2 + 4;
+                
+                lines.forEach((line, lineIdx) => {
+                  doc.text(line, currentX + colWidth / 2, startY + (lineIdx * lineHeight), { align: "center" });
+                });
+              } else {
+                doc.text(String(cellValue), currentX + colWidth / 2, rowY + ROW_HEIGHT / 2 + 2, { align: "center" });
+              }
+              
+              currentX += colWidth;
+            });
+          }
+          
+          return tableStartRowY + (tableData.length * ROW_HEIGHT);
+        };
+        
+        const headerHeight = drawTableHeader();
+        const tableBottom = drawTableRows(headerHeight);
+        
+        const totalTableHeight = headerHeight + (tableData.length * ROW_HEIGHT);
+        doc.setDrawColor(...C.black);
+        doc.setLineWidth(1);
+        doc.rect(tableX, y, tableWidth, totalTableHeight, "S");
+        
+        y = tableBottom + 20;
+        
+        const stickerBottom = drawStickerBox(y, pageIndex + 1);
+        y = stickerBottom + 20;
+        
+        setFont("normal", 8);
+        const now = new Date().toLocaleDateString("en-IN", {
+          day: "2-digit", month: "short", year: "numeric"
+        });
+        doc.text(`Printed: ${now}`, LANDSCAPE_W / 2, LANDSCAPE_H - 10, { align: "center" });
+        doc.text(`JOB: ${joNum}`, LANDSCAPE_W - M, LANDSCAPE_H - 10, { align: "right" });
+        
+        return startSrNo + rowsNeeded;
+      };
+      
+      let currentSrNo = 1;
+      
+      // Draw all shade batches for this row
+      for (let index = 0; index < shadeBatches.length; index++) {
+        // Add new page for subsequent batches within the same row
+        if (index > 0) {
+          if (typeof doc.addPage === 'function') {
+            try {
+              doc.addPage("a4", "landscape");
+            } catch (error) {
+              console.warn("Could not add page for batch:", error);
+            }
+          }
+        }
+        
+        currentSrNo = drawTablePage(
+          shadeBatches[index], 
+          index, 
+          shadeBatches.length, 
+          currentSrNo
+        );
+      }
+    };
+
+    // Filter rows based on range filters
+    const toExport = sorted.filter(r =>
+      inRange(r["Job Order No"], joStart, joEnd) &&
+      inRange(r["Lot Number"], lotStart, lotEnd)
+    );
+
+    let wroteAny = false;
+    let skipped = 0;
+
+    // Loop through filtered rows and create landscape pages
+    for (let i = 0; i < toExport.length; i++) {
+      const row = toExport[i];
+      const hasLot = Boolean((row["Lot Number"] ?? "").toString().trim());
+      if (!hasLot) { skipped++; continue; }
+
+      await renderLandscapeTablePage(doc, row, !wroteAny);
+      wroteAny = true;
+
+      if (i % 2 === 0) await pause(0);
+    }
+
+    if (!wroteAny) {
+      alert("No eligible rows to export (all filtered rows are missing Lot Number).");
+      return;
+    }
+
+    // Save the document
+    const safe = (s) => String(s || "").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 80);
+    const ts = new Date().toISOString().slice(0, 10);
+    const fname = `CuttingTable_Pages_${ts}.pdf`;
+
+    try {
+      doc.save(safe(fname));
+    } catch (error) {
+      console.error("Error saving PDF:", error);
+      alert(`Error saving PDF: ${error.message}`);
+    }
+
+    if (skipped > 0) {
+      console.info(`Skipped ${skipped} row(s) without Lot Number`);
+    }
+  } catch (e) {
+    console.error(e);
+    alert(`Could not create landscape PDF: ${e.message}`);
+  } finally {
+    setPdfLandscapeBusy(false);
+  }
+};
 const generatePdf = async (row) => {
   const lot = (row?.["Lot Number"] ?? "").toString().trim();
   if (!lot) {
@@ -497,71 +1141,92 @@ const generatePdf = async (row) => {
       putOnlyUsedFonts: true,
     });
 
-    // ====== DESIGN TOKENS (updated) ======
-    const M = 42;
+    // ====== DESIGN TOKENS ======
+    const M = 42; // Margin
     const FOOTER_H = 44;
     const GRID_ROW_GAP = 18;
     const GRID_COL_GAP = 20;
     const IMG_MAX = 900;
     const IMG_TIMEOUT_MS = 4000;
 
-    // ====== COLORS: pure B/W (grayscale) ======
+    // ====== COLORS: PURE BLACK & WHITE ONLY ======
     const C = {
-      primary: [0, 0, 0],     // headings & labels -> black
-      accent: [0, 0, 0],     // lines/badges -> black
-      dark: [0, 0, 0],     // body text -> black
-      grayDark: [0, 0, 0],   // secondary text
-      gray: [0, 0, 0],
-      white: [255, 255, 255],
-      border: [0, 0, 0],
-      tableHeader: [255, 255, 255],
-      zebra: [250, 250, 250],
-      success: [0, 0, 0],     // any green -> black
-      highlight: [0, 0, 0],    // any red -> black
+      black: [0, 0, 0],       // ALL text in black
+      white: [255, 255, 255], // ALL backgrounds white
     };
-    const F = { h1: 30, h2: 22, h3: 18, body: 13, label: 11.5, meta: 10.5, small: 9.5 };
 
-    const setFont = (weight, size, color = C.dark) => {
-      doc.setFont("Arial Black", weight);
-      doc.setFontSize(size);
-      doc.setTextColor(...color);
+    const F = { 
+      h1: 30, 
+      h2: 24, 
+      h3: 20, 
+      body: 13, 
+      label: 11.5, 
+      meta: 10.5, 
+      small: 9.5,
+      xsmall: 8.5 
     };
+
+    // Helper functions
+    const setFont = (weight, size) => {
+      doc.setFont("Arial", weight);
+      doc.setFontSize(size);
+      doc.setTextColor(...C.black); // Always black
+    };
+
     const asText = (v) => (v == null || String(v).trim() === "" ? "—" : String(v).trim());
     const asBool = (v) => /^(true|yes|y|1)$/i.test(String(v || "").trim());
-    const vDate = (k) => (row?.[k] ? formatDateForPdf(row[k]) : "—");
+   // Update your existing vDate function to the new format:
+const vDate = (k) => {
+  const value = row?.[k];
+  if (!value) return "—";
+  const iso = tryParseDateToISO(value);
+  if (!iso) return value;
+  
+  const d = new Date(iso);
+  // Format: "9 Dec 2026"
+  const day = d.getDate(); // No leading zero
+  const month = d.toLocaleDateString('en-US', { month: 'short' }); // Dec, Jan, Feb, etc.
+  const year = d.getFullYear();
+  
+  return `${day} ${month} ${year}`;
+};
     const val = (k) => asText(row?.[k]);
+    
+    // Parse sizes from the Size column
+    const parseSizes = (sizeText) => {
+      if (!sizeText || sizeText === "—") return [];
+      const sizes = String(sizeText).split(/[,;|/]+/).map(s => s.trim()).filter(Boolean);
+      return sizes;
+    };
+    
+    // Parse shades from comma/separated string
+    const parseShades = (shadeText) => {
+      if (!shadeText || shadeText === "—") return [];
+      const shades = String(shadeText).split(/[,;|/]+/).map(s => s.trim()).filter(Boolean);
+      return shades;
+    };
+
     const HIGHLIGHTS = new Set(["Lot Number", "Party Name", "Garment Type", "Priority", "Tape/Lace", "Bottom Type", "Zip"]);
 
-    const isHighlighted = (label) => HIGHLIGHTS.has(String(label).trim());
-
-    // ====== PAGE SCAFFOLDS (white header + page border) ======
+    // ====== PAGE SCAFFOLDS ======
     const drawPageBorder = (PAGE) => {
-      doc.setDrawColor(0, 0, 0);
+      doc.setDrawColor(...C.black);
       doc.setLineWidth(0.8);
       doc.rect(12, 12, PAGE.w - 24, PAGE.h - 24);
     };
 
     const firstPageScaffold = () => {
       const PAGE = { w: doc.internal.pageSize.getWidth(), h: doc.internal.pageSize.getHeight() };
-      // Header stays white (no blue band)
       doc.setFillColor(...C.white);
-      doc.rect(0, 0, PAGE.w, 180, "F");
-      // Content container
-      doc.setFillColor(...C.white);
-      doc.roundedRect(M, 100, PAGE.w - M * 2, PAGE.h - 200, 12, 12, "F");
-      // Narrow black page border
+      doc.rect(0, 0, PAGE.w, PAGE.h, "F");
       drawPageBorder(PAGE);
       return PAGE;
     };
+
     const innerPageScaffold = () => {
       const PAGE = { w: doc.internal.pageSize.getWidth(), h: doc.internal.pageSize.getHeight() };
-      // Header stays white (no blue band)
       doc.setFillColor(...C.white);
-      doc.rect(0, 0, PAGE.w, 90, "F");
-      // Content container
-      doc.setFillColor(...C.white);
-      doc.roundedRect(M, 70, PAGE.w - M * 2, PAGE.h - 160, 12, 12, "F");
-      // Narrow black page border
+      doc.rect(0, 0, PAGE.w, PAGE.h, "F");
       drawPageBorder(PAGE);
       return PAGE;
     };
@@ -574,7 +1239,7 @@ const generatePdf = async (row) => {
     const contentW = () => PAGE.w - M * 2;
 
     const ensurePageRoom = async (needed, topPad = 0) => {
-      const bottom = PAGE.h - FOOTER_H;
+      const bottom = PAGE.h - FOOTER_H - 40;
       if (y + needed > bottom) {
         doc.addPage();
         PAGE = innerPageScaffold();
@@ -587,20 +1252,18 @@ const generatePdf = async (row) => {
       await ensurePageRoom(40);
       const yMid = y;
 
-      // Blue section titles
-      setFont("bold", F.h3, C.primary);
+      setFont("bold", F.h3);
       doc.text(text, PAGE.w / 2, yMid, { align: "center" });
 
       if (opts.rightBigText) {
-        // Keep highlight tone for big number
-        setFont("bold", 28, C.highlight);
+        setFont("bold", 28);
         const padRight = 6;
         const yOffset = 14;
         doc.text(String(opts.rightBigText), PAGE.w - M - padRight, yMid - yOffset, { align: "right" });
       }
 
-      doc.setDrawColor(...C.accent);
-      doc.setLineWidth(2.5);
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(2);
       doc.line(PAGE.w / 2 - 70, yMid + 8, PAGE.w / 2 + 70, yMid + 8);
 
       y += 24;
@@ -619,17 +1282,15 @@ const generatePdf = async (row) => {
 
       await ensurePageRoom(h);
 
-      doc.setDrawColor(...C.border); doc.setLineWidth(1.1);
-      doc.setFillColor(...C.white); doc.roundedRect(x, y, w, h, 8, 8, "FD");
+      doc.setDrawColor(...C.black); 
+      doc.setLineWidth(1);
+      doc.setFillColor(...C.white); 
+      doc.rect(x, y, w, h, "FD");
 
-      // Label: bold navy
-      setFont("bold", F.label, C.primary);
+      setFont("bold", F.label);
       doc.text(label.toUpperCase(), x + padX, y + padY);
 
-      // Value: bold black (or highlighted red if in HIGHLIGHTS)
-      const isHL = isHighlighted(label);
-      const color = isHL ? C.highlight : C.dark;
-      setFont("bold", F.body, color);
+      setFont("bold", F.body);
       const textY = y + padY + labelH + 6;
       lines.forEach((t, i) => doc.text(t, x + padX, textY + i * lineH));
 
@@ -644,7 +1305,6 @@ const generatePdf = async (row) => {
       const gapW = GRID_COL_GAP * (cols - 1);
       const cardW = (totalW - gapW) / cols;
 
-      // Estimate tallest card
       const heights = items.map(({ value }) => {
         const padX = 18, padY = 16, labelH = F.label * 1.6;
         const maxWidth = cardW - padX * 2;
@@ -671,70 +1331,40 @@ const generatePdf = async (row) => {
       y = maxBottom + rowGap;
     };
 
-    const drawKVGrid = async (pairs, { cols = 4, rowGap = 8 }) => {
-      const colW = (contentW() - GRID_COL_GAP * (cols - 1)) / cols;
-      const rowHeight = 24;
-
-      for (let i = 0; i < pairs.length; i += cols) {
-        await ensurePageRoom(rowHeight);
-        const row = pairs.slice(i, i + cols);
-
-        row.forEach((p, idx) => {
-          const x = M + idx * (colW + GRID_COL_GAP);
-          const labelStr = (p.label || "").toUpperCase();
-
-          // Label: bold navy
-          setFont("bold", F.small, C.primary);
-          doc.text(labelStr, x, y);
-
-          // Value: bold black unless highlighted (then bold red)
-          const isHL = isHighlighted(p.label);
-          const color = isHL ? C.highlight : C.dark;
-          setFont("bold", F.small, color);
-
-          const line = doc.splitTextToSize(asText(p.value), colW)[0] || "—";
-          doc.text(line, x, y + 12);
-        });
-
-        y += rowHeight + rowGap;
-        if ((i / cols) % 2 === 1) await pause(0);
-      }
-    };
-
-    // compact-capable table
     const drawTable = async (headers, data, opts = {}) => {
       const x = M;
       const tableW = contentW();
 
-      const headerH = opts.headerH ?? 30;   // was 44
-      const rowH = opts.rowH ?? 22;      // was 38
-      const fontScale = opts.fontScale ?? 0.9; // shrink fonts a bit
+      const headerH = opts.headerH ?? 30;
+      const rowH = opts.rowH ?? 22;
+      const fontScale = opts.fontScale ?? 0.9;
 
-      const headerFont = Math.max(8.5, F.body * fontScale); // e.g., ~11.7 -> 10.5
-      const bodyFont = Math.max(8.0, F.body * (fontScale - 0.05)); // a touch smaller than header
+      const headerFont = Math.max(8.5, F.body * fontScale);
+      const bodyFont = Math.max(8.0, F.body * (fontScale - 0.05));
 
       const totalRatio = headers.reduce((s, h) => s + (h.width || 1), 0);
       const colW = headers.map((h) => ((h.width || 1) / totalRatio) * tableW);
 
       const drawHeader = async () => {
         await ensurePageRoom(headerH);
-        doc.setFillColor(...C.tableHeader);
-        doc.roundedRect(x, y, tableW, headerH, 6, 6, "F");
+        
+        // White background for header
+        doc.setFillColor(...C.white);
+        doc.rect(x, y, tableW, headerH, "F");
 
         let cx = x;
         headers.forEach((h, i) => {
           const wCol = colW[i];
-          doc.setDrawColor(...C.border); doc.setLineWidth(1);
+          doc.setDrawColor(...C.black); 
+          doc.setLineWidth(1);
           doc.rect(cx, y, wCol, headerH);
 
-          // smaller header font (navy)
-          setFont("bold", headerFont, C.primary);
+          setFont("bold", headerFont);
           doc.text(h.label, cx + wCol / 2, y + headerH / 2 + 3, { align: "center" });
           cx += wCol;
         });
 
-        // thin bottom rule
-        doc.setDrawColor(...C.accent);
+        doc.setDrawColor(...C.black);
         doc.setLineWidth(1.5);
         doc.line(x, y + headerH, x + tableW, y + headerH);
 
@@ -746,19 +1376,18 @@ const generatePdf = async (row) => {
 
       for (let idx = 0; idx < data.length; idx++) {
         await ensurePageRoom(rowH);
-        if (idx % 2 === 0) {
-          doc.setFillColor(...C.zebra);
-          doc.rect(x, y, tableW, rowH, "F");
-        }
+        
+        // White background for all rows
+        doc.setFillColor(...C.white);
+        doc.rect(x, y, tableW, rowH, "F");
 
         let cx = x;
         headers.forEach((h, i) => {
           const wCol = colW[i];
-          doc.setDrawColor(...C.border);
+          doc.setDrawColor(...C.black);
           doc.rect(cx, y, wCol, rowH);
 
-          // compact body font (black)
-          setFont("bold", bodyFont, C.dark);
+          setFont("bold", bodyFont);
           const cell = (data[idx][h.key] ?? "").toString();
           doc.text(cell, cx + wCol / 2, y + rowH / 2 + 3, { align: "center" });
           cx += wCol;
@@ -769,9 +1398,9 @@ const generatePdf = async (row) => {
       }
 
       const tableEndY = y;
-      doc.setDrawColor(...C.border);
+      doc.setDrawColor(...C.black);
       doc.setLineWidth(1);
-      doc.roundedRect(x, tableStartY, tableW, tableEndY - tableStartY, 6, 6, "S");
+      doc.rect(x, tableStartY, tableW, tableEndY - tableStartY, "S");
     };
 
     const tryDrawImage = async ({ url, x, w, h }) => {
@@ -780,10 +1409,12 @@ const generatePdf = async (row) => {
 
       await ensurePageRoom(cardH);
 
-      doc.setDrawColor(...C.border); doc.setLineWidth(1.1);
-      doc.setFillColor(...C.white); doc.roundedRect(x, y, w, cardH, 8, 8, "FD");
-      // Label "IMAGE": bold navy
-      setFont("bold", F.label, C.primary);
+      doc.setDrawColor(...C.black); 
+      doc.setLineWidth(1);
+      doc.setFillColor(...C.white); 
+      doc.rect(x, y, w, cardH, "FD");
+      
+      setFont("bold", F.label);
       doc.text("IMAGE", x + padX, y + padY);
 
       let drew = false;
@@ -798,7 +1429,8 @@ const generatePdf = async (row) => {
             const p = doc.getImageProperties(dataUrl);
             const fitW = w - 40, fitH = cardH - (padY + labelH + 6) - 20;
             const ratio = Math.min(fitW / p.width, fitH / p.height);
-            const iw = Math.max(1, p.width * ratio), ih = Math.max(1, p.height * ratio);
+            const iw = Math.max(1, p.width * ratio);
+            const ih = Math.max(1, p.height * ratio);
             const ix = x + (w - iw) / 2;
             const iy = y + padY + labelH + 10 + (fitH - ih) / 2;
             doc.addImage(dataUrl, "JPEG", ix, iy, iw, ih);
@@ -807,7 +1439,7 @@ const generatePdf = async (row) => {
         }
       } catch (_) { }
       if (!drew) {
-        setFont("normal", F.meta, C.grayDark);
+        setFont("normal", F.meta);
         doc.text("No image provided / failed to load", x + w / 2, y + cardH / 2, { align: "center" });
       }
 
@@ -820,39 +1452,39 @@ const generatePdf = async (row) => {
       PAGE = firstPageScaffold();
       y = 170;
 
-      // Header text on white: Blue headings
-      setFont("bold", 32, C.primary);
-      doc.text("JOB ORDER", doc.internal.pageSize.getWidth() / 2, 65, { align: "center" });
-      setFont("bold", 16, C.primary);
-      doc.text(`Order #${joNum}`, doc.internal.pageSize.getWidth() / 2, 90, { align: "center" });
+      // Header
+      setFont("bold", 32);
+      doc.text("JOB ORDER", PAGE.w / 2, 65, { align: "center" });
+      setFont("bold", 16);
+      doc.text(`Order #${joNum}`, PAGE.w / 2, 90, { align: "center" });
 
-      // Accent badge
-      // JO badge: white circle with black outline, black text
+      // JO badge
       doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.dark);
+      doc.setDrawColor(...C.black);
       doc.setLineWidth(1);
-      doc.circle(M + 30, 60, 30, "FD"); // F=fill white, D=draw black stroke
-      setFont("bold", 20, C.dark);
+      doc.circle(M + 30, 60, 30, "FD");
+      setFont("bold", 20);
       doc.text("JO", M + 30, 67, { align: "center" });
-
 
       const genDate = new Date().toLocaleDateString("en-US", {
         year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit",
       });
-      setFont("normal", F.meta, C.grayDark);
+      setFont("normal", F.meta);
       doc.text(`Generated: ${genDate}`, PAGE.w - M, 50, { align: "right" });
       doc.text(`Submitted by: ${submittedBy}`, PAGE.w - M, 70, { align: "right" });
 
       const dsEnabled = asBool(row?.["Direct Stitching"]);
       if (dsEnabled) {
         const padX = 14, hChip = 30, r = 15;
-        setFont("bold", 12, C.white);
+        setFont("bold", 12);
         const label = "DIRECT STITCHING";
         const wChip = doc.getTextWidth(label) + padX * 2 + 14;
         const xChip = PAGE.w - M - wChip;
         const yChip = 85;
-        doc.setFillColor(...C.success);
-        doc.roundedRect(xChip, yChip - hChip + 2, wChip, hChip, r, r, "F");
+        doc.setFillColor(...C.white);
+        doc.setDrawColor(...C.black);
+        doc.setLineWidth(1);
+        doc.rect(xChip, yChip - hChip + 2, wChip, hChip, "FD");
         doc.text(label, xChip + padX + 12, yChip - 8);
       }
 
@@ -901,7 +1533,7 @@ const generatePdf = async (row) => {
       await sectionHeader("Remarks & Visual Reference");
       const twoColW = (contentW() - GRID_COL_GAP) / 2;
 
-      // Left: remarks
+      // Remarks
       {
         const oldY = y;
         const remarksText = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
@@ -909,7 +1541,7 @@ const generatePdf = async (row) => {
         y = oldY;
       }
 
-      // Right: image
+      // Image
       await tryDrawImage({
         url: row?.["Image URL"],
         x: M + twoColW + GRID_COL_GAP, w: twoColW, h: 220
@@ -920,17 +1552,16 @@ const generatePdf = async (row) => {
       PAGE = innerPageScaffold();
       y = 100;
 
-      // Blue heading
-      setFont("bold", 24, C.primary);
+      setFont("bold", 24);
       const lotNum = asText(row?.["Lot Number"]);
       doc.text(
         `JOB ORDER SUMMARY ${lotNum !== "—" ? `(${lotNum})` : ""}`,
-        doc.internal.pageSize.getWidth() / 2,
+        PAGE.w / 2,
         50,
         { align: "center" }
       );
 
-      // ===== Boxed "Order Summary" (ONLY OUTER BORDER) =====
+      // Order Summary Box
       {
         const short = (s, n) => {
           s = asText(s);
@@ -980,17 +1611,14 @@ const generatePdf = async (row) => {
         const boxX = M;
         const boxY = y;
 
-        // Outer box only
-        doc.setDrawColor(0, 0, 0);
+        doc.setDrawColor(...C.black);
         doc.setFillColor(...C.white);
         doc.setLineWidth(1);
-        doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8, "FD");
+        doc.rect(boxX, boxY, boxW, boxH, "FD");
 
-        // Title inside the box (left aligned)
-        setFont("bold", F.h3, C.primary);
+        setFont("bold", F.h3);
         doc.text("Order Summary", boxX + pad, boxY + pad + titleH - 6);
 
-        // Grid content (NO inner borders)
         const innerX = boxX + pad;
         const innerYStart = boxY + pad + titleH + titleGap;
         const colW = (boxW - pad * 2 - GRID_COL_GAP * (cols - 1)) / cols;
@@ -1002,13 +1630,10 @@ const generatePdf = async (row) => {
           rowSlice.forEach((p, idx) => {
             const x = innerX + idx * (colW + GRID_COL_GAP);
 
-            // Label: bold navy
-            setFont("bold", F.small, C.primary);
+            setFont("bold", F.small);
             doc.text((p.label || "").toUpperCase(), x, drawY);
 
-            // Value: bold black unless highlighted (then bold red)
-            const isHL = isHighlighted(p.label);
-            setFont("bold", F.small, isHL ? C.highlight : C.dark);
+            setFont("bold", F.small);
 
             const line = doc.splitTextToSize(asText(p.value), colW)[0] || "—";
             doc.text(line, x, drawY + 12);
@@ -1017,7 +1642,6 @@ const generatePdf = async (row) => {
           drawY += rowHeight + rowGap;
         }
 
-        // Advance after box
         y = boxY + boxH + GRID_ROW_GAP;
       }
 
@@ -1040,461 +1664,864 @@ const generatePdf = async (row) => {
       });
       const bottomRight = yTop + estRightH;
 
-      doc.setDrawColor(...C.border);
+      doc.setDrawColor(...C.black);
       doc.setLineWidth(1);
       doc.line(M + colW + colGap / 2, yTop + 6, M + colW + colGap / 2, Math.max(bottomLeft, bottomRight) - 6);
 
       y = Math.max(bottomLeft, bottomRight) + GRID_ROW_GAP;
 
       await sectionHeader("Cutting Schedule");
+      const shades = parseShades(val("Shade"));
+      const minRows = Math.max(6, shades.length);
+      const rowCount = Math.min(10, Math.max(minRows, shades.length));
+
       const tableHeaders = [
         { label: "Table", key: "table", width: 1 },
         { label: "Shade", key: "shade", width: 2 },
         { label: "Quantity", key: "qty", width: 1 },
-        { label: "Kharcha", key: "kharcha", width: 1 }, // NEW (before Date of Cutting)
+        { label: "Kharcha", key: "kharcha", width: 1 },
         { label: "Date of Cutting", key: "cut", width: 1.5 },
       ];
 
-      // Parse shades (if any)
-      const shadesArr = parseShades(val("Shade")).filter(s => String(s || "").trim() !== "");
-      const minRows = 10;
-      const rowCount = Math.max(minRows, shadesArr.length);
-
       const tableData = Array.from({ length: rowCount }, (_, i) => ({
         table: "",
-        shade: shadesArr[i] != null ? String(shadesArr[i]) : "",
+        shade: i < shades.length ? String(shades[i]) : "",
         qty: "",
-        kharcha: "Yes / No",   // <- simple text
+        kharcha: "Yes / No",
         cut: "",
       }));
 
       await drawTable(tableHeaders, tableData, { rowH: 26, headerH: 32, fontScale: 0.95 });
+      y += 40;
     };
 
-// ====== RENDER THIRD PAGE (Material Acquisition Planning - Enhanced Full Page) ======
-const renderThirdPage = async () => {
-  PAGE = innerPageScaffold();
-  y = 75;
+    const renderThirdPage = async () => {
+      PAGE = innerPageScaffold();
+      y = 75;
 
-  // Helper function for shortening text
+      const shortenText = (text, maxLength) => {
+        if (!text || text === "—") return "—";
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength - 3) + "...";
+      };
+
+      // Header
+      setFont("bold", 28);
+      doc.text("MATERIAL REQUISITION PLANNING", PAGE.w / 2, 55, { align: "center" });
+      
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(3);
+      doc.line(PAGE.w / 2 - 120, 65, PAGE.w / 2 + 120, 65);
+      
+      y += 25;
+      
+      // Job info - WHITE BACKGROUND ONLY
+      doc.setFillColor(...C.white);
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1);
+      doc.rect(M, y - 5, contentW(), 40, "FD");
+      
+      setFont("bold", 14);
+      doc.text(`JOB ORDER: ${joNum}`, M + 25, y + 10);
+      
+      setFont("bold", 14);
+      doc.text(`LOT NUMBER: ${val("Lot Number")}`, M + 180, y + 10);
+      
+      setFont("bold", 14);
+      doc.text(`PARTY: ${shortenText(val("Party Name"), 22)}`, M + 350, y + 10);
+      
+      setFont("bold", 14);
+      doc.text(`DATE: ${vDate("Date")}`, PAGE.w - M - 25, y + 10, { align: "right" });
+
+      y += 50;
+
+      // Two column layout
+      const colGap = 25;
+      const leftColW = (contentW() - colGap) * 0.55;
+      const rightColW = (contentW() - colGap) * 0.45;
+
+      // LEFT COLUMN
+      const leftX = M;
+      const leftStartY = y;
+      
+      doc.setFillColor(...C.white);
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1);
+      doc.rect(leftX, y, leftColW, 38, "FD");
+      
+      setFont("bold", 18);
+      doc.text("MATERIAL SPECIFICATIONS", leftX + leftColW / 2, y + 24, { align: "center" });
+      
+      y += 48;
+
+      const materialData = [
+        { label: "FABRIC", value: val("Fabric") },
+        { label: "BRAND", value: val("Brand") },
+        { label: "GARMENT TYPE", value: val("Garment Type") },
+        { label: "QUANTITY", value: `${val("Quantity")} ${val("Unit")}` },
+        { label: "SIZE", value: val("Size") },
+        { label: "STYLE", value: val("Style") },
+        { label: "PATTERN", value: val("Pattern") },
+        { label: "TAPE/LACE", value: val("Tape/Lace") },
+        { label: "BOTTOM TYPE", value: val("Bottom Type") },
+        { label: "ZIP", value: val("Zip") },
+        { label: "OTHER COMPONENTS", value: val("Component") },
+        { label: "SECTION", value: val("Section") },
+        { label: "SEASON", value: val("Season") },
+        { label: "PRIORITY", value: val("Priority") },
+        { label: "SUBMITTED BY", value: val("Submitted By") },
+        { label: "REMARKS", value: shortenText(row?.["Remarks"] ?? "", 50) },
+      ];
+
+      const rowHeight = 23;
+      const labelWidth = 130;
+      
+      for (let i = 0; i < materialData.length; i++) {
+        const item = materialData[i];
+        
+        if (item.separator) {
+          doc.setDrawColor(...C.black);
+          doc.setLineWidth(0.5);
+          doc.line(leftX + 10, y + 8, leftX + leftColW - 10, y + 8);
+          y += 15;
+          continue;
+        }
+        
+        await ensurePageRoom(rowHeight);
+        
+        setFont("bold", 11);
+        doc.text(item.label, leftX + 15, y + 15);
+        
+        setFont("bold", 12);
+        
+        const valueText = item.value || "—";
+        const maxWidth = leftColW - labelWidth - 25;
+        
+        const lines = doc.splitTextToSize(valueText, maxWidth);
+        if (lines.length > 1) {
+          for (let idx = 0; idx < lines.length; idx++) {
+            doc.text(lines[idx], leftX + labelWidth + 15, y + 15 + (idx * 11));
+          }
+          y += (lines.length * 11) + 10;
+        } else {
+          doc.text(valueText, leftX + labelWidth + 15, y + 15);
+          y += rowHeight;
+        }
+      }
+      
+      const leftColumnBottom = y;
+
+      // RIGHT COLUMN
+      const rightX = M + leftColW + colGap;
+      const rightStartY = leftStartY;
+      let rightY = rightStartY;
+      
+      // Image section
+      doc.setFillColor(...C.white);
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1);
+      doc.rect(rightX, rightY, rightColW, 38, "FD");
+      
+      setFont("bold", 18);
+      doc.text("VISUAL REFERENCE", rightX + rightColW / 2, rightY + 24, { align: "center" });
+      
+      rightY += 48;
+      
+      await ensurePageRoom(200);
+      doc.setFillColor(...C.white);
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1.5);
+      doc.rect(rightX, rightY, rightColW, 190, "FD");
+      
+      const hasImage = row?.["Image URL"] && String(row?.["Image URL"]).trim() !== "";
+      if (hasImage) {
+        try {
+          const dataUrl = await withTimeout(
+            loadImageAsBase64ForPdf(row["Image URL"], { maxWidth: 350, maxHeight: 150 }),
+            IMG_TIMEOUT_MS
+          );
+          if (dataUrl) {
+            const p = doc.getImageProperties(dataUrl);
+            const fitW = rightColW - 50;
+            const fitH = 150;
+            const ratio = Math.min(fitW / p.width, fitH / p.height);
+            const iw = Math.max(1, p.width * ratio);
+            const ih = Math.max(1, p.height * ratio);
+            const ix = rightX + (rightColW - iw) / 2;
+            const iy = rightY + 20;
+            doc.addImage(dataUrl, "JPEG", ix, iy, iw, ih);
+          } else {
+            setFont("normal", 13);
+            doc.text("No image available", rightX + rightColW / 2, rightY + 100, { align: "center" });
+          }
+        } catch {
+          setFont("normal", 13);
+          doc.text("Image load failed", rightX + rightColW / 2, rightY + 100, { align: "center" });
+        }
+      } else {
+        setFont("normal", 13);
+        doc.text("No image provided", rightX + rightColW / 2, rightY + 100, { align: "center" });
+      }
+      
+      rightY += 205;
+      
+      // Planning status
+      doc.setFillColor(...C.white);
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1);
+      doc.rect(rightX, rightY, rightColW, 38, "FD");
+      
+      setFont("bold", 18);
+      doc.text("PLANNING STATUS", rightX + rightColW / 2, rightY + 24, { align: "center" });
+      
+      rightY += 48;
+      
+      const planningItems = [
+        { label: "Material Ordered" },
+        { label: "Zip Received" },
+        { label: "Dori Received" },
+        { label: "Label Received" },
+        { label: "Tag Received" },
+        { label: "Washcare Received" },
+      ];
+      
+      for (let idx = 0; idx < planningItems.length; idx++) {
+        const item = planningItems[idx];
+        
+        doc.setDrawColor(...C.black);
+        doc.setLineWidth(1.2);
+        doc.rect(rightX + 20, rightY - 5, 14, 14);
+        
+        setFont("normal", 13);
+        doc.text(item.label, rightX + 45, rightY + 3);
+        
+        setFont("normal", 12);
+        doc.text("__ / __ / ____", rightX + rightColW - 25, rightY + 3, { align: "right" });
+        
+        rightY += 22;
+      }
+      
+      const rightColumnBottom = rightY;
+      y = Math.max(leftColumnBottom, rightColumnBottom);
+      y += 30;
+
+      // Material requirements table
+      await ensurePageRoom(50);
+      
+      doc.setFillColor(...C.white);
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1);
+      doc.rect(M, y, contentW(), 42, "FD");
+      
+      setFont("bold", 18);
+      doc.text("MATERIAL REQUIREMENTS", M + contentW() / 2, y + 26, { align: "center" });
+      
+      y += 52;
+
+      const requirementsHeaders = [
+        { label: "MATERIAL ITEM", key: "item", width: 2 },
+        { label: "DESCRIPTION", key: "description", width: 2 },
+        { label: "ORDERED QTY", key: "ordered", width: 1 },
+        { label: "RECEIVED QTY", key: "received", width: 1 },
+        { label: "STATUS", key: "status", width: 1.5 },
+      ];
+
+      const requirementsData = [
+        { item: "MAIN FABRIC", description: val("Fabric"), ordered: "", received: "", status: "" },
+        { item: "ZIPPERS", description: val("Zip") || "As per design", ordered: "", received: "", status: "" },
+        { item: "TAPE/LACE", description: val("Tape/Lace") || "As required", ordered: "", received: "", status: "" },
+        { item: "BOTTOM MATERIAL", description: val("Bottom Type") || "As per style", ordered: "", received: "", status: "" },
+        { item: "THREAD", description: "Matching thread", ordered: "", received: "", status: "" },
+        { item: "LABELS", description: "Brand Labels", ordered: "", received: "", status: "" },
+        { item: "Tag", description: "Tag", ordered: "", received: "", status: "" },
+        { item: "PACKAGING", description: "Polybags", ordered: "", received: "", status: "" },
+        { item: "OTHER COMPONENTS", description: val("Component") || "Various trims", ordered: "", received: "", status: "" },
+        { item: "", description: "", ordered: "", received: "", status: "" },
+      ];
+
+      await drawTable(requirementsHeaders, requirementsData, {
+        rowH: 28,
+        headerH: 34,
+        fontScale: 0.9
+      });
+
+      // Signature section
+      await ensurePageRoom(70);
+      y += 25;
+
+      doc.setFillColor(...C.white);
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1.5);
+      doc.rect(M, y, contentW(), 70, "FD");
+
+      setFont("bold", 13);
+      doc.text("PREPARED BY MATERIAL PLANNING:", M + 25, y + 22);
+      
+      setFont("normal", 12);
+      doc.text("Signature: _______________________", M + 280, y + 22);
+      doc.text("Date: ______ / ______ / ______", M + 500, y + 22);
+
+      setFont("bold", 13);
+      doc.text("APPROVED BY:", M + 25, y + 48);
+      
+      setFont("normal", 12);
+      doc.text("Signature: _______________________", M + 280, y + 48);
+      doc.text("Date: ______ / ______ / ______", M + 500, y + 48);
+
+      y += 85;
+    };
+
+    // ====== LANDSCAPE PRODUCTION TABLE PAGE ======
+const renderLandscapeTablePage = async () => {
+  // Switch to landscape A4
+  doc.addPage("a4", "landscape");
+  
+  const LANDSCAPE_W = doc.internal.pageSize.getWidth();  // ~297mm
+  const LANDSCAPE_H = doc.internal.pageSize.getHeight(); // ~210mm
+  
+  // ====== SHADES INFORMATION ======
+  const shades = parseShades(val("Shade"));
+  
+  // Parse sizes for column headers
+  const sizes = parseSizes(val("Size"));
+  
+  // Calculate table dimensions
+  const tableX = M;
+  const tableWidth = LANDSCAPE_W - 2 * M;
+  const tableMaxHeight = LANDSCAPE_H - 100 - 90; // Reduced for header and footer
+  
+  // Reduced row height for A4
+  const ROW_HEIGHT = 36;
+  const HEADER_HEIGHT = ROW_HEIGHT * 1.1;
+  
+  // Fewer colors per page for A4
+  const maxRowsPerPage = Math.floor(tableMaxHeight / ROW_HEIGHT) - 1;
+  const colorsPerPage = Math.min(7, maxRowsPerPage - 1);
+  
+  // Split shades into batches
+  const shadeBatches = [];
+  for (let i = 0; i < shades.length; i += colorsPerPage) {
+    shadeBatches.push(shades.slice(i, i + colorsPerPage));
+  }
+  
+  // If no shades, still create one page with empty rows
+  if (shadeBatches.length === 0) {
+    shadeBatches.push([]);
+  }
+  
+  // Helper function to shorten text
   const shortenText = (text, maxLength) => {
     if (!text || text === "—") return "—";
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength - 3) + "...";
   };
-
-  // ===== HEADER SECTION =====
-  setFont("bold", 28, C.primary);
-  doc.text("MATERIAL REQUISITION PLANNING", PAGE.w / 2, 55, { align: "center" });
   
-  // Thicker decorative line
-  doc.setDrawColor(...C.accent);
-  doc.setLineWidth(3);
-  doc.line(PAGE.w / 2 - 120, 65, PAGE.w / 2 + 120, 65);
-  
-  // Job info - larger and better spaced
-  y += 25;
-  
-  // Job info container
-  doc.setFillColor(245, 245, 245);
-  doc.roundedRect(M, y - 5, contentW(), 40, 8, 8, "F");
-  doc.setDrawColor(...C.border);
-  doc.setLineWidth(1);
-  doc.roundedRect(M, y - 5, contentW(), 40, 8, 8, "S");
-  
-  setFont("bold", 14, C.primary);
-  doc.text(`JOB ORDER: ${joNum}`, M + 25, y + 10);
-  
-  setFont("bold", 14, C.highlight);
-  doc.text(`LOT: ${val("Lot Number")}`, M + 180, y + 10);
-  
-  setFont("bold", 14, C.grayDark);
-  doc.text(`PARTY: ${shortenText(val("Party Name"), 22)}`, M + 350, y + 10);
-  
-  setFont("bold", 14, C.primary);
-  doc.text(`DATE: ${vDate("Date")}`, PAGE.w - M - 25, y + 10, { align: "right" });
-
-  y += 50;
-
-  // ===== TWO COLUMN LAYOUT WITH BETTER SPACING =====
-  const colGap = 25;
-  const leftColW = (contentW() - colGap) * 0.55;
-  const rightColW = (contentW() - colGap) * 0.45;
-
-  // LEFT COLUMN: Material Specifications
-  const leftX = M;
-  const leftStartY = y;
-  
-  // Material Details Header - LARGER
-  doc.setFillColor(240, 240, 240);
-  doc.roundedRect(leftX, y, leftColW, 38, 8, 8, "F");
-  doc.setDrawColor(...C.accent);
-  doc.setLineWidth(2);
-  doc.roundedRect(leftX, y, leftColW, 38, 8, 8, "S");
-  
-  setFont("bold", 18, C.primary);
-  doc.text("MATERIAL SPECIFICATIONS", leftX + leftColW / 2, y + 24, { align: "center" });
-  
-  y += 48;
-
-  // Material Details - BETTER SPACING AND LARGER FONTS
-  const materialData = [
-    // Basic Details
-    { label: "FABRIC", value: val("Fabric") },
-    { label: "BRAND", value: val("Brand") },
-    { label: "GARMENT TYPE", value: val("Garment Type") },
-    { label: "QUANTITY", value: `${val("Quantity")} ${val("Unit")}` },
-    { label: "SIZE", value: val("Size") },
-    { label: "STYLE", value: val("Style") },
-    { label: "PATTERN", value: val("Pattern") },
+  // Function to draw page header (updated with additional fields)
+  const drawPageHeader = (pageNumber, totalPages) => {
+    // Add top margin
+    const TOP_MARGIN = 15; // Add 15pt margin from top
     
-    // Separator line
-    { separator: true },
+    // Set white background for header area - extend height by TOP_MARGIN
+    doc.setFillColor(...C.white);
+    doc.rect(0, 0, LANDSCAPE_W, 85 + TOP_MARGIN, "F");
     
-    // Components & Trims
-    { label: "TAPE/LACE", value: val("Tape/Lace"), highlight: true },
-    { label: "BOTTOM TYPE", value: val("Bottom Type"), highlight: true },
-    { label: "ZIP", value: val("Zip"), highlight: true },
-    { label: "OTHER COMPONENTS", value: val("Component") },
+    // Get quantity and unit from job order
+    const quantity = val("Quantity") || "";
+    const unit = val("Unit") || "sets";
     
-    // Separator line
-    { separator: true },
+    // LEFT SIDE: Basic Info + Style - Add TOP_MARGIN to all Y positions
+    let leftY = 22 + TOP_MARGIN;
     
-    // Planning Info
-    { label: "SECTION", value: val("Section") },
-    { label: "SEASON", value: val("Season") },
-    { label: "PRIORITY", value: val("Priority"), highlight: true },
-    { label: "SUBMITTED BY", value: val("Submitted By") },
-    { label: "REMARKS", value: shortenText(row?.["Remarks"] ?? "", 50) },
-  ];
-
-  const rowHeight = 23; // Increased from 20
-  const labelWidth = 130; // Increased from 120
-  
-  for (let i = 0; i < materialData.length; i++) {
-    const item = materialData[i];
+    setFont("bold", 10);
+    doc.text(`JOB: ${joNum} | ${vDate("Date")}`, M, leftY);
+    leftY += 14;
     
-    if (item.separator) {
-      // Thicker separator line
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(1);
-      doc.line(leftX + 10, y + 8, leftX + leftColW - 10, y + 8);
-      y += 15; // Increased spacing
-      continue;
+    // STYLE on left side
+    const style = val("Style") || "—";
+    setFont("normal", 10);
+    doc.text(`STYLE: ${style}`, M, leftY);
+    leftY += 14;
+    
+    if (quantity) {
+      setFont("bold", 10);
+      const quantityText = `QTY: ${quantity} ${unit}`;
+      doc.text(quantityText, M, leftY);
+      leftY += 14;
     }
     
-    await ensurePageRoom(rowHeight);
+    // SEASON field on left side
+    const season = val("Season") || "—";
+    if (season && season !== "—") {
+      setFont("normal", 9);
+      doc.text(`SEASON: ${season}`, M, leftY);
+      leftY += 12;
+    }
     
-    // Label - LARGER FONT
-    setFont("bold", 11, C.grayDark); // Increased from 9
-    doc.text(item.label, leftX + 15, y + 15); // Adjusted y position
+    // SECTION field on left side
+    const section = val("Section") || "—";
+    if (section && section !== "—") {
+      setFont("normal", 9);
+      doc.text(`SECTION: ${section}`, M, leftY);
+      leftY += 12;
+    }
     
-    // Value - LARGER FONT
-    const isHighlight = item.highlight;
-    setFont("bold", 12, isHighlight ? C.highlight : C.dark); // Increased from 10
+    // RIGHT SIDE: Brand + NEW FIELDS (Tape/Lace, Zip, Bottom Type) - Add TOP_MARGIN
+    let rightY = 22 + TOP_MARGIN;
     
-    const valueText = item.value || "—";
-    const maxWidth = leftColW - labelWidth - 25;
+    setFont("bold", 10);
+    const brand = val("Brand") || "—";
+    doc.text(`BRAND: ${brand}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 14;
     
-    // Check if text needs to be split
-    const lines = doc.splitTextToSize(valueText, maxWidth);
-    if (lines.length > 1) {
-      // Multi-line value
-      for (let idx = 0; idx < lines.length; idx++) {
-        doc.text(lines[idx], leftX + labelWidth + 15, y + 15 + (idx * 11)); // Increased line spacing
+    // NEW FIELDS: Tape/Lace, Zip, Bottom Type
+    const tapeLace = val("Tape/Lace") || val("Tape Lace") || val("Tape") || val("Lace") || "—";
+    const zip = val("Zip") || val("Zipper") || "—";
+    const bottomType = val("Bottom Type") || val("Bottom") || "—";
+    
+    // Add Tape/Lace if available
+    if (tapeLace && tapeLace !== "—") {
+      setFont("normal", 9);
+      doc.text(`Tape/Lace: ${shortenText(tapeLace, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+      rightY += 12;
+    }
+    
+    // Add Zip if available
+    if (zip && zip !== "—") {
+      setFont("normal", 9);
+      doc.text(`Zip: ${shortenText(zip, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+      rightY += 12;
+    }
+    
+    // Add Bottom Type if available
+    if (bottomType && bottomType !== "—") {
+      setFont("normal", 9);
+      doc.text(`Bottom: ${shortenText(bottomType, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+      rightY += 12;
+    }
+    
+    // Pattern | Garment Type on right side
+    setFont("normal", 9);
+    const pattern = val("Pattern") || "—";
+    const garmentType = val("Garment Type") || "—";
+    const patternGarment = `${pattern} | ${garmentType}`;
+    if (patternGarment !== "— | —") {
+      doc.text(patternGarment, LANDSCAPE_W - M, rightY, { align: "right" });
+    }
+    
+    // CENTER: Main Heading with LOT NUMBER - Add TOP_MARGIN
+    let centerY = 22 + TOP_MARGIN;
+    
+    setFont("bold", 16);
+    doc.text("CUTTING TABLE ______", LANDSCAPE_W / 2, centerY, { align: "center" });
+    centerY += 16;
+    
+    // LOT NUMBER in center
+    const lotNumber = val("Lot Number") || "—";
+    setFont("bold", 14);
+    doc.text(`LOT NUMBER: ${lotNumber}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+    centerY += 16;
+    
+    // Fabric information
+    setFont("bold", 10);
+    const fabric = val("Fabric") || "—";
+    doc.text(`Fabric: ${fabric}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+    centerY += 14;
+    
+    // REMARKS
+    setFont("normal", 9);
+    const remarksText = row?.["Remarks"] ? String(row["Remarks"]).trim() : "";
+    if (remarksText && remarksText !== "") {
+      const maxRemarksLength = 80;
+      const displayRemarks = remarksText.length > maxRemarksLength 
+        ? remarksText.substring(0, maxRemarksLength - 3) + "..." 
+        : remarksText;
+      
+      doc.text(`Remarks: ${displayRemarks}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+      centerY += 14;
+    }
+    
+    // Calculate header height - Add TOP_MARGIN to base
+    let headerHeight = 75 + TOP_MARGIN; // Add TOP_MARGIN
+    
+    // Adjust header height for content
+    if (remarksText && remarksText !== "") headerHeight += 14;
+    
+    // Separator line under header - PROPER GAP
+    const separatorY = headerHeight + 5;
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(0.5);
+    doc.line(M, separatorY, LANDSCAPE_W - M, separatorY);
+    
+    return separatorY + 10; // Good space between header and table
+  };
+  
+  // Function to draw the sticker box
+  const drawStickerBox = (startY, pageNumber) => {
+    // Box dimensions
+    const boxWidth = 140; // Slightly reduced width for right side
+    const boxHeight = 80; // Reduced height
+    const boxX = LANDSCAPE_W - boxWidth - M; // Right side position
+    const boxY = startY;
+    
+    // Draw box border with thicker lines
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(1.5);
+    doc.rect(boxX, boxY, boxWidth, boxHeight);
+    
+    // Box background (white color)
+    doc.setFillColor(255, 255, 255);
+    doc.rect(boxX, boxY, boxWidth, boxHeight, "F");
+    
+    // Box content with proper spacing
+    let contentY = boxY + 12;
+    
+    // Heading: PARTA CHECKED (centered, bold and larger)
+    setFont("bold", 12);
+    doc.text("PARTA CHECKED", boxX + boxWidth / 2, contentY, { align: "center" });
+    contentY += 18;
+    
+    // Separator line
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(0.8);
+    doc.line(boxX + 10, contentY, boxX + boxWidth - 10, contentY);
+    contentY += 12;
+    
+    // REMOVED LOT NUMBER FROM STICKER BOX
+    
+    // DATE section only
+    setFont("bold", 10);
+    doc.text("DATE :", boxX + 15, contentY);
+    
+    // Blank line for manual date entry
+    const dateLineStartX = boxX + 50;
+    const dateLineEndX = boxX + boxWidth - 15;
+    
+    // Draw a blank line for date
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(0.8);
+    const dateLineY = contentY + 4;
+    doc.line(dateLineStartX, dateLineY, dateLineEndX, dateLineY);
+    contentY += 16;
+    
+    // Cutting Head Sign with more spacing
+    setFont("bold", 11);
+    doc.text("Cutting Head Sign", boxX + boxWidth / 2, contentY, { align: "center" });
+    contentY += 8;
+    
+    // Line for signature
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(0.8);
+    const signLineY = contentY + 2;
+    const signLineStartX = boxX + 20;
+    const signLineEndX = boxX + boxWidth - 20;
+    doc.line(signLineStartX, signLineY, signLineEndX, signLineY);
+    
+    return boxY + boxHeight;
+  };
+  
+  // Function to draw a table page
+  const drawTablePage = (shadeBatch, pageIndex, totalPages, startSrNo) => {
+    // Draw page header (same on every page)
+    const tableStartY = drawPageHeader(pageIndex + 1, totalPages);
+    let y = tableStartY;
+    
+    const tableData = [];
+    const rowsNeeded = Math.max(colorsPerPage, shadeBatch.length);
+    
+    // Add color rows with continuous serial numbers
+    for (let i = 0; i < rowsNeeded; i++) {
+      const srNo = startSrNo + i;
+      const row = { 
+        sr_no: srNo.toString(),
+        shade: i < shadeBatch.length ? shadeBatch[i] : "",
+        rolls: "",
+        kgs: ""
+      };
+      
+      // Add size columns
+      if (sizes.length > 0) {
+        sizes.forEach(size => {
+          row[`size_${size}`] = "";
+        });
       }
-      y += (lines.length * 11) + 10; // Increased spacing
-    } else {
-      // Single line value
-      doc.text(valueText, leftX + labelWidth + 15, y + 15);
-      y += rowHeight;
+      
+      // Add the rest of the columns
+      row.total_pcs = "";
+      row.kapda_layer_weight = "";
+      row.layer_piece = "";
+      row.layer_inch = "";
+      row.daya = "";
+      row.cutting_weight = "";
+      row.kapda_vapsi = "";
+      
+      tableData.push(row);
     }
-  }
-  
-  const leftColumnBottom = y;
-
-  // RIGHT COLUMN: Image & Planning Status
-  const rightX = M + leftColW + colGap;
-  const rightStartY = leftStartY;
-  let rightY = rightStartY;
-  
-  // Image Section Header - LARGER
-  doc.setFillColor(240, 240, 240);
-  doc.roundedRect(rightX, rightY, rightColW, 38, 8, 8, "F");
-  doc.setDrawColor(...C.accent);
-  doc.setLineWidth(2);
-  doc.roundedRect(rightX, rightY, rightColW, 38, 8, 8, "S");
-  
-  setFont("bold", 18, C.primary);
-  doc.text("VISUAL REFERENCE", rightX + rightColW / 2, rightY + 24, { align: "center" });
-  
-  rightY += 48;
-  
-  // Larger image container
-  await ensurePageRoom(200); // Increased from 160
-  doc.setFillColor(250, 250, 250);
-  doc.roundedRect(rightX, rightY, rightColW, 190, 10, 10, "F"); // Increased height
-  doc.setDrawColor(...C.border);
-  doc.setLineWidth(1.5);
-  doc.roundedRect(rightX, rightY, rightColW, 190, 10, 10, "S");
-  
-  // Try to draw image
-  const hasImage = row?.["Image URL"] && String(row?.["Image URL"]).trim() !== "";
-  if (hasImage) {
-    try {
-      const dataUrl = await withTimeout(
-        loadImageAsBase64ForPdf(row["Image URL"], { maxWidth: 350, maxHeight: 150 }),
-        IMG_TIMEOUT_MS
+    
+    // Add total row (only on last page)
+    if (pageIndex === totalPages - 1) {
+      tableData.push({
+        sr_no: "TOTAL",
+        shade: "",
+        rolls: "",
+        kgs: "",
+        ...(sizes.reduce((acc, size) => {
+          acc[`size_${size}`] = "";
+          return acc;
+        }, {})),
+        total_pcs: "",
+        kapda_layer_weight: "",
+        layer_piece: "",
+        layer_inch: "",
+        daya: "",
+        cutting_weight: "",
+        kapda_vapsi: "",
+        isTotalRow: true
+      });
+    }
+    
+    // Generate table headers with adjusted widths for A4
+    const generateTableHeaders = () => {
+      const headers = [
+        { label: "SR", key: "sr_no", width: 0.5 },
+        { label: "SHADE", key: "shade", width: 2.0 }, // Increased from 1.2 to 2.0 for better text wrapping
+        { label: "ROLLS", key: "rolls", width: 0.7 },
+        { label: "KGS", key: "kgs", width: 0.7 },
+      ];
+      
+      // Add size columns with reduced width
+      if (sizes.length > 0) {
+        sizes.forEach(size => {
+          headers.push({ 
+            label: size, 
+            key: `size_${size}`, 
+            width: 0.6
+          });
+        });
+      }
+      
+      // Add the remaining columns with English abbreviations - reduced widths
+      headers.push(
+        { label: "TOTAL PCS", key: "total_pcs", width: 0.7 },
+        { label: "KAPDA LAYER WT", key: "kapda_layer_weight", width: 1.0 },
+        { label: "LAYER PCS", key: "layer_piece", width: 0.8 },
+        { label: "LAYER INCH", key: "layer_inch", width: 0.8 },
+        { label: "DIA", key: "daya", width: 0.7 },
+        { label: "CUTTING WEIGHT", key: "cutting_weight", width: 0.9 },
+        { label: "KAPDA VAPSI", key: "kapda_vapsi", width: 0.8 }
       );
-      if (dataUrl) {
-        const p = doc.getImageProperties(dataUrl);
-        const fitW = rightColW - 50;
-        const fitH = 150;
-        const ratio = Math.min(fitW / p.width, fitH / p.height);
-        const iw = Math.max(1, p.width * ratio);
-        const ih = Math.max(1, p.height * ratio);
-        const ix = rightX + (rightColW - iw) / 2;
-        const iy = rightY + 20;
-        doc.addImage(dataUrl, "JPEG", ix, iy, iw, ih);
-      } else {
-        setFont("normal", 13, C.grayDark); // Increased font
-        doc.text("No image available", rightX + rightColW / 2, rightY + 100, { align: "center" });
+      
+      return headers;
+    };
+    
+    const tableHeaders = generateTableHeaders();
+    
+    // Draw table header
+    const drawTableHeader = () => {
+      // Header with WHITE background
+      doc.setFillColor(...C.white);
+      doc.rect(tableX, y, tableWidth, HEADER_HEIGHT, "F");
+      
+      let currentX = tableX;
+      const totalRatio = tableHeaders.reduce((sum, h) => sum + (h.width || 1), 0);
+      
+      tableHeaders.forEach((h, i) => {
+        const colWidth = (h.width / totalRatio) * tableWidth;
+        
+        // Draw column border
+        doc.setDrawColor(...C.black);
+        doc.setLineWidth(0.5);
+        doc.rect(currentX, y, colWidth, HEADER_HEIGHT);
+        
+        // Header text - smaller font for A4
+        setFont("bold", 8);
+        
+        if (h.label.length <= 3 && /^[A-Z0-9]+$/.test(h.label)) {
+          // Size column
+          doc.text(h.label, currentX + colWidth / 2, y + HEADER_HEIGHT / 2 - 4, { align: "center" });
+          
+          // Draw separator line
+          doc.setDrawColor(...C.black);
+          doc.setLineWidth(0.3);
+          doc.line(currentX + 2, y + HEADER_HEIGHT / 2, 
+                  currentX + colWidth - 2, y + HEADER_HEIGHT / 2);
+        } else {
+          // Regular header
+          const lines = doc.splitTextToSize(h.label, colWidth - 6);
+          const lineHeight = 8;
+          const startY = y + (HEADER_HEIGHT - (lines.length * lineHeight)) / 2 + 5;
+          
+          lines.forEach((line, lineIdx) => {
+            doc.text(line, currentX + colWidth / 2, startY + (lineIdx * lineHeight), { align: "center" });
+          });
+        }
+        
+        currentX += colWidth;
+      });
+      
+      // Header bottom border
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1.5);
+      doc.line(tableX, y + HEADER_HEIGHT, tableX + tableWidth, y + HEADER_HEIGHT);
+      
+      return HEADER_HEIGHT;
+    };
+    
+    // Draw table rows
+    const drawTableRows = (headerHeight) => {
+      const totalRatio = tableHeaders.reduce((sum, h) => sum + (h.width || 1), 0);
+      const tableStartRowY = y + headerHeight;
+      
+      for (let rowIndex = 0; rowIndex < tableData.length; rowIndex++) {
+        const row = tableData[rowIndex];
+        const rowY = tableStartRowY + (rowIndex * ROW_HEIGHT);
+        
+        // Alternating row colors for better readability (pattern)
+        if (rowIndex % 2 === 0) {
+          doc.setFillColor(...C.white);
+        } else {
+          doc.setFillColor(245, 245, 245); // Light gray for alternating rows
+        }
+        doc.rect(tableX, rowY, tableWidth, ROW_HEIGHT, "F");
+        
+        // Draw thicker line for total row
+        if (row.isTotalRow) {
+          doc.setDrawColor(...C.black);
+          doc.setLineWidth(1.5);
+          doc.line(tableX, rowY, tableX + tableWidth, rowY);
+        }
+        
+        let currentX = tableX;
+        
+        tableHeaders.forEach((h, i) => {
+          const colWidth = (h.width / totalRatio) * tableWidth;
+          
+          // Draw cell border
+          doc.setDrawColor(...C.black);
+          doc.setLineWidth(0.3);
+          doc.rect(currentX, rowY, colWidth, ROW_HEIGHT);
+          
+          // Cell content
+          const cellValue = row[h.key] || "";
+          
+          // Style for total row
+          if (row.isTotalRow) {
+            setFont("bold", 9);
+          } else {
+            setFont("normal", 9);
+          }
+          
+          // Special handling for SHADE column to wrap text
+          if (h.key === "shade") {
+            const shadeText = String(cellValue);
+            
+            // Split the text to fit within the cell width with some padding
+            const maxWidth = colWidth - 10; // Leave some padding
+            const lines = doc.splitTextToSize(shadeText, maxWidth);
+            const lineHeight = 9;
+            const totalTextHeight = lines.length * lineHeight;
+            const startY = rowY + (ROW_HEIGHT - totalTextHeight) / 2 + 4;
+            
+            // Draw each line
+            lines.forEach((line, lineIdx) => {
+              doc.text(line, currentX + colWidth / 2, startY + (lineIdx * lineHeight), { align: "center" });
+            });
+          } else {
+            // Center text in cell for other columns
+            doc.text(String(cellValue), currentX + colWidth / 2, rowY + ROW_HEIGHT / 2 + 2, { align: "center" });
+          }
+          
+          currentX += colWidth;
+        });
       }
-    } catch {
-      setFont("normal", 13, C.grayDark); // Increased font
-      doc.text("Image load failed", rightX + rightColW / 2, rightY + 100, { align: "center" });
+      
+      return tableStartRowY + (tableData.length * ROW_HEIGHT);
+    };
+    
+    // Draw the complete table
+    const headerHeight = drawTableHeader();
+    const tableBottom = drawTableRows(headerHeight);
+    
+    // Draw table border
+    const totalTableHeight = headerHeight + (tableData.length * ROW_HEIGHT);
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(1);
+    doc.rect(tableX, y, tableWidth, totalTableHeight, "S");
+    
+    y = tableBottom + 20; // Increased spacing below table
+    
+    // ====== SIGNATURE/STICKER BOX ======
+    // Show on EVERY page
+    const stickerBottom = drawStickerBox(y, pageIndex + 1);
+    
+    // Update y position to be after sticker box
+    y = stickerBottom + 20;
+    
+    // ====== BOTTOM SECTION ======
+          
+    // Page footer
+    setFont("normal", 8);
+    const now = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit", month: "short", year: "numeric"
+    });
+    doc.text(`Printed: ${now}`, LANDSCAPE_W / 2, LANDSCAPE_H - 10, { align: "center" });
+    
+    doc.text(`JOB: ${joNum}`, LANDSCAPE_W - M, LANDSCAPE_H - 10, { align: "right" });
+    
+    // Return next serial number for next page
+    return startSrNo + rowsNeeded;
+  };
+  
+  // Draw all pages with continuous serial numbers
+  let currentSrNo = 1;
+  shadeBatches.forEach((batch, index) => {
+    if (index > 0) {
+      doc.addPage("a4", "landscape");
     }
-  } else {
-    setFont("normal", 13, C.grayDark); // Increased font
-    doc.text("No image provided", rightX + rightColW / 2, rightY + 100, { align: "center" });
-  }
-  
-  rightY += 205; // Adjusted for larger container
-  
-  // Planning Status Section - MUCH LARGER
-  doc.setFillColor(240, 240, 240);
-  doc.roundedRect(rightX, rightY, rightColW, 38, 8, 8, "F");
-  doc.setDrawColor(...C.accent);
-  doc.setLineWidth(2);
-  doc.roundedRect(rightX, rightY, rightColW, 38, 8, 8, "S");
-  
-  setFont("bold", 18, C.primary);
-  doc.text("PLANNING STATUS", rightX + rightColW / 2, rightY + 24, { align: "center" });
-  
-  rightY += 48;
-  
-  // Planning checklist - MUCH LARGER FONT AND SPACING
-  const planningItems = [
-    { label: "Material Ordered" },
-    // { label: "Fabric Received" },
-    { label: "Zip Received" },
-    { label: "Dori Received" },
-    { label: "Label Received" },
-    { label: "Tag Received" },
-    { label: "Washcare Received" },
-  ];
-  
-  for (let idx = 0; idx < planningItems.length; idx++) {
-    const item = planningItems[idx];
-    
-    // Larger checkbox
-    doc.setDrawColor(...C.border);
-    doc.setLineWidth(1.2);
-    doc.rect(rightX + 20, rightY - 5, 14, 14); // Larger checkbox
-    
-    // Label - MUCH LARGER FONT
-    setFont("normal", 13, C.grayDark); // Increased from 11
-    doc.text(item.label, rightX + 45, rightY + 3);
-    
-    // Date field - LARGER FONT
-    setFont("normal", 12, C.dark); // Increased from 10
-    doc.text("__ / __ / ____", rightX + rightColW - 25, rightY + 3, { align: "right" }); // Better spacing
-    
-    rightY += 22; // Increased spacing
-  }
-  
-  const rightColumnBottom = rightY;
-  
-  // Set y to the maximum of both columns
-  y = Math.max(leftColumnBottom, rightColumnBottom);
-  
-  // Add spacing after columns
-  y += 30;
-
-  // ===== MATERIAL REQUIREMENTS TABLE - LARGER =====
-  await ensurePageRoom(50);
-  
-  // Table header - LARGER
-  doc.setFillColor(240, 240, 240);
-  doc.roundedRect(M, y, contentW(), 42, 8, 8, "F");
-  doc.setDrawColor(...C.accent);
-  doc.setLineWidth(2);
-  doc.roundedRect(M, y, contentW(), 42, 8, 8, "S");
-  
-  setFont("bold", 18, C.primary);
-  doc.text("MATERIAL REQUIREMENTS", M + contentW() / 2, y + 26, { align: "center" });
-  
-  y += 52;
-
-  // Material Requirements Table with LARGER FONTS
-  const requirementsHeaders = [
-    { label: "MATERIAL ITEM", key: "item", width: 2 },
-    { label: "DESCRIPTION", key: "description", width: 2 },
-    { label: "ORDERED QTY", key: "ordered", width: 1 },
-    { label: "RECEIVED QTY", key: "received", width: 1 },
-    { label: "STATUS", key: "status", width: 1.5 },
-  ];
-
-  const requirementsData = [
-    { 
-      item: "MAIN FABRIC", 
-      description: val("Fabric"),
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
-    { 
-      item: "ZIPPERS", 
-      description: val("Zip") || "As per design", 
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
-    { 
-      item: "TAPE/LACE", 
-      description: val("Tape/Lace") || "As required", 
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
-    { 
-      item: "BOTTOM MATERIAL", 
-      description: val("Bottom Type") || "As per style", 
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
-    { 
-      item: "THREAD", 
-      description: "Matching thread", 
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
-    { 
-      item: "LABELS", 
-      description: "Brand Labels", 
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
-        { 
-      item: "Tag", 
-      description: "Tag", 
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
-      { 
-      item: "PACKAGING", 
-      description: "Polybags", 
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
- 
-    { 
-      item: "OTHER COMPONENTS", 
-      description: val("Component") || "Various trims", 
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
-  
-   
-    { 
-      item: "", 
-      description: "", 
-      ordered: "", 
-      received: "", 
-      status: "" 
-    },
-  ];
-
-  await drawTable(requirementsHeaders, requirementsData, {
-    rowH: 28, // Increased from 24
-    headerH: 34, // Increased from 30
-    fontScale: 0.9 // Increased from 0.85
+    currentSrNo = drawTablePage(batch, index, shadeBatches.length, currentSrNo);
   });
-
-  // ===== SIGNATURE SECTION - LARGER =====
-  await ensurePageRoom(70);
-  y += 25;
-
-  // Signature container
-  doc.setFillColor(245, 245, 245);
-  doc.roundedRect(M, y, contentW(), 70, 10, 10, "F");
-  doc.setDrawColor(...C.border);
-  doc.setLineWidth(1.5);
-  doc.roundedRect(M, y, contentW(), 70, 10, 10, "S");
-
-  // Preparation signature - LARGER
-  setFont("bold", 13, C.primary); // Increased from 11
-  doc.text("PREPARED BY MATERIAL PLANNING:", M + 25, y + 22);
-  
-  setFont("normal", 12, C.grayDark); // Increased from 10
-  doc.text("Signature: _______________________", M + 280, y + 22);
-  doc.text("Date: ______ / ______ / ______", M + 500, y + 22);
-
-  // Approval signature - LARGER
-  setFont("bold", 13, C.primary); // Increased from 11
-  doc.text("APPROVED BY:", M + 25, y + 48);
-  
-  setFont("normal", 12, C.grayDark); // Increased from 10
-  doc.text("Signature: _______________________", M + 280, y + 48);
-  doc.text("Date: ______ / ______ / ______", M + 500, y + 48);
-
-  y += 85;
 };
+    // ---------- BUILD ALL PAGES ----------
+    await renderFirstPage();                 // Page 1
+    doc.addPage(); await pause(0);
+    await renderFirstPage();                 // Page 2 (duplicate)
+    doc.addPage(); await pause(0);
+    await renderSecondPage();                // Page 3
+    doc.addPage(); await pause(0);
+    await renderThirdPage();                 // Page 4
+    await renderLandscapeTablePage();        // Page 5+ (Landscape with 7 colors per page)
 
-    // ---------- BUILD DOCUMENT: Page1, Page1(copy), Page2, Page3 ----------
-    // ---------- BUILD DOCUMENT: Page1, Page1(copy), Page2, Page3 ----------
-// ---------- BUILD DOCUMENT: Page1, Page1(copy), Page2, Page3 ----------
-await renderFirstPage();                 // page 1
-doc.addPage(); await pause(0);
-await renderFirstPage();                 // page 2 (duplicate of p1)
-doc.addPage(); await pause(0);
-await renderSecondPage();                // page 3 (summary with image)
-doc.addPage(); await pause(0);
-await renderThirdPage();                 // page 4 (material acquisition planning) - COMPACT SINGLE PAGE
+    // ====== FOOTERS FOR ALL PAGES ======
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      const w = doc.internal.pageSize.getWidth();
+      const h = doc.internal.pageSize.getHeight();
 
-// ====== FOOTERS (all pages) ======
-const totalPages = doc.internal.getNumberOfPages();
-for (let i = 1; i <= totalPages; i++) {
-  doc.setPage(i);
-  const w = doc.internal.pageSize.getWidth();
-  const h = doc.internal.pageSize.getHeight();
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(2);
+      doc.line(M, h - FOOTER_H - 24, M + 120, h - FOOTER_H - 24);
 
-  doc.setDrawColor(...C.accent);
-  doc.setLineWidth(2);
-  doc.line(M, h - FOOTER_H - 24, M + 120, h - FOOTER_H - 24);
+      setFont("normal", F.meta);
+      doc.text(`Page ${i} of ${totalPages} • ${joNum}`, w - M, h - FOOTER_H - 5, { align: "right" });
 
-  setFont("normal", F.meta, C.grayDark);
-  doc.text(`Page ${i} of ${totalPages} • ${joNum}`, w - M, h - FOOTER_H - 5, { align: "right" });
+      if (i === totalPages) {
+        // Last page (Landscape)
+        setFont("normal", F.meta);
+        doc.text(`Signature __________`, M, h - FOOTER_H - 5);
+      } else if (i === totalPages - 1) {
+        // Fourth page
+        setFont("normal", F.meta);
+        doc.text(`Signature ___________`, M, h - FOOTER_H - 5);
+      } else if (i === totalPages - 2) {
+        // Third page
+        setFont("normal", F.meta);
+        doc.text(`Checked by: Production Manager`, M, h - FOOTER_H - 5);
+      } else {
+        setFont("normal", F.meta);
+        // doc.text(`Submitted by: ${submittedBy}`, M, h - FOOTER_H - 5);
+      }
+    }
 
-  if (i === totalPages) {
-    // Fourth page footer (Material Acquisition Planning)
-    setFont("normal", F.meta, C.grayDark);
-    doc.text(`For Planning Department`, M, h - FOOTER_H - 5);
-  } else if (i === totalPages - 1) {
-    // Third page footer
-    setFont("normal", F.meta, C.grayDark);
-    doc.text(`Checked by: Monu Master`, M, h - FOOTER_H - 5);
-  } else {
-    setFont("normal", F.meta, C.grayDark);
-    doc.text(`Submitted by: ${submittedBy}`, M, h - FOOTER_H - 5);
-  }
-}
     const safe = (s) => String(s || "").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 80);
     try {
       await doc.save(`JobOrder_${safe(joNum)}.pdf`, { returnPromise: true });
@@ -1509,13 +2536,6 @@ for (let i = 1; i <= totalPages; i++) {
 };
 
 
-
-// ADD ▼ batch exporter
-// REPLACE your exportBatchPages with this version
-// ====================== exportBatchPages (UPDATED) ======================
-// ADD ▼ batch exporter (updated visuals + borders + label/value styling)
-// Batch exporter (updated visuals + "Order Summary" box with ONLY outer border)
-// ====================== exportBatchPages (UPDATED with all three page types) ======================
 const exportBatchPages = async (which /* "first" | "second" | "material" */) => {
   if (pdfBatchBusy) return;
   setPdfBatchBusy(which);
@@ -2113,7 +3133,7 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
       doc.text(`JOB ORDER: ${joNum}`, M + 25, y + 10);
 
       setFont("bold", 14, C.highlight);
-      doc.text(`LOT: ${val("Lot Number", row)}`, M + 180, y + 10);
+      doc.text(`LOT NUMBER: ${val("Lot Number", row)}`, M + 180, y + 10);
 
       setFont("bold", 14, C.grayDark);
       doc.text(`PARTY: ${shortenText(val("Party Name", row), 22)}`, M + 350, y + 10);
@@ -2690,7 +3710,7 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
   title="Download a single PDF containing page 1 of every matching order"
 >
   <span className="jox-ico">{pdfBatchBusy === "first" ? "⏳" : "⬇️"}</span>
-  <span>{pdfBatchBusy === "first" ? "Building…" : "Download First Pages"}</span>
+  <span>{pdfBatchBusy === "first" ? "Building…" : "Download FP"}</span>
 </button>
 
 <button
@@ -2700,7 +3720,7 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
   title="Download a single PDF containing page 2 of every matching order"
 >
   <span className="jox-ico">{pdfBatchBusy === "second" ? "⏳" : "⬇️"}</span>
-  <span>{pdfBatchBusy === "second" ? "Building…" : "Download Second Pages"}</span>
+  <span>{pdfBatchBusy === "second" ? "Building…" : "Download SP"}</span>
 </button>
 <button
   className="jox-btn"
@@ -2709,7 +3729,16 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
   title="Download a single PDF containing Material Requisition Planning pages for every matching order"
 >
   <span className="jox-ico">{pdfBatchBusy === "material" ? "⏳" : "📋"}</span>
-  <span>{pdfBatchBusy === "material" ? "Building…" : "Download Material Planning"}</span>
+  <span>{pdfBatchBusy === "material" ? "Building…" : "Download MRP"}</span>
+</button>
+<button
+  className="jox-btn"
+  onClick={exportLandscapePages}
+  disabled={loading || refreshing || pdfLandscapeBusy || rows.length === 0}
+  title="Download Cutting Table pages (landscape) for all matching orders"
+>
+  <span className="jox-ico">{pdfLandscapeBusy ? "⏳" : "📊"}</span>
+  <span>{pdfLandscapeBusy ? "Building…" : "Download CT"}</span>
 </button>
           </div>
         </header>

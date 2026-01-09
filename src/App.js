@@ -39,6 +39,7 @@ import RateCalculator from "./RateList";
 import CuttingStatsReport from "./CuttingStats";
 import KarigarAssignment from "./KarigarAssignment";
 import IssuePacking from "./KarigarOrder";
+import MaterialRequisitionForm from "./MaterialRequisitionform";
 
 function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
@@ -200,6 +201,16 @@ function AppContent() {
             <RequireRole roles={["admin", "production", "design"]}>
               <Gated>
                 <PendingChallans />
+              </Gated>
+            </RequireRole>
+          }
+        />
+            <Route
+          path="/material-requisition-form"
+          element={
+            <RequireRole roles={["admin", "production", "design"]}>
+              <Gated>
+                <MaterialRequisitionForm />
               </Gated>
             </RequireRole>
           }

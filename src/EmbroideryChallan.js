@@ -18,12 +18,6 @@ const postJSON = async (url, data) => {
   });
   return res.json();
 };
-
-/**
- * SOURCES
- * - cutting: your "Budget Report" -> "Cutting" tab (screenshot)
- * - second : your JobOrder sheet
- */
 const SOURCES = {
   cutting: {
     SHEET_ID: '1Hj3JeJEKB43aYYWv8gk2UhdU6BWuEQfCg5pBlTdBMNA',
@@ -33,14 +27,7 @@ const SOURCES = {
   second: {
     SHEET_ID: '1fKSwGBIpzWEFk566WRQ4bzQ0anJlmasoY8TwrTLQHXI',
     TAB_NAME: 'JobOrder',
-    RANGE: 'A1:ZZZ',
-    lotKey: 'Lot Number',
-  },
-  // Add Index sheet
-  index: {
-    SHEET_ID: '1Hj3JeJEKB43aYYWv8gk2UhdU6BWuEQfCg5pBlTdBMNA', // Same as JobOrder sheet
-    TAB_NAME: 'Index',
-    RANGE: 'A1:K',
+    RANGE: 'A1:ZZZ', // ⬅️ increased
     lotKey: 'Lot Number',
   },
 };
@@ -588,15 +575,13 @@ const [audio, setAudio] = useState(null);
   const [generatedByLotShade, setGeneratedByLotShade] = useState({});      // { [lot]: { [SHADE]: number } }
   const [completeLotByLot, setCompleteLotByLot] = useState({});            // { [lot]: boolean }
 
-const urls = useMemo(
-  () => ({
-    cutting: buildSheetsUrl(SOURCES.cutting.SHEET_ID, SOURCES.cutting.TAB_NAME, SOURCES.cutting.RANGE, API_KEY),
-    second: buildSheetsUrl(SOURCES.second.SHEET_ID, SOURCES.second.TAB_NAME, SOURCES.second.RANGE, API_KEY),
-    // Add Index URL
-    index: buildSheetsUrl(SOURCES.index.SHEET_ID, SOURCES.index.TAB_NAME, SOURCES.index.RANGE, API_KEY),
-  }),
-  []
-);
+  const urls = useMemo(
+    () => ({
+      cutting: buildSheetsUrl(SOURCES.cutting.SHEET_ID, SOURCES.cutting.TAB_NAME, SOURCES.cutting.RANGE, API_KEY),
+      second: buildSheetsUrl(SOURCES.second.SHEET_ID, SOURCES.second.TAB_NAME, SOURCES.second.RANGE, API_KEY),
+    }),
+    []
+  );
 
   // ===== HELPERS: cutting + pending + generated =====
   const getLotFromRow = (row) =>
@@ -956,6 +941,10 @@ const applyFilters = useMemo(
         );
       }
       
+      // AUTO-FILTER: Hide rows where:
+      // 1. Embroidery is complete
+      // 2. Material is received  
+      // 3. No pending challan shades
       next = next.filter((row) => {
         const materialStatus = getMaterialStatus(row);
         const embroideryStatus = getembroiderystatus(row);

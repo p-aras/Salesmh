@@ -46,7 +46,7 @@ const THEME = {
 
 // Pre-defined card data
 const CARDS = [
-  { id: 1,  icon: 'FiFileText', title: 'Sales Order Form', description: 'Create, edit and submit new sales orders', path: '/sales-order', color: '#2563eb', category: 'Orders' },
+    { id: 1,  icon: 'FiFileText', title: 'Sales Order Form', description: 'Create, edit and submit new sales orders', path: '/sales-order', color: '#2563eb', category: 'Orders' },
   { id: 2,  icon: 'FiList', title: 'Order Tracking', description: 'Monitor production status and view order info', path: '/sales-data', color: '#06b6d4', category: 'Orders' },
   { id: 3,  icon: 'FiGrid', title: 'All Orders', description: 'View complete list of all sales orders', path: '/all-order-details', color: '#8b5cf6', category: 'Orders' },
   { id: 4,  icon: 'FiSettings', title: 'Sample Design Form', description: 'Submit and manage design samples', path: '/sample-design-form', color: '#f59e0b', category: 'Production' },
@@ -54,13 +54,17 @@ const CARDS = [
   { id: 7,  icon: 'FiClipboard', title: 'Cutting Job Order Form', description: 'Create job orders with fabric details', path: '/job-order-form', color: '#ec4899', category: 'Cutting' },
   { id: 8,  icon: 'FiList', title: 'All Cutting Job Orders', description: 'View and manage all created job orders', path: '/all-job-orders', color: '#14b8a6', category: 'Cutting' },
   { id: 9,  icon: 'FiScissors', title: 'Embroidery Challan', description: 'Create and manage embroidery challans', path: '/embroidery-challan', color: '#84cc16', category: 'Challan' },
-  { id: 10, icon: 'FiPrinter', title: 'Printing Challan', description: 'Generate and track printing challans', path: '/printing-challan', color: '#06b6d4', category: 'Challan' },
+  { id: 10, icon: 'FiPrinter', title: 'Printing Challan', description: 'Generate and tracking printing challans', path: '/printing-challan', color: '#06b6d4', category: 'Challan' },
   { id: 11, icon: 'FiScissors', title: 'Cutting Details Entry', description: 'Calculate and manage cutting budgets', path: '/cutting-budget', color: '#6366f1', category: 'Cutting' },
   { id: 12, icon: 'FiPackage', title: 'View Cutting Details', description: 'Access detailed cutting records', path: '/details', color: '#d946ef', category: 'Cutting' },
   { id: 13, icon: 'FiBox', title: 'Embroidery Pending Challan', description: 'Access detailed embroidery records', path: '/emb-pending-challan', color: '#f43f5e', category: 'Challan' },
   { id: 14, icon: 'FiPrinter', title: 'Printing Pending Challan', description: 'Access detailed printing records', path: '/printing-pending-challan', color: '#f97316', category: 'Challan' },
   { id: 15, icon: 'FiTag', title: 'SOP of Embroidery/Printing', description: 'Detailed SOP for better productivity', path: '/sop', color: '#ef4444', category: 'Production' },
   { id: 16, icon: 'FiX', title: 'Order Cancelled Form', description: 'Filling cancellation details', path: '/cancel-order', color: '#64748b', category: 'Production' },
+  // Add these two new cards here:
+  { id: 17, icon: 'FiClipboard', title: 'Material Requisition Planning Form', description: 'Create and manage material requisition plans', path: '/material-requisition-form', color: '#10b981', category: 'Planning' },
+  { id: 18, icon: 'FiTrendingUp', title: 'Material Requisition Dashboard', description: 'Monitor and analyze material requisition status', path: '/material-requisition-dashboard', color: '#8b5cf6', category: 'Planning' },
+
   // { id: 17, icon: 'FiLayers', title: 'Issue to Stitching', description: 'Issue cut pieces to stitching', path: '/issue-to-stitching', color: '#3b82f6', category: 'Production' },
   // { id: 18, icon: 'FiClipboard', title: 'Generate Stitching Rate List', description: 'Build standardized stitching rate lists', path: '/stitching-rate-list', color: '#8b5cf6', category: 'Production' },
   // { id: 19, icon: 'FiTrendingUp', title: 'Cutting Stats Report', description: 'Analyze cutting throughput and utilization', path: '/cutting-stats-report', color: '#0ea5e9', category: 'Cutting' },
