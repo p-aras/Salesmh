@@ -56,10 +56,6 @@ function AppContent() {
     }
   }, [location.pathname, navigate]);
 
-  const Gated = ({ children }) => (
-    <BusinessHoursGate>{children}</BusinessHoursGate>
-  );
-
   if (location.pathname === "/") {
     return (
       <>
@@ -80,9 +76,7 @@ function AppContent() {
           path="/dashboard"
           element={
             <RequireAuth>
-              <Gated>
-                <SalesDashboard />
-              </Gated>
+              <SalesDashboard />
             </RequireAuth>
           }
         />
@@ -91,9 +85,7 @@ function AppContent() {
           path="/sales-order"
           element={
             <RequireRole roles={["admin", "sales"]}>
-              <Gated>
-                <SalesOrderForm />
-              </Gated>
+              <SalesOrderForm />
             </RequireRole>
           }
         />
@@ -102,9 +94,7 @@ function AppContent() {
           path="/sales-orders/:partyName"
           element={
             <RequireRole roles={["admin", "sales"]}>
-              <Gated>
-                <SalesOrderDetail />
-              </Gated>
+              <SalesOrderDetail />
             </RequireRole>
           }
         />
@@ -113,9 +103,7 @@ function AppContent() {
           path="/sales-data"
           element={
             <RequireRole roles={["admin", "sales", "viewer"]}>
-              <Gated>
-                <SalesOrderData />
-              </Gated>
+              <SalesOrderData />
             </RequireRole>
           }
         />
@@ -123,9 +111,7 @@ function AppContent() {
           path="/checking-packing"
           element={
             <RequireRole roles={["admin", "sales", "viewer"]}>
-              <Gated>
-                <IssuePacking />
-              </Gated>
+              <IssuePacking />
             </RequireRole>
           }
         />
@@ -133,9 +119,7 @@ function AppContent() {
           path="/Karigar-details"
           element={
             <RequireRole roles={["admin", "sales", "viewer"]}>
-              <Gated>
-                <KarigarAssignment />
-              </Gated>
+              <KarigarAssignment />
             </RequireRole>
           }
         />
@@ -144,9 +128,7 @@ function AppContent() {
           path="/production/:orderNo"
           element={
             <RequireRole roles={["admin", "production"]}>
-              <Gated>
-                <ProductionDetail />
-              </Gated>
+              <ProductionDetail />
             </RequireRole>
           }
         />
@@ -155,9 +137,7 @@ function AppContent() {
           path="/all-order-details"
           element={
             <RequireRole roles={["admin", "production", "sales"]}>
-              <Gated>
-                <AllOrders />
-              </Gated>
+              <AllOrders />
             </RequireRole>
           }
         />
@@ -166,9 +146,7 @@ function AppContent() {
           path="/sample-design-form"
           element={
             <RequireRole roles={["admin", "sales"]}>
-              <Gated>
-                <SampleDesignUpload />
-              </Gated>
+              <SampleDesignUpload />
             </RequireRole>
           }
         />
@@ -177,9 +155,7 @@ function AppContent() {
           path="/bifurcate-orders"
           element={
             <RequireRole roles={["admin", "production"]}>
-              <Gated>
-                <BifurcateOrder />
-              </Gated>
+              <BifurcateOrder />
             </RequireRole>
           }
         /> */}
@@ -188,9 +164,7 @@ function AppContent() {
           path="/pending-fabric-issues"
           element={
             <RequireRole roles={["admin", "production"]}>
-              <Gated>
-                <FabricIssues />
-              </Gated>
+              <FabricIssues />
             </RequireRole>
           }
         />
@@ -199,9 +173,7 @@ function AppContent() {
           path="/emb-Pending-Challan"
           element={
             <RequireRole roles={["admin", "production", "design"]}>
-              <Gated>
-                <PendingChallans />
-              </Gated>
+              <PendingChallans />
             </RequireRole>
           }
         />
@@ -209,9 +181,7 @@ function AppContent() {
           path="/material-requisition-form"
           element={
             <RequireRole roles={["admin", "production", "design"]}>
-              <Gated>
-                <MaterialRequisitionForm />
-              </Gated>
+              <MaterialRequisitionForm />
             </RequireRole>
           }
         />
@@ -220,9 +190,7 @@ function AppContent() {
           path="/issue-to-stitching"
           element={
             <RequireRole roles={["admin", "production"]}>
-              <Gated>
-                <IssueStitching />
-              </Gated>
+              <IssueStitching />
             </RequireRole>
           }
         />
@@ -231,9 +199,7 @@ function AppContent() {
           path="/printing-Pending-Challan"
           element={
             <RequireRole roles={["admin", "production", "design"]}>
-              <Gated>
-                <PrintingPendingChallans />
-              </Gated>
+              <PrintingPendingChallans />
             </RequireRole>
           }
         />
@@ -242,9 +208,7 @@ function AppContent() {
           path="/job-order-form"
           element={
             <RequireRole roles={["admin", "production"]}>
-              <Gated>
-                <JobOrderForm />
-              </Gated>
+              <JobOrderForm />
             </RequireRole>
           }
         />
@@ -253,9 +217,7 @@ function AppContent() {
           path="/embroidery-challan"
           element={
             <RequireRole roles={["admin", "production", "design"]}>
-              <Gated>
-                <EmbroideryChallan />
-              </Gated>
+              <EmbroideryChallan />
             </RequireRole>
           }
         />
@@ -264,9 +226,7 @@ function AppContent() {
           path="/printing-challan"
           element={
             <RequireRole roles={["admin", "production", "design"]}>
-              <Gated>
-                <PrintingChallan />
-              </Gated>
+              <PrintingChallan />
             </RequireRole>
           }
         />
@@ -275,9 +235,7 @@ function AppContent() {
           path="/all-job-orders"
           element={
             <RequireRole roles={["admin", "production", "sales"]}>
-              <Gated>
-                <JobOrders />
-              </Gated>
+              <JobOrders />
             </RequireRole>
           }
         />
@@ -286,9 +244,7 @@ function AppContent() {
           path="/cutting-budget"
           element={
             <RequireRole roles={["admin", "production"]}>
-              <Gated>
-                <GoogleSheetTable />
-              </Gated>
+              <GoogleSheetTable />
             </RequireRole>
           }
         />
@@ -297,9 +253,7 @@ function AppContent() {
           path="/sop"
           element={
             <RequireRole roles={["admin", "production", "design"]}>
-              <Gated>
-                <TrainingandDevelopment />
-              </Gated>
+              <TrainingandDevelopment />
             </RequireRole>
           }
         />
@@ -308,9 +262,7 @@ function AppContent() {
           path="/cancel-order/sales"
           element={
             <RequireRole roles={["admin", "production"]}>
-              <Gated>
-                <SalesOrderCancellationForm />
-              </Gated>
+              <SalesOrderCancellationForm />
             </RequireRole>
           }
         />
@@ -319,9 +271,7 @@ function AppContent() {
           path="/cancel-order/job"
           element={
             <RequireRole roles={["production", "admin"]}>
-              <Gated>
-                <JobOrderCancellationForm />
-              </Gated>
+              <JobOrderCancellationForm />
             </RequireRole>
           }
         />
@@ -330,9 +280,7 @@ function AppContent() {
           path="/stitching-rate-list"
           element={
             <RequireRole roles={["production", "admin"]}>
-              <Gated>
-                <RateCalculator />
-              </Gated>
+              <RateCalculator />
             </RequireRole>
           }
         />
@@ -341,9 +289,7 @@ function AppContent() {
           path="/details"
           element={
             <RequireRole roles={["admin", "production", "sales"]}>
-              <Gated>
-                <JobOrderAllData />
-              </Gated>
+              <JobOrderAllData />
             </RequireRole>
           }
         />
@@ -352,9 +298,7 @@ function AppContent() {
           path="/cutting-stats-report"
           element={
             <RequireRole roles={["admin", "production", "sales"]}>
-              <Gated>
-                <CuttingStatsReport />
-              </Gated>
+              <CuttingStatsReport />
             </RequireRole>
           }
         />
