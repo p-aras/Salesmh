@@ -40,6 +40,7 @@ import CuttingStatsReport from "./CuttingStats";
 import KarigarAssignment from "./KarigarAssignment";
 import IssuePacking from "./KarigarOrder";
 import MaterialRequisitionForm from "./MaterialRequisitionform";
+import Parta from "./Parta";
 
 function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
@@ -77,6 +78,14 @@ function AppContent() {
           element={
             <RequireAuth>
               <SalesDashboard />
+            </RequireAuth>
+          }
+        />
+         <Route
+          path="/parta-details"
+          element={
+            <RequireAuth>
+              <Parta/>
             </RequireAuth>
           }
         />

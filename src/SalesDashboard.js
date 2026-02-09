@@ -64,6 +64,7 @@ const CARDS = [
   // Add these two new cards here:
   { id: 17, icon: 'FiClipboard', title: 'Material Requisition Planning Form', description: 'Create and manage material requisition plans', path: '/material-requisition-form', color: '#10b981', category: 'Planning' },
   { id: 18, icon: 'FiTrendingUp', title: 'Material Requisition Dashboard', description: 'Monitor and analyze material requisition status', path: '/material-requisition-dashboard', color: '#8b5cf6', category: 'Planning' },
+    { id: 19, icon: 'FiUsers', title: 'Enter Parta Details', description: 'Add and manage Parta information and details', path: '/parta-details', color: '#10b981', category: 'Production' },
 
   // { id: 17, icon: 'FiLayers', title: 'Issue to Stitching', description: 'Issue cut pieces to stitching', path: '/issue-to-stitching', color: '#3b82f6', category: 'Production' },
   // { id: 18, icon: 'FiClipboard', title: 'Generate Stitching Rate List', description: 'Build standardized stitching rate lists', path: '/stitching-rate-list', color: '#8b5cf6', category: 'Production' },

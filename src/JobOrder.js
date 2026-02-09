@@ -24,43 +24,44 @@ const HEADER_MAP = {
 
 const UNIT_OPTIONS = ["SETS", "ROLLS", "PCS"];
 const ZIP_OPTIONS = ["YES", "NO", "NOT DECIDED"];
-const BOTTOM_TYPE_OPTIONS = ["Elastic and Stopper", "Normal Fold", "1 Inch Elastic"]; // NEW: Bottom Type options
+const BOTTOM_TYPE_OPTIONS = ["Elastic and Stopper", "Normal Fold", "1 Inch Elastic"];
 const SUBMITTERS = ["Mohit Goyal", "EA", "Chandan", "Ravinder Singh"];
 const OTHER_SUBMITTER_TOKEN = "__ANY_OTHER__";
 const REFERRERS = ["Mohit Goyal", "EA", "Varun Goyal"];
 const TAPE_LACE_OPTIONS = ["YES", "NO", "NOT DECIDED"];
 const OTHER_REFERRER_TOKEN = "__ANY_OTHER__";
+const PRIORITY_OPTIONS = ["HIGH", "MEDIUM", "LOW", "REPEATED_LOT"];
 
 const JobOrderForm = () => {
   const today = new Date().toISOString().split("T")[0];
   const location = useLocation();
   const [params] = useSearchParams();
 
- const [formData, setFormData] = useState({
-  jobOrderNo: "",
-  date: today,
-  fabric: "",
-  brand: "",
-  shade: "",
-  quantity: "",
-  unit: "",
-  size: "",
-  partyName: "",
-  garmentType: "",
-  section: "",
-  season: "",
-  emb: "",
-  printing: "",
-  pattern: "",
-  style: "",
-  zip: "",
-  bottomType: "",
-  tapeLace: "", // ADD THIS LINE
-  remarks: "",
-  directStitching: "no",
-  orderNo: "",
-  priority: "MEDIUM",
-});
+  const [formData, setFormData] = useState({
+    jobOrderNo: "",
+    date: today,
+    fabric: "",
+    brand: "",
+    shade: "",
+    quantity: "",
+    unit: "",
+    size: "",
+    partyName: "",
+    garmentType: "",
+    section: "",
+    season: "",
+    emb: "",
+    printing: "",
+    pattern: "",
+    style: "",
+    zip: "",
+    bottomType: "",
+    tapeLace: "",
+    remarks: "",
+    directStitching: "no",
+    orderNo: "",
+    priority: "MEDIUM",
+  });
 
   const [lists, setLists] = useState(
     Object.keys(HEADER_MAP).reduce((a, k) => ({ ...a, [k]: [] }), {})
@@ -95,36 +96,38 @@ const JobOrderForm = () => {
   const [customReferrer, setCustomReferrer] = useState("");
   const [showStyleDialog, setShowStyleDialog] = useState(false);
   const [styleOtherText, setStyleOtherText] = useState("");
+  const [repeatedLotNumber, setRepeatedLotNumber] = useState("");
+  const [showRepeatedLotDialog, setShowRepeatedLotDialog] = useState(false);
 
   const JOB_HEADERS = [
-  "Job Order No",
-  "Order No.",
-  "Date",
-  "Fabric",
-  "Brand",
-  "Shade",
-  "Size",
-  "Quantity",
-  "Unit",
-  "Party Name",
-  "Garment Type",
-  "Section",
-  "Season",
-  "Emb",
-  "Printing",
-  "Emb Details",
-  "Printing Details",
-  "Pattern",
-  "Style",
-  "Zip",
-  "Bottom Type",
-  "Tape/Lace", // ADD THIS LINE - New field
-  "Remarks",
-  "Direct Stitching",
-  "Submitted By",
-  "Image URL",
-  "Priority",
-];
+    "Job Order No",
+    "Order No.",
+    "Date",
+    "Fabric",
+    "Brand",
+    "Shade",
+    "Size",
+    "Quantity",
+    "Unit",
+    "Party Name",
+    "Garment Type",
+    "Section",
+    "Season",
+    "Emb",
+    "Printing",
+    "Emb Details",
+    "Printing Details",
+    "Pattern",
+    "Style",
+    "Zip",
+    "Bottom Type",
+    "Tape/Lace",
+    "Remarks",
+    "Direct Stitching",
+    "Submitted By",
+    "Image URL",
+    "Priority",
+  ];
 
   const [embPositions, setEmbPositions] = useState({
     FRONT: false,
@@ -136,7 +139,7 @@ const JobOrderForm = () => {
     POCKET: false,
     COLLAR: false,
     HOOD: false,
-    GULLA :false,
+    GULLA: false,
     other: "",
   });
 
@@ -151,7 +154,7 @@ const JobOrderForm = () => {
     POCKET: false,
     COLLAR: false,
     HOOD: false,
-    GULLA :false,
+    GULLA: false,
     other: "",
   });
 
@@ -239,71 +242,72 @@ const JobOrderForm = () => {
     return "";
   }
 
-function mapOrderRowForPrefill(src = {}) {
-  const directRaw = pick(src, "Direct Stitching", "DirectStitching", "Direct_Stitching");
-  const direct = String(directRaw).toLowerCase();
-  const isDirect = ["yes", "true", "y", "1"].includes(direct);
-  
-  const garmentType = pick(src, "Garment Type", "Item Name", "Item", "Product");
-  const isShirt = isShirtGarment(garmentType);
+  function mapOrderRowForPrefill(src = {}) {
+    const directRaw = pick(src, "Direct Stitching", "DirectStitching", "Direct_Stitching");
+    const direct = String(directRaw).toLowerCase();
+    const isDirect = ["yes", "true", "y", "1"].includes(direct);
+    
+    const garmentType = pick(src, "Garment Type", "Item Name", "Item", "Product");
+    const isShirt = isShirtGarment(garmentType);
 
-  return {
-    Fabric: pick(src, "Fabric", "Material"),
-    Brand: pick(src, "Brand"),
-    Shade: pick(src, "Shade", "Colour", "Color"),
-    Size: pick(src, "Size", "Sizes"),
-    Quantity: pick(src, "Quantity", "Qty", "QTY"),
-    Unit: pick(src, "Unit", "Units"),
-    "Party Name": pick(src, "Party Name", "Party"),
-    "Garment Type": garmentType,
-    Section: pick(src, "Section", "Gender"),
-    Season: pick(src, "Season"),
-    Emb: isDirect ? "" : pick(src, "Emb", "Embroidery"),
-    Printing: isDirect ? "" : pick(src, "Printing", "Print"),
-    Pattern: pick(src, "Pattern", "Design"),
-    Style: pick(src, "Style"),
-    Zip: pick(src, "Zip", "ZIP"),
-    "Bottom Type": isShirt ? "" : pick(src, "Bottom Type", "BottomType", "Bottom"), // Clear for shirts
-    "Tape/Lace": pick(src, "Tape/Lace", "Tape Lace", "TapeLace"),
-    Remarks: pick(src, "Remarks", "Notes", "Note"),
-    "Direct Stitching": isDirect ? "yes" : directRaw || "",
-    "Emb Details": pick(src, "Emb Details", "Embroidery Details"),
-    "Printing Details": pick(src, "Printing Details", "Print Details"),
-  };
-}
-function isShirtGarment(garmentType = "") {
-  const type = String(garmentType || "").trim().toUpperCase();
-  // Check if garment type contains "SHIRT" (case-insensitive)
-  return type.includes("SHIRT");
-}
+    return {
+      Fabric: pick(src, "Fabric", "Material"),
+      Brand: pick(src, "Brand"),
+      Shade: pick(src, "Shade", "Colour", "Color"),
+      Size: pick(src, "Size", "Sizes"),
+      Quantity: pick(src, "Quantity", "Qty", "QTY"),
+      Unit: pick(src, "Unit", "Units"),
+      "Party Name": pick(src, "Party Name", "Party"),
+      "Garment Type": garmentType,
+      Section: pick(src, "Section", "Gender"),
+      Season: pick(src, "Season"),
+      Emb: isDirect ? "" : pick(src, "Emb", "Embroidery"),
+      Printing: isDirect ? "" : pick(src, "Printing", "Print"),
+      Pattern: pick(src, "Pattern", "Design"),
+      Style: pick(src, "Style"),
+      Zip: pick(src, "Zip", "ZIP"),
+      "Bottom Type": isShirt ? "" : pick(src, "Bottom Type", "BottomType", "Bottom"),
+      "Tape/Lace": pick(src, "Tape/Lace", "Tape Lace", "TapeLace"),
+      Remarks: pick(src, "Remarks", "Notes", "Note"),
+      "Direct Stitching": isDirect ? "yes" : directRaw || "",
+      "Emb Details": pick(src, "Emb Details", "Embroidery Details"),
+      "Printing Details": pick(src, "Printing Details", "Print Details"),
+    };
+  }
 
-function getEmptyForm(currentOrderNo = "") {
-  return {
-    jobOrderNo: "",
-    date: "",
-    fabric: "",
-    brand: "",
-    shade: "",
-    quantity: "",
-    unit: "",
-    size: "",
-    partyName: "",
-    garmentType: "",
-    section: "",
-    season: "",
-    emb: "",
-    printing: "",
-    pattern: "",
-    style: "",
-    zip: "",
-    bottomType: "",
-    tapeLace: "", // ADD THIS LINE
-    remarks: "",
-    directStitching: "",
-    orderNo: currentOrderNo,
-    priority: "MEDIUM",
-  };
-}
+  function isShirtGarment(garmentType = "") {
+    const type = String(garmentType || "").trim().toUpperCase();
+    return type.includes("SHIRT");
+  }
+
+  function getEmptyForm(currentOrderNo = "") {
+    return {
+      jobOrderNo: "",
+      date: "",
+      fabric: "",
+      brand: "",
+      shade: "",
+      quantity: "",
+      unit: "",
+      size: "",
+      partyName: "",
+      garmentType: "",
+      section: "",
+      season: "",
+      emb: "",
+      printing: "",
+      pattern: "",
+      style: "",
+      zip: "",
+      bottomType: "",
+      tapeLace: "",
+      remarks: "",
+      directStitching: "",
+      orderNo: currentOrderNo,
+      priority: "MEDIUM",
+    };
+  }
+
   function parseWithOptionalQty(input) {
     const txt = String(input || "").trim().toUpperCase();
     if (!txt) return [];
@@ -604,7 +608,7 @@ function getEmptyForm(currentOrderNo = "") {
       POCKET: false,
       COLLAR: false,
       HOOD: false,
-      GULLA :false,
+      GULLA: false,
       other: "",
     };
     const parts = String(str)
@@ -830,50 +834,63 @@ function getEmptyForm(currentOrderNo = "") {
     }
   }, [fetchNextJobNo, fetchRecentOrders]);
 
-function applyOrderToForm(row) {
-  const isDirect =
-    String(row["Direct Stitching"] || "").toLowerCase() === "true" ||
-    String(row["Direct Stitching"] || "").toLowerCase() === "yes";
+  function applyOrderToForm(row) {
+    const isDirect =
+      String(row["Direct Stitching"] || "").toLowerCase() === "true" ||
+      String(row["Direct Stitching"] || "").toLowerCase() === "yes";
 
-  const nextEmbPos = parseDetailsToPositions(row["Emb Details"]);
-  const nextPrintPos = parseDetailsToPositions(row["Printing Details"]);
-  
-  const garmentType = String(row["Garment Type"] || "");
-  const isShirt = isShirtGarment(garmentType);
+    const nextEmbPos = parseDetailsToPositions(row["Emb Details"]);
+    const nextPrintPos = parseDetailsToPositions(row["Printing Details"]);
+    
+    const garmentType = String(row["Garment Type"] || "");
+    const isShirt = isShirtGarment(garmentType);
 
-  setFormData((prev) => ({
-    ...prev,
-    jobOrderNo: prev.jobOrderNo,
-    date: new Date().toISOString().split("T")[0],
-    fabric: String(row["Fabric"] || ""),
-    brand: String(row["Brand"] || ""),
-    shade: String(row["Shade"] || ""),
-    size: String(row["Size"] || ""),
-    quantity: String(row["Quantity"] || ""),
-    unit: String(row["Unit"] || ""),
-    partyName: String(row["Party Name"] || ""),
-    garmentType: garmentType,
-    section: String(row["Section"] || ""),
-    season: String(row["Season"] || ""),
-    emb: isDirect ? "" : String(row["Emb"] || ""),
-    printing: isDirect ? "" : String(row["Printing"] || ""),
-    pattern: String(row["Pattern"] || ""),
-    style: String(row["Style"] || ""),
-    zip: String(row["Zip"] || ""),
-    bottomType: isShirt ? "" : String(row["Bottom Type"] || ""), // Clear for shirts
-    tapeLace: String(row["Tape/Lace"] || ""),
-    remarks: String(row["Remarks"] || ""),
-    directStitching: isDirect ? "yes" : "no",
-    priority: String(row["Priority"] || prev.priority || "MEDIUM"),
-  }));
-  setEmbPositions(nextEmbPos);
-  setPrintPositions(nextPrintPos);
-  setImageFile(null);
-  if (!formData.jobOrderNo || formData.jobOrderNo === "JO-PENDING") {
-    fetchNextJobNo().catch(() => {});
+    // Handle priority - check if it's a repeated lot
+    const priorityFromRow = String(row["Priority"] || "").toUpperCase();
+    let priority = priorityFromRow || "MEDIUM";
+    
+    // Check if it's already in repeated lot format
+    if (priorityFromRow.startsWith("REPEATED_LOT#")) {
+      // Keep the same format
+      priority = priorityFromRow;
+    } else if (priorityFromRow === "REPEATED_LOT") {
+      // Add a generic lot number if none exists
+      priority = "REPEATED_LOT#N/A";
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      jobOrderNo: prev.jobOrderNo,
+      date: new Date().toISOString().split("T")[0],
+      fabric: String(row["Fabric"] || ""),
+      brand: String(row["Brand"] || ""),
+      shade: String(row["Shade"] || ""),
+      size: String(row["Size"] || ""),
+      quantity: String(row["Quantity"] || ""),
+      unit: String(row["Unit"] || ""),
+      partyName: String(row["Party Name"] || ""),
+      garmentType: garmentType,
+      section: String(row["Section"] || ""),
+      season: String(row["Season"] || ""),
+      emb: isDirect ? "" : String(row["Emb"] || ""),
+      printing: isDirect ? "" : String(row["Printing"] || ""),
+      pattern: String(row["Pattern"] || ""),
+      style: String(row["Style"] || ""),
+      zip: String(row["Zip"] || ""),
+      bottomType: isShirt ? "" : String(row["Bottom Type"] || ""),
+      tapeLace: String(row["Tape/Lace"] || ""),
+      remarks: String(row["Remarks"] || ""),
+      directStitching: isDirect ? "yes" : "no",
+      priority: priority,
+    }));
+    setEmbPositions(nextEmbPos);
+    setPrintPositions(nextPrintPos);
+    setImageFile(null);
+    if (!formData.jobOrderNo || formData.jobOrderNo === "JO-PENDING") {
+      fetchNextJobNo().catch(() => {});
+    }
+    setShowRepeatDialog(false);
   }
-  setShowRepeatDialog(false);
-}
 
   useEffect(() => {
     const prefillRow = location.state?.prefill;
@@ -926,285 +943,306 @@ function applyOrderToForm(row) {
       reader.readAsDataURL(file);
     });
 
-const handleClearAll = useCallback(() => {
-  // Clear form but preserve job order number and reset date
-  setFormData((prev) => ({
-    jobOrderNo: prev.jobOrderNo,
-    date: new Date().toISOString().split("T")[0],
-    fabric: "",
-    brand: "",
-    shade: "",
-    quantity: "",
-    unit: "",
-    size: "",
-    partyName: "",
-    garmentType: "",
-    section: "",
-    season: "",
-    emb: "",
-    printing: "",
-    pattern: "",
-    style: "",
-    zip: "",
-    bottomType: "",
-    tapeLace: "", // ADD THIS LINE
-    remarks: "",
-    directStitching: "no",
-    orderNo: "",
-    priority: "MEDIUM",
-  }));
-  setImageFile(null);
-  setEmbPositions({
-    FRONT: false,
-    BACK: false,
-    RIB: false,
-    ARM: false,
-    LEFT: false,
-    RIGHT: false,
-    POCKET: false,
-    COLLAR: false,
-    HOOD: false,
-    GULLA: false,
-    other: "",
-  });
-  setPrintPositions({
-    FRONT: false,
-    BACK: false,
-    RIB: false,
-    ARM: false,
-    LEFT: false,
-    RIGHT: false,
-    POCKET: false,
-    COLLAR: false,
-    HOOD: false,
-    GULLA: false,
-    other: "",
-  });
-  setShadeRows([{ shade: "", combos: "" }]);
-  setSizeRows([{ value: "" }]);
-  setShowEmbDialog(false);
-  setShowPrintDialog(false);
-  setShowPatternDialog(false);
-  setShowSubmitterDialog(false);
-  setShowRepeatDialog(false);
-  setSubmitterName("");
-  setCustomSubmitter("");
-  setReferrerName("Mohit Goyal");
-  setCustomReferrer("");
-  setPendingPayload(null);
-  setError("");
-  setSubmitSuccess(false);
-}, []);
-
-const handleChange = (e) => {
-  const { name } = e.target;
-  let { value } = e.target;
-
-  // If garment type is changing, check if it's a shirt and clear/disable bottom type
-  if (name === "garmentType") {
-    const isShirt = isShirtGarment(value);
-    
-    if (isShirt) {
-      // If it's a shirt, clear the bottom type
-      setFormData((prev) => ({
-        ...prev,
-        garmentType: value,
-        bottomType: "", // Clear bottom type for shirts
-      }));
-    } else {
-      // For non-shirt garments, just update normally
-      setFormData((prev) => ({ ...prev, garmentType: value }));
-    }
-    return;
-  }
-
-  if (name === "quantity") {
-    const cleaned = value.replace(/[^\d.]/g, "");
-    setFormData((prev) => ({ ...prev, [name]: cleaned }));
-    return;
-  }
-
-  if (name === "directStitching") {
-    if (value === "yes") {
-      setFormData((prev) => ({
-        ...prev,
-        directStitching: "yes",
-        emb: "",
-        printing: "",
-      }));
-      setEmbPositions({
-        FRONT: false,
-        BACK: false,
-        RIB: false,
-        ARM: false,
-        LEFT: false,
-        RIGHT: false,
-        POCKET: false,
-        COLLAR: false,
-        HOOD: false,
-        GULLA: false,
-        other: "",
-      });
-      setPrintPositions({
-        FRONT: false,
-        BACK: false,
-        RIB: false,
-        ARM: false,
-        LEFT: false,
-        RIGHT: false,
-        POCKET: false,
-        COLLAR: false,
-        HOOD: false,
-        GULLA: false,
-        other: "",
-      });
-      setShowEmbDialog(false);
-      setShowPrintDialog(false);
-    } else {
-      setFormData((prev) => ({ ...prev, directStitching: "no" }));
-    }
-    return;
-  }
-
-  if (name === "style") {
-    const v = (value || "").toLowerCase().replace(/[.\u2026]/g, "").trim();
-    if (v === "any other" || /^any\s*other$/.test(v)) {
-      setStyleOtherText("");
-      setShowStyleDialog(true);
-      return;
-    }
-    setFormData((prev) => ({ ...prev, style: value }));
-    return;
-  }
-
-  if (name === "pattern") {
-    const v = (value || "").toLowerCase().replace(/[.\u2026]/g, "").trim();
-    if (v === "any other" || /^any\s*other$/.test(v)) {
-      setPatternOtherText("");
-      setShowPatternDialog(true);
-      return;
-    }
-    setFormData((prev) => ({ ...prev, pattern: value }));
-    return;
-  }
-
-  if (name === "emb") {
-    setFormData((prev) => ({ ...prev, emb: value }));
-    if (value && formData.directStitching !== "yes") setShowEmbDialog(true);
-    return;
-  }
-
-  if (name === "printing") {
-    setFormData((prev) => ({ ...prev, printing: value }));
-    if (value && formData.directStitching !== "yes") setShowPrintDialog(true);
-    return;
-  }
-
-  const tag = e.target.tagName;
-  const type = (e.target.type || "").toLowerCase();
-  const isTextLike =
-    tag === "TEXTAREA" ||
-    (tag === "INPUT" && (type === "" || type === "text" || type === "search"));
-
-  if (isTextLike) {
-    value = value.toUpperCase();
-  }
-
-  setFormData((prev) => ({ ...prev, [name]: value }));
-};
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsSubmitting(true);
-  setError("");
-  setSubmitSuccess(false);
-
-  try {
-    if (!formData.jobOrderNo?.trim()) throw new Error("Job Order No. is required");
-    if (!formData.date) throw new Error("Date is required");
-    if (!formData.fabric?.trim()) throw new Error("Fabric is required");
-    if (!formData.shade?.trim()) throw new Error("Shade is required");
-    if (!formData.quantity) throw new Error("Quantity is required");
-    if (!formData.unit) throw new Error("Please select a unit");
-    if (!formData.priority) throw new Error("Please select a priority");
-    
-    // NEW: Validate required fields for gsheet storage
-    if (!formData.partyName?.trim()) throw new Error("Party Name is required");
-    if (!formData.garmentType?.trim()) throw new Error("Garment Type is required");
-    if (!formData.section?.trim()) throw new Error("Gender/Section is required");
-    if (!formData.season?.trim()) throw new Error("Season is required");
-
-    const isDirect = formData.directStitching === "yes";
-
-    let imagePayload = null;
-    if (imageFile) {
-      const { base64, mimeType } = await fileToBase64(imageFile);
-      imagePayload = {
-        name: imageFile.name,
-        mimeType,
-        base64,
-      };
-    }
-
- const payload = {
-  action: "createJobOrder",
-  jobOrderNo: formData.jobOrderNo.trim(),
-  orderNo: (formData.orderNo || "").trim(),
-  date: formData.date,
-  fabric: formData.fabric.trim(),
-  brand: formData.brand?.trim() || "",
-  shade: formData.shade.trim(),
-  size: formData.size?.trim() || "",
-  quantity: formData.quantity ? Number(formData.quantity) : "",
-  unit: formData.unit,
-  partyName: formData.partyName || "",
-  garmentType: formData.garmentType || "",
-  section: formData.section || "",
-  season: formData.season || "",
-  emb: isDirect ? "" : formData.emb || "",
-  printing: isDirect ? "" : formData.printing || "",
-  priority: (formData.priority || "MEDIUM").toUpperCase(),
-  zip: formData.zip || "",
-  bottomType: formData.bottomType || "",
-  tapeLace: formData.tapeLace || "", // ADD THIS LINE
-  embDetails: isDirect
-    ? ""
-    : (() => {
-        const picks = Object.entries(embPositions)
-          .filter(([k, v]) => (k === "other" ? embPositions.other.trim() : v))
-          .map(([k]) => (k === "other" ? `OTHER:${embPositions.other.trim()}` : k));
-        return picks.join(", ");
-      })(),
-  printingDetails: isDirect
-    ? ""
-    : (() => {
-        const picks = Object.entries(printPositions)
-          .filter(([k, v]) => (k === "other" ? printPositions.other.trim() : v))
-          .map(([k]) => (k === "other" ? `OTHER:${printPositions.other.trim()}` : k));
-        return picks.join(", ");
-      })(),
-  pattern: formData.pattern || "",
-  style: formData.style || "",
-  remarks: formData.remarks || "",
-  directStitching: isDirect,
-  image: imagePayload,
-  orderNo: formData.orderNo || "",
-};
-
-    setPendingPayload(payload);
-    setReferrerName("Mohit Goyal");
-    setCustomReferrer("");
+  const handleClearAll = useCallback(() => {
+    // Clear form but preserve job order number and reset date
+    setFormData((prev) => ({
+      jobOrderNo: prev.jobOrderNo,
+      date: new Date().toISOString().split("T")[0],
+      fabric: "",
+      brand: "",
+      shade: "",
+      quantity: "",
+      unit: "",
+      size: "",
+      partyName: "",
+      garmentType: "",
+      section: "",
+      season: "",
+      emb: "",
+      printing: "",
+      pattern: "",
+      style: "",
+      zip: "",
+      bottomType: "",
+      tapeLace: "",
+      remarks: "",
+      directStitching: "no",
+      orderNo: "",
+      priority: "MEDIUM",
+    }));
+    setImageFile(null);
+    setEmbPositions({
+      FRONT: false,
+      BACK: false,
+      RIB: false,
+      ARM: false,
+      LEFT: false,
+      RIGHT: false,
+      POCKET: false,
+      COLLAR: false,
+      HOOD: false,
+      GULLA: false,
+      other: "",
+    });
+    setPrintPositions({
+      FRONT: false,
+      BACK: false,
+      RIB: false,
+      ARM: false,
+      LEFT: false,
+      RIGHT: false,
+      POCKET: false,
+      COLLAR: false,
+      HOOD: false,
+      GULLA: false,
+      other: "",
+    });
+    setShadeRows([{ shade: "", combos: "" }]);
+    setSizeRows([{ value: "" }]);
+    setShowEmbDialog(false);
+    setShowPrintDialog(false);
+    setShowPatternDialog(false);
+    setShowSubmitterDialog(false);
+    setShowRepeatDialog(false);
+    setShowRepeatedLotDialog(false);
     setSubmitterName("");
     setCustomSubmitter("");
-    setShowSubmitterDialog(true);
-    setIsSubmitting(false);
-    return;
-  } catch (err) {
-    setError(err.message || "Something went wrong while saving.");
-  } finally {
-    if (!showSubmitterDialog) setIsSubmitting(false);
-  }
-};
+    setReferrerName("Mohit Goyal");
+    setCustomReferrer("");
+    setRepeatedLotNumber("");
+    setPendingPayload(null);
+    setError("");
+    setSubmitSuccess(false);
+  }, []);
+
+  const handleChange = (e) => {
+    const { name } = e.target;
+    let { value } = e.target;
+
+    // If garment type is changing, check if it's a shirt and clear/disable bottom type
+    if (name === "garmentType") {
+      const isShirt = isShirtGarment(value);
+      
+      if (isShirt) {
+        // If it's a shirt, clear the bottom type
+        setFormData((prev) => ({
+          ...prev,
+          garmentType: value,
+          bottomType: "", // Clear bottom type for shirts
+        }));
+      } else {
+        // For non-shirt garments, just update normally
+        setFormData((prev) => ({ ...prev, garmentType: value }));
+      }
+      return;
+    }
+
+    if (name === "quantity") {
+      const cleaned = value.replace(/[^\d.]/g, "");
+      setFormData((prev) => ({ ...prev, [name]: cleaned }));
+      return;
+    }
+
+    if (name === "directStitching") {
+      if (value === "yes") {
+        setFormData((prev) => ({
+          ...prev,
+          directStitching: "yes",
+          emb: "",
+          printing: "",
+        }));
+        setEmbPositions({
+          FRONT: false,
+          BACK: false,
+          RIB: false,
+          ARM: false,
+          LEFT: false,
+          RIGHT: false,
+          POCKET: false,
+          COLLAR: false,
+          HOOD: false,
+          GULLA: false,
+          other: "",
+        });
+        setPrintPositions({
+          FRONT: false,
+          BACK: false,
+          RIB: false,
+          ARM: false,
+          LEFT: false,
+          RIGHT: false,
+          POCKET: false,
+          COLLAR: false,
+          HOOD: false,
+          GULLA: false,
+          other: "",
+        });
+        setShowEmbDialog(false);
+        setShowPrintDialog(false);
+      } else {
+        setFormData((prev) => ({ ...prev, directStitching: "no" }));
+      }
+      return;
+    }
+
+    if (name === "style") {
+      const v = (value || "").toLowerCase().replace(/[.\u2026]/g, "").trim();
+      if (v === "any other" || /^any\s*other$/.test(v)) {
+        setStyleOtherText("");
+        setShowStyleDialog(true);
+        return;
+      }
+      setFormData((prev) => ({ ...prev, style: value }));
+      return;
+    }
+
+    if (name === "pattern") {
+      const v = (value || "").toLowerCase().replace(/[.\u2026]/g, "").trim();
+      if (v === "any other" || /^any\s*other$/.test(v)) {
+        setPatternOtherText("");
+        setShowPatternDialog(true);
+        return;
+      }
+      setFormData((prev) => ({ ...prev, pattern: value }));
+      return;
+    }
+
+    if (name === "emb") {
+      setFormData((prev) => ({ ...prev, emb: value }));
+      if (value && formData.directStitching !== "yes") setShowEmbDialog(true);
+      return;
+    }
+
+    if (name === "printing") {
+      setFormData((prev) => ({ ...prev, printing: value }));
+      if (value && formData.directStitching !== "yes") setShowPrintDialog(true);
+      return;
+    }
+
+    // Handle priority change - check for repeated lot
+    if (name === "priority") {
+      if (value === "REPEATED_LOT") {
+        setShowRepeatedLotDialog(true);
+        return;
+      }
+      setFormData((prev) => ({ ...prev, priority: value }));
+      return;
+    }
+
+    const tag = e.target.tagName;
+    const type = (e.target.type || "").toLowerCase();
+    const isTextLike =
+      tag === "TEXTAREA" ||
+      (tag === "INPUT" && (type === "" || type === "text" || type === "search"));
+
+    if (isTextLike) {
+      value = value.toUpperCase();
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+    setSubmitSuccess(false);
+
+    try {
+      if (!formData.jobOrderNo?.trim()) throw new Error("Job Order No. is required");
+      if (!formData.date) throw new Error("Date is required");
+      if (!formData.fabric?.trim()) throw new Error("Fabric is required");
+      if (!formData.shade?.trim()) throw new Error("Shade is required");
+      if (!formData.quantity) throw new Error("Quantity is required");
+      if (!formData.unit) throw new Error("Please select a unit");
+      if (!formData.priority) throw new Error("Please select a priority");
+      
+      // NEW: Validate required fields for gsheet storage
+      if (!formData.partyName?.trim()) throw new Error("Party Name is required");
+      if (!formData.garmentType?.trim()) throw new Error("Garment Type is required");
+      if (!formData.section?.trim()) throw new Error("Gender/Section is required");
+      if (!formData.season?.trim()) throw new Error("Season is required");
+
+      const isDirect = formData.directStitching === "yes";
+
+      let imagePayload = null;
+      if (imageFile) {
+        const { base64, mimeType } = await fileToBase64(imageFile);
+        imagePayload = {
+          name: imageFile.name,
+          mimeType,
+          base64,
+        };
+      }
+
+      const payload = {
+        action: "createJobOrder",
+        jobOrderNo: formData.jobOrderNo.trim(),
+        orderNo: (formData.orderNo || "").trim(),
+        date: formData.date,
+        fabric: formData.fabric.trim(),
+        brand: formData.brand?.trim() || "",
+        shade: formData.shade.trim(),
+        size: formData.size?.trim() || "",
+        quantity: formData.quantity ? Number(formData.quantity) : "",
+        unit: formData.unit,
+        partyName: formData.partyName || "",
+        garmentType: formData.garmentType || "",
+        section: formData.section || "",
+        season: formData.season || "",
+        emb: isDirect ? "" : formData.emb || "",
+        printing: isDirect ? "" : formData.printing || "",
+        priority: formData.priority,
+        zip: formData.zip || "",
+        bottomType: formData.bottomType || "",
+        tapeLace: formData.tapeLace || "",
+        embDetails: isDirect
+          ? ""
+          : (() => {
+              const picks = Object.entries(embPositions)
+                .filter(([k, v]) => (k === "other" ? embPositions.other.trim() : v))
+                .map(([k]) => (k === "other" ? `OTHER:${embPositions.other.trim()}` : k));
+              return picks.join(", ");
+            })(),
+        printingDetails: isDirect
+          ? ""
+          : (() => {
+              const picks = Object.entries(printPositions)
+                .filter(([k, v]) => (k === "other" ? printPositions.other.trim() : v))
+                .map(([k]) => (k === "other" ? `OTHER:${printPositions.other.trim()}` : k));
+              return picks.join(", ");
+            })(),
+        pattern: formData.pattern || "",
+        style: formData.style || "",
+        remarks: formData.remarks || "",
+        directStitching: isDirect,
+        image: imagePayload,
+        orderNo: formData.orderNo || "",
+      };
+
+      setPendingPayload(payload);
+      setReferrerName("Mohit Goyal");
+      setCustomReferrer("");
+      setSubmitterName("");
+      setCustomSubmitter("");
+      setShowSubmitterDialog(true);
+      setIsSubmitting(false);
+      return;
+    } catch (err) {
+      setError(err.message || "Something went wrong while saving.");
+    } finally {
+      if (!showSubmitterDialog) setIsSubmitting(false);
+    }
+  };
+
+  // Helper function to get priority display
+  const getPriorityDisplay = (priority) => {
+    if (priority && priority.startsWith("REPEATED_LOT#")) {
+      const lotNumber = priority.split("#")[1];
+      return `REPEATED LOT (${lotNumber})`;
+    }
+    return priority;
+  };
 
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
@@ -1265,20 +1303,6 @@ const handleSubmit = async (e) => {
                     required
                   />
                 </label>
-
-                <span style={styles.badgePriority}>
-                  ⚡ Priority:{" "}
-                  <select
-                    name="priority"
-                    value={formData.priority}
-                    onChange={handleChange}
-                    style={styles.prioritySelect}
-                  >
-                    <option value="HIGH">HIGH</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="LOW">LOW</option>
-                  </select>
-                </span>
               </div>
             </div>
 
@@ -1607,6 +1631,49 @@ const handleSubmit = async (e) => {
               loading={loading}
             />
 
+            {/* Priority Field - Moved to Additional Information */}
+            <Field label="Priority" emoji="⚡" required={true}>
+              <select
+                name="priority"
+                value={formData.priority.startsWith("REPEATED_LOT#") ? "REPEATED_LOT" : formData.priority}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "REPEATED_LOT") {
+                    setShowRepeatedLotDialog(true);
+                  } else {
+                    setFormData((prev) => ({ ...prev, priority: value }));
+                  }
+                }}
+                style={styles.input}
+                required
+              >
+                <option value="">-- Select Priority --</option>
+                <option value="HIGH">HIGH</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="LOW">LOW</option>
+                <option value="REPEATED_LOT">REPEATED LOT</option>
+              </select>
+              {/* Show repeated lot number if selected */}
+              {formData.priority.startsWith("REPEATED_LOT#") && (
+                <div style={{
+                  fontSize: "13px",
+                  color: "#92400e",
+                  marginTop: "4px",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 8px",
+                  background: "rgba(251, 191, 36, 0.1)",
+                  borderRadius: "6px",
+                  border: "1px solid rgba(251, 191, 36, 0.3)",
+                }}>
+                  <span>🔁</span>
+                  <span>Lot Number: {formData.priority.split("#")[1] || ""}</span>
+                </div>
+              )}
+            </Field>
+
             {/* Zip Field */}
             <Field label="Zip" emoji="🤐" required={false}>
               <select
@@ -1624,63 +1691,63 @@ const handleSubmit = async (e) => {
               </select>
             </Field>
 
-            {/* NEW: Bottom Type Field */}
-       {/* Bottom Type Field */}
-<Field label="Bottom Type" emoji="👖" required={false}>
-  <select
-    name="bottomType"
-    value={formData.bottomType}
-    onChange={handleChange}
-    style={{
-      ...styles.input,
-      ...(isShirtGarment(formData.garmentType) ? {
-        backgroundColor: "#f3f4f6",
-        cursor: "not-allowed",
-        color: "#9ca3af",
-      } : {})
-    }}
-    disabled={isShirtGarment(formData.garmentType)}
-  >
-    <option value="">
-      {isShirtGarment(formData.garmentType) 
-        ? "Not applicable for Shirts" 
-        : "-- Select Bottom Type --"}
-    </option>
-    {!isShirtGarment(formData.garmentType) && 
-      BOTTOM_TYPE_OPTIONS.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))
-    }
-  </select>
-  {isShirtGarment(formData.garmentType) && (
-    <div style={{
-      fontSize: "12px",
-      color: "#6b7280",
-      marginTop: "4px",
-      fontStyle: "italic"
-    }}>
-      Bottom type is not applicable for shirts
-    </div>
-  )}
-</Field>
+            {/* Bottom Type Field */}
+            <Field label="Bottom Type" emoji="👖" required={false}>
+              <select
+                name="bottomType"
+                value={formData.bottomType}
+                onChange={handleChange}
+                style={{
+                  ...styles.input,
+                  ...(isShirtGarment(formData.garmentType) ? {
+                    backgroundColor: "#f3f4f6",
+                    cursor: "not-allowed",
+                    color: "#9ca3af",
+                  } : {})
+                }}
+                disabled={isShirtGarment(formData.garmentType)}
+              >
+                <option value="">
+                  {isShirtGarment(formData.garmentType) 
+                    ? "Not applicable for Shirts" 
+                    : "-- Select Bottom Type --"}
+                </option>
+                {!isShirtGarment(formData.garmentType) && 
+                  BOTTOM_TYPE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))
+                }
+              </select>
+              {isShirtGarment(formData.garmentType) && (
+                <div style={{
+                  fontSize: "12px",
+                  color: "#6b7280",
+                  marginTop: "4px",
+                  fontStyle: "italic"
+                }}>
+                  Bottom type is not applicable for shirts
+                </div>
+              )}
+            </Field>
+
             {/* Tape/Lace Field */}
-<Field label="Tape/Lace" emoji="🎀" required={false}>
-  <select
-    name="tapeLace"
-    value={formData.tapeLace}
-    onChange={handleChange}
-    style={styles.input}
-  >
-    <option value="">-- Select Tape/Lace --</option>
-    {TAPE_LACE_OPTIONS.map((option) => (
-      <option key={option} value={option}>
-        {option}
-      </option>
-    ))}
-  </select>
-</Field>
+            <Field label="Tape/Lace" emoji="🎀" required={false}>
+              <select
+                name="tapeLace"
+                value={formData.tapeLace}
+                onChange={handleChange}
+                style={styles.input}
+              >
+                <option value="">-- Select Tape/Lace --</option>
+                {TAPE_LACE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </Field>
 
             <Field label="Remarks" emoji="💬" required={false}>
               <textarea
@@ -1765,6 +1832,75 @@ const handleSubmit = async (e) => {
           )}
         </button>
       </div>
+
+      {/* Repeated Lot Modal */}
+      {showRepeatedLotDialog && (
+        <div style={styles.modalOverlay} onClick={() => setShowRepeatedLotDialog(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Repeated Lot Details</h3>
+            <p style={styles.modalDescription}>
+              Enter the repeated lot number for tracking:
+            </p>
+            
+            <input
+              autoFocus
+              type="text"
+              value={repeatedLotNumber}
+              onChange={(e) => setRepeatedLotNumber(e.target.value.toUpperCase())}
+              placeholder="e.g., LOT-001, JO-123, RPT-2024"
+              style={{ ...styles.input, width: "90%" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (repeatedLotNumber.trim()) {
+                    setFormData((prev) => ({
+                      ...prev,
+                      priority: `REPEATED_LOT#${repeatedLotNumber.trim()}`
+                    }));
+                    setShowRepeatedLotDialog(false);
+                    setRepeatedLotNumber("");
+                  }
+                }
+              }}
+            />
+            
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                style={{ ...styles.button, padding: "10px 18px" }}
+                onClick={() => {
+                  if (repeatedLotNumber.trim()) {
+                    setFormData((prev) => ({
+                      ...prev,
+                      priority: `REPEATED_LOT#${repeatedLotNumber.trim()}`
+                    }));
+                    setShowRepeatedLotDialog(false);
+                    setRepeatedLotNumber("");
+                  }
+                }}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                style={{
+                  ...styles.button,
+                  padding: "10px 18px",
+                  background: "#e5e7eb",
+                  color: "#111827",
+                }}
+                onClick={() => {
+                  setShowRepeatedLotDialog(false);
+                  setRepeatedLotNumber("");
+                  setFormData((prev) => ({ ...prev, priority: "MEDIUM" }));
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Repeat Order Modal */}
       {showRepeatDialog && (
@@ -1869,6 +2005,9 @@ const handleSubmit = async (e) => {
                     <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
                       Shade: {o["Shade"] || "—"} | Size: {o["Size"] || "—"} | Qty:{" "}
                       {o["Quantity"] || "—"} {o["Unit"] || ""}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                      Priority: {getPriorityDisplay(o["Priority"] || "")}
                     </div>
                   </button>
                 ))}
@@ -2013,7 +2152,7 @@ const handleSubmit = async (e) => {
                     POCKET: false,
                     COLLAR: false,
                     HOOD: false,
-                    GULLA :false,
+                    GULLA: false,
                     other: "",
                   });
                   setShowEmbDialog(false);
@@ -2093,7 +2232,7 @@ const handleSubmit = async (e) => {
                     POCKET: false,
                     COLLAR: false,
                     HOOD: false,
-                    GULLA :false,
+                    GULLA: false,
                     other: "",
                   });
                   setShowPrintDialog(false);
@@ -2235,11 +2374,11 @@ const handleSubmit = async (e) => {
 
                   try {
                     setIsSubmitting(true);
-                 const res = await fetch(GAS_WEB_APP_URL, {
-  method: "POST",
-  headers: { "Content-Type": "application/x-www-form-urlencoded" },
-  body: `payload=${encodeURIComponent(JSON.stringify({ ...pendingPayload, submittedBy: submittedByCell }))}`,
-});
+                    const res = await fetch(GAS_WEB_APP_URL, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                      body: `payload=${encodeURIComponent(JSON.stringify({ ...pendingPayload, submittedBy: submittedByCell }))}`,
+                    });
                     const json = await res.json();
                     if (!res.ok || json.success === false) {
                       const msg = json?.error || `Save failed (HTTP ${res.status})`;
@@ -2248,29 +2387,29 @@ const handleSubmit = async (e) => {
 
                     setSubmitSuccess(true);
                     setFormData({
-  jobOrderNo: "",
-  date: new Date().toISOString().split("T")[0],
-  fabric: "",
-  brand: "",
-  shade: "",
-  quantity: "",
-  unit: "",
-  size: "",
-  partyName: "",
-  garmentType: "",
-  section: "",
-  season: "",
-  emb: "",
-  printing: "",
-  pattern: "",
-  style: "",
-  zip: "",
-  bottomType: "",
-  tapeLace: "", // ADD THIS LINE
-  remarks: "",
-  directStitching: "no",
-  priority: "MEDIUM",
-});
+                      jobOrderNo: "",
+                      date: new Date().toISOString().split("T")[0],
+                      fabric: "",
+                      brand: "",
+                      shade: "",
+                      quantity: "",
+                      unit: "",
+                      size: "",
+                      partyName: "",
+                      garmentType: "",
+                      section: "",
+                      season: "",
+                      emb: "",
+                      printing: "",
+                      pattern: "",
+                      style: "",
+                      zip: "",
+                      bottomType: "",
+                      tapeLace: "",
+                      remarks: "",
+                      directStitching: "no",
+                      priority: "MEDIUM",
+                    });
                     setEmbPositions({
                       FRONT: false,
                       BACK: false,
@@ -2281,7 +2420,7 @@ const handleSubmit = async (e) => {
                       POCKET: false,
                       COLLAR: false,
                       HOOD: false,
-                      GULLA :false,
+                      GULLA: false,
                       other: "",
                     });
                     setPrintPositions({
@@ -2294,7 +2433,7 @@ const handleSubmit = async (e) => {
                       POCKET: false,
                       COLLAR: false,
                       HOOD: false,
-                      GULLA :false,
+                      GULLA: false,
                       other: "",
                     });
                     setImageFile(null);
@@ -2303,6 +2442,7 @@ const handleSubmit = async (e) => {
                     setCustomSubmitter("");
                     setReferrerName("Mohit Goyal");
                     setCustomReferrer("");
+                    setRepeatedLotNumber("");
                     await fetchNextJobNo();
                     setTimeout(() => setSubmitSuccess(false), 3000);
                   } catch (err) {
@@ -2340,180 +2480,180 @@ const handleSubmit = async (e) => {
       )}
 
       {/* Shade Modal */}
-{showShadeDialog && (
-  <div style={styles.modalOverlay} onClick={() => setShowShadeDialog(false)}>
-    <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-      <h3 style={styles.modalTitle}>Shades & Combinations</h3>
-      <p style={styles.modalDescription}>
-        Add one or more shades. Optionally enter combinations for each shade
-        (comma-separated). Press Enter/Tab to move between fields and create new rows.
-      </p>
+      {showShadeDialog && (
+        <div style={styles.modalOverlay} onClick={() => setShowShadeDialog(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Shades & Combinations</h3>
+            <p style={styles.modalDescription}>
+              Add one or more shades. Optionally enter combinations for each shade
+              (comma-separated). Press Enter/Tab to move between fields and create new rows.
+            </p>
 
-      <div style={styles.modalBodyScroll}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 3fr auto",
-            gap: 8,
-            alignItems: "center",
-          }}
-        >
-          <div style={{ fontWeight: 700, color: "#111827" }}>Shade</div>
-          <div style={{ fontWeight: 700, color: "#111827" }}>
-            Combinations (comma-separated)
-          </div>
-          <div />
-          {shadeRows.map((row, idx) => (
-            <React.Fragment key={idx}>
-              <input
-                value={row.shade}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setShadeRows((prev) => {
-                    const copy = [...prev];
-                    copy[idx] = { ...copy[idx], shade: val };
-                    return copy;
-                  });
+            <div style={styles.modalBodyScroll}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "2fr 3fr auto",
+                  gap: 8,
+                  alignItems: "center",
                 }}
-                onKeyDown={(e) => {
-                  // Tab moves to combos field
-                  if (e.key === "Tab" && !e.shiftKey) {
-                    e.preventDefault();
-                    // Focus on combos field of same row
-                    const combosInputs = document.querySelectorAll(`input[placeholder="e.g., OFF-WHITE, OLIVE"]`);
-                    if (combosInputs[idx]) {
-                      combosInputs[idx].focus();
-                    }
-                  }
-                  // Enter in shade field moves to combos field
-                  else if (e.key === "Enter") {
-                    e.preventDefault();
-                    const combosInputs = document.querySelectorAll(`input[placeholder="e.g., OFF-WHITE, OLIVE"]`);
-                    if (combosInputs[idx]) {
-                      combosInputs[idx].focus();
-                    }
-                  }
-                }}
-                placeholder="e.g., BLACK"
-                style={styles.input}
-                autoFocus={idx === shadeRows.length - 1 && !row.shade}
-              />
-              <input
-                value={row.combos}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setShadeRows((prev) => {
-                    const copy = [...prev];
-                    copy[idx] = { ...copy[idx], combos: val };
-                    return copy;
-                  });
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    // Check if we're on the last row
-                    if (idx === shadeRows.length - 1) {
-                      // Add new row only if current shade is not empty
-                      if (row.shade.trim()) {
-                        setShadeRows((prev) => [...prev, { shade: "", combos: "" }]);
-                        // The new shade field will auto-focus due to autoFocus prop
+              >
+                <div style={{ fontWeight: 700, color: "#111827" }}>Shade</div>
+                <div style={{ fontWeight: 700, color: "#111827" }}>
+                  Combinations (comma-separated)
+                </div>
+                <div />
+                {shadeRows.map((row, idx) => (
+                  <React.Fragment key={idx}>
+                    <input
+                      value={row.shade}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setShadeRows((prev) => {
+                          const copy = [...prev];
+                          copy[idx] = { ...copy[idx], shade: val };
+                          return copy;
+                        });
+                      }}
+                      onKeyDown={(e) => {
+                        // Tab moves to combos field
+                        if (e.key === "Tab" && !e.shiftKey) {
+                          e.preventDefault();
+                          // Focus on combos field of same row
+                          const combosInputs = document.querySelectorAll(`input[placeholder="e.g., OFF-WHITE, OLIVE"]`);
+                          if (combosInputs[idx]) {
+                            combosInputs[idx].focus();
+                          }
+                        }
+                        // Enter in shade field moves to combos field
+                        else if (e.key === "Enter") {
+                          e.preventDefault();
+                          const combosInputs = document.querySelectorAll(`input[placeholder="e.g., OFF-WHITE, OLIVE"]`);
+                          if (combosInputs[idx]) {
+                            combosInputs[idx].focus();
+                          }
+                        }
+                      }}
+                      placeholder="e.g., BLACK"
+                      style={styles.input}
+                      autoFocus={idx === shadeRows.length - 1 && !row.shade}
+                    />
+                    <input
+                      value={row.combos}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setShadeRows((prev) => {
+                          const copy = [...prev];
+                          copy[idx] = { ...copy[idx], combos: val };
+                          return copy;
+                        });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          // Check if we're on the last row
+                          if (idx === shadeRows.length - 1) {
+                            // Add new row only if current shade is not empty
+                            if (row.shade.trim()) {
+                              setShadeRows((prev) => [...prev, { shade: "", combos: "" }]);
+                              // The new shade field will auto-focus due to autoFocus prop
+                            }
+                          } else {
+                            // Move focus to next row's shade field
+                            const shadeInputs = document.querySelectorAll(`input[placeholder="e.g., BLACK"]`);
+                            if (shadeInputs[idx + 1]) {
+                              shadeInputs[idx + 1].focus();
+                            }
+                          }
+                        }
+                        // Shift+Tab from combos goes back to shade field
+                        else if (e.key === "Tab" && e.shiftKey) {
+                          e.preventDefault();
+                          const shadeInputs = document.querySelectorAll(`input[placeholder="e.g., BLACK"]`);
+                          if (shadeInputs[idx]) {
+                            shadeInputs[idx].focus();
+                          }
+                        }
+                      }}
+                      placeholder="e.g., OFF-WHITE, OLIVE"
+                      style={styles.input}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShadeRows((prev) =>
+                          prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev
+                        )
                       }
-                    } else {
-                      // Move focus to next row's shade field
-                      const shadeInputs = document.querySelectorAll(`input[placeholder="e.g., BLACK"]`);
-                      if (shadeInputs[idx + 1]) {
-                        shadeInputs[idx + 1].focus();
-                      }
-                    }
-                  }
-                  // Shift+Tab from combos goes back to shade field
-                  else if (e.key === "Tab" && e.shiftKey) {
-                    e.preventDefault();
-                    const shadeInputs = document.querySelectorAll(`input[placeholder="e.g., BLACK"]`);
-                    if (shadeInputs[idx]) {
-                      shadeInputs[idx].focus();
-                    }
-                  }
-                }}
-                placeholder="e.g., OFF-WHITE, OLIVE"
-                style={styles.input}
-              />
+                      style={{
+                        ...styles.button,
+                        padding: "10px 14px",
+                        background: "#e5e7eb",
+                        color: "#111827",
+                        minWidth: 0,
+                      }}
+                      title="Remove row"
+                    >
+                      ✕
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
               <button
                 type="button"
-                onClick={() =>
-                  setShadeRows((prev) =>
-                    prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev
-                  )
-                }
+                style={{ ...styles.button, padding: "10px 14px" }}
+                onClick={() => {
+                  setShadeRows((prev) => [...prev, { shade: "", combos: "" }]);
+                  // Focus will be set on the new shade field via autoFocus
+                }}
+              >
+                + Add Row
+              </button>
+              <button
+                type="button"
                 style={{
                   ...styles.button,
                   padding: "10px 14px",
                   background: "#e5e7eb",
                   color: "#111827",
-                  minWidth: 0,
                 }}
-                title="Remove row"
+                onClick={() => setShadeRows([{ shade: "", combos: "" }])}
               >
-                ✕
+                Clear All
               </button>
-            </React.Fragment>
-          ))}
+            </div>
+
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                style={{ ...styles.button, padding: "10px 18px" }}
+                onClick={() => {
+                  const txt = buildShadeString(shadeRows);
+                  setFormData((prev) => ({ ...prev, shade: txt }));
+                  setShowShadeDialog(false);
+                }}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                style={{
+                  ...styles.button,
+                  padding: "10px 18px",
+                  background: "#e5e7eb",
+                  color: "#111827",
+                }}
+                onClick={() => setShowShadeDialog(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-        <button
-          type="button"
-          style={{ ...styles.button, padding: "10px 14px" }}
-          onClick={() => {
-            setShadeRows((prev) => [...prev, { shade: "", combos: "" }]);
-            // Focus will be set on the new shade field via autoFocus
-          }}
-        >
-          + Add Row
-        </button>
-        <button
-          type="button"
-          style={{
-            ...styles.button,
-            padding: "10px 14px",
-            background: "#e5e7eb",
-            color: "#111827",
-          }}
-          onClick={() => setShadeRows([{ shade: "", combos: "" }])}
-        >
-          Clear All
-        </button>
-      </div>
-
-      <div style={styles.modalFooter}>
-        <button
-          type="button"
-          style={{ ...styles.button, padding: "10px 18px" }}
-          onClick={() => {
-            const txt = buildShadeString(shadeRows);
-            setFormData((prev) => ({ ...prev, shade: txt }));
-            setShowShadeDialog(false);
-          }}
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          style={{
-            ...styles.button,
-            padding: "10px 18px",
-            background: "#e5e7eb",
-            color: "#111827",
-          }}
-          onClick={() => setShowShadeDialog(false)}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* Size Picker Modal */}
       {showSizeDialog && (
@@ -2674,7 +2814,7 @@ const styles = {
   },
   modalDescription: {
     marginTop: 0,
-    color: "#111827", // Changed to black for better readability
+    color: "#111827",
     fontSize: 14,
     lineHeight: 1.5,
   },
@@ -2791,30 +2931,6 @@ const styles = {
     gap: "8px",
     border: "1px solid rgba(226, 232, 240, 0.8)",
     transition: "all 0.2s",
-  },
-  badgePriority: {
-    background: "linear-gradient(135deg, #fef3c7, #fde68a)",
-    color: "#92400e",
-    fontSize: "14px",
-    fontWeight: 600,
-    padding: "10px 16px",
-    borderRadius: "12px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    border: "1px solid rgba(251, 191, 36, 0.3)",
-  },
-  prioritySelect: {
-    background: "transparent",
-    border: "none",
-    color: "#92400e",
-    fontWeight: 700,
-    outline: "none",
-    cursor: "pointer",
-    fontSize: "14px",
-    padding: "4px 8px",
-    borderRadius: "6px",
   },
   badgeButton: {
     border: "none",
@@ -3383,7 +3499,7 @@ const globalStyles = `
     color: #111827 !important;
   }
 `;
-
+ 
 const styleElement = document.createElement("style");
 styleElement.innerHTML = globalStyles;
 document.head.appendChild(styleElement);

@@ -33,6 +33,52 @@ function withTimeout(promise, ms = 4000) {
            .catch(()  => { clearTimeout(t); resolve(""); });
   });
 }
+function drawStar(doc, x, y, size = 12) {
+  const spikeCount = 5;
+  const outerRadius = size;
+  const innerRadius = size / 2;
+  const rotation = Math.PI / 2 * 3;
+  
+  // Create points for the star
+  const points = [];
+  for (let i = 0; i < spikeCount; i++) {
+    // Outer point
+    points.push([
+      x + Math.cos(rotation + i * 2 * Math.PI / spikeCount) * outerRadius,
+      y + Math.sin(rotation + i * 2 * Math.PI / spikeCount) * outerRadius
+    ]);
+    
+    // Inner point
+    points.push([
+      x + Math.cos(rotation + (i + 0.5) * 2 * Math.PI / spikeCount) * innerRadius,
+      y + Math.sin(rotation + (i + 0.5) * 2 * Math.PI / spikeCount) * innerRadius
+    ]);
+  }
+  
+  // Set drawing properties
+  doc.setFillColor(0, 0, 0);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  
+  // Create a polygon path - use lowercase 'f' for fill
+  doc.setLineJoin('miter');
+  doc.setLineCap('butt');
+  
+  // Start the path at the first point
+  doc.moveTo(points[0][0], points[0][1]);
+  
+  // Draw lines to all other points
+  for (let i = 1; i < points.length; i++) {
+    doc.lineTo(points[i][0], points[i][1]);
+  }
+  
+  // Close the path back to the start
+  doc.lineTo(points[0][0], points[0][1]);
+  
+  // Fill and stroke the path
+  doc.fill();    // Fill the shape
+  doc.stroke();  // Draw the outline
+}
 
 function tryParseDateToISO(s) {
   if (!s) return "";
@@ -1162,7 +1208,7 @@ const generatePdf = async (row) => {
       body: 13, 
       label: 11.5, 
       meta: 10.5, 
-      small: 9.5,
+      small: 8.5,
       xsmall: 8.5 
     };
 
@@ -1448,252 +1494,581 @@ const vDate = (k) => {
     };
 
     // ---------- RENDERERS ----------
-    const renderFirstPage = async () => {
-      PAGE = firstPageScaffold();
-      y = 170;
+const renderFirstPage = async () => {
+  PAGE = firstPageScaffold();
+  
+  // Check if Priority contains any "repeated" pattern (case-insensitive)
+  const priorityText = val("Priority")?.toString() || "";
+  const priorityLower = priorityText.toLowerCase();
+  const isLotRepeated = priorityLower.includes("lot_repeated") || 
+                       priorityLower.includes("repeated_lot") || 
+                       priorityLower.includes("repeated") ||
+                       priorityLower.includes("repeat");
+  
+  // Adjust y starting position - more dynamic calculation
+  let y = isLotRepeated ? 140 : 120; // Start lower to accommodate all elements
 
-      // Header
-      setFont("bold", 32);
-      doc.text("JOB ORDER", PAGE.w / 2, 65, { align: "center" });
-      setFont("bold", 16);
-      doc.text(`Order #${joNum}`, PAGE.w / 2, 90, { align: "center" });
+  // Header with better spacing
+  setFont("bold", 30); // Slightly larger for better hierarchy
+  doc.text("JOB ORDER", PAGE.w / 2, 50, { align: "center" });
+  
+  // Add 5-star rating below "JOB ORDER" if Priority contains any repeated pattern
+  if (isLotRepeated) {
+    // Draw 5 gold stars with better spacing
+    const starSize = 12;
+    const starSpacing = 24;
+    const totalWidth = 5 * starSpacing - starSpacing/2;
+    const startX = PAGE.w / 2 - totalWidth / 2;
+    
+    // Draw 5 stars
+    for (let i = 0; i < 5; i++) {
+      drawStar(doc, startX + (i * starSpacing), 75, starSize);
+    }
+    
+    // Add "LOT REPEATED" text below stars
+    setFont("bold", 16);
+    doc.text("LOT REPEATED", PAGE.w / 2, 100, { align: "center" });
+    
+    // "Order #" positioned below LOT REPEATED text
+    setFont("bold", 14);
+    doc.text(`Job Order #${joNum}`, PAGE.w / 2, 120, { align: "center" });
+    
+  } else {
+    // Normal position when not "repeated"
+    setFont("bold", 14);
+    doc.text(`Job Order #${joNum}`, PAGE.w / 2, 85, { align: "center" });
+  }
 
-      // JO badge
-      doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1);
-      doc.circle(M + 30, 60, 30, "FD");
-      setFont("bold", 20);
-      doc.text("JO", M + 30, 67, { align: "center" });
+  // JO badge - better positioned
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1);
+  doc.circle(M + 25, 50, 22, "FD");
+  setFont("bold", 16);
+  doc.text("JO", M + 25, 57, { align: "center" });
 
-      const genDate = new Date().toLocaleDateString("en-US", {
-        year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit",
-      });
-      setFont("normal", F.meta);
-      doc.text(`Generated: ${genDate}`, PAGE.w - M, 50, { align: "right" });
-      doc.text(`Submitted by: ${submittedBy}`, PAGE.w - M, 70, { align: "right" });
+  // Generation info - better aligned
+  const genDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+  setFont("normal", F.meta);
+  doc.text(`Generated: ${genDate}`, PAGE.w - M, 45, { align: "right" });
+  doc.text(`Submitted by: ${submittedBy}`, PAGE.w - M, 60, { align: "right" });
 
-      const dsEnabled = asBool(row?.["Direct Stitching"]);
-      if (dsEnabled) {
-        const padX = 14, hChip = 30, r = 15;
-        setFont("bold", 12);
-        const label = "DIRECT STITCHING";
-        const wChip = doc.getTextWidth(label) + padX * 2 + 14;
-        const xChip = PAGE.w - M - wChip;
-        const yChip = 85;
-        doc.setFillColor(...C.white);
-        doc.setDrawColor(...C.black);
-        doc.setLineWidth(1);
-        doc.rect(xChip, yChip - hChip + 2, wChip, hChip, "FD");
-        doc.text(label, xChip + padX + 12, yChip - 8);
+  // Direct Stitching chip - positioned relative to y start
+  const dsEnabled = asBool(row?.["Direct Stitching"]);
+  if (dsEnabled) {
+    const padX = 12, hChip = 26, r = 12;
+    setFont("bold", 11);
+    const label = "DIRECT STITCHING";
+    const wChip = doc.getTextWidth(label) + padX * 2 + 12;
+    const xChip = PAGE.w - M - wChip;
+    const yChip = isLotRepeated ? 135 : 115; // Position below the main header area
+    doc.setFillColor(...C.white);
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(1);
+    doc.roundedRect(xChip, yChip - hChip + 2, wChip, hChip, r, r, "FD");
+    doc.text(label, xChip + padX + 10, yChip - 8);
+  }
+
+  // Draw content card function with consistent spacing - FIXED CENTERING
+  const drawCard = async ({ label, value, x, w, isLastInRow = false }) => {
+    const padX = 14, padY = 12, labelH = F.label * 1.3;
+    const maxWidth = w - padX * 2;
+    const txt = value && String(value).trim() ? String(value) : "—";
+    
+    // Check if this is the Priority card
+    const isPriorityCard = label.toLowerCase() === "priority";
+    
+    // Use smaller font size for Priority card to prevent overflow
+    const bodyFontSize = isPriorityCard ? F.body - 2 : F.body; // Reduce by 2 for Priority
+    const lineH = (bodyFontSize - 1) * 1.2;
+    
+    const lines = doc.splitTextToSize(txt, maxWidth);
+    const contentH = Math.max(lineH, lines.length * lineH);
+    const h = padY + labelH + 6 + Math.max(lineH, contentH) + padY;
+
+    await ensurePageRoom(h);
+
+    // Draw curved box
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(1);
+    doc.setFillColor(...C.white);
+    doc.roundedRect(x, y, w, h, 6, 6, "FD");
+
+    const priorityValue = isPriorityCard ? txt.toLowerCase() : "";
+    const isRepeatedPriority = isPriorityCard && (
+      priorityValue.includes("lot_repeated") || 
+      priorityValue.includes("repeated_lot") || 
+      priorityValue.includes("repeated") ||
+      priorityValue.includes("repeat")
+    );
+
+    // Label - CENTERED
+    setFont("bold", F.label);
+    doc.text(label.toUpperCase(), x + w / 2, y + padY + labelH/2 - 2, { align: "center" });
+
+    // Draw value with stars if needed
+    if (isRepeatedPriority) {
+      // Draw stars above the priority text
+      const starSize = 8;
+      const starSpacing = 14;
+      const totalStarWidth = 5 * starSpacing - starSpacing/2;
+      const startX = x + w / 2 - totalStarWidth / 2;
+      const starY = y + padY + labelH + 6;
+      
+      // Draw 5 gold stars
+      for (let i = 0; i < 5; i++) {
+        drawStar(doc, startX + (i * starSpacing), starY, starSize);
       }
-
-      const contentRow = (items, cols) => drawGridRow(items, { cols });
-
-      await sectionHeader("Order Details", { rightBigText: ` ${val("Lot Number")}` });
-      await contentRow([
-        { label: "Job Order No", value: joNum },
-        { label: "Date", value: vDate("Date") },
-        { label: "Lot Number", value: val("Lot Number") },
-        { label: "Party Name", value: val("Party Name") },
-        { label: "Brand", value: val("Brand") },
-      ], 5);
-
-      await contentRow([
-        { label: "Fabric", value: val("Fabric") },
-        { label: "Garment Type", value: val("Garment Type") },
-        { label: "Section", value: val("Section") },
-        { label: "Quantity", value: val("Quantity") },
-        { label: "Unit", value: val("Unit") },
-      ], 5);
-
-      await contentRow([
-        { label: "Season", value: val("Season") },
-        { label: "Style", value: val("Style") },
-        { label: "Pattern", value: val("Pattern") },
-        { label: "Size", value: val("Size") },
-        { label: "Priority", value: val("Priority") },
-      ], 5);
-
-      await contentRow([{ label: "Shade", value: val("Shade") }], 1);
-
-      await sectionHeader("Special Processes");
-      await contentRow([
-        { label: "Embroidery", value: val("Emb") },
-        { label: "Printing", value: val("Printing") },
-        { label: "Direct Stitching", value: dsEnabled ? "Yes" : asText(row?.["Direct Stitching"]) },
-        { label: "Component", value: val("Component") },
-      ], 4);
-
-      await contentRow([
-        { label: "Embroidery Details", value: val("Emb Details") },
-        { label: "Printing Details", value: val("Printing Details") },
-      ], 2);
-
-      await sectionHeader("Remarks & Visual Reference");
-      const twoColW = (contentW() - GRID_COL_GAP) / 2;
-
-      // Remarks
-      {
-        const oldY = y;
-        const remarksText = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
-        await drawCard({ label: "Remarks", value: remarksText, x: M, w: twoColW });
-        y = oldY;
-      }
-
-      // Image
-      await tryDrawImage({
-        url: row?.["Image URL"],
-        x: M + twoColW + GRID_COL_GAP, w: twoColW, h: 220
+      
+      // Draw the priority text below stars - CENTERED with automatic line breaks
+      // Use smaller font for Priority
+      setFont("bold", bodyFontSize);
+      const textY = starY + starSize + 6;
+      
+      // Handle multi-line text for priority
+      lines.forEach((line, i) => {
+        doc.text(line, x + w / 2, textY + i * lineH, { align: "center" });
       });
-    };
+    } else {
+      // Normal text rendering - CENTERED with automatic line breaks
+      // Use smaller font for Priority card, normal for others
+      setFont(isPriorityCard ? "bold" : "normal", bodyFontSize);
+      const textY = y + padY + labelH + 6 + (h - (padY + labelH + 6 + lines.length * lineH)) / 2;
+      
+      lines.forEach((line, i) => {
+        doc.text(line, x + w / 2, textY + i * lineH, { align: "center" });
+      });
+    }
 
-    const renderSecondPage = async () => {
-      PAGE = innerPageScaffold();
-      y = 100;
+    const bottom = y + h;
+    y = bottom;
+    await pause(0);
+    return bottom;
+  };
 
-      setFont("bold", 24);
-      const lotNum = asText(row?.["Lot Number"]);
-      doc.text(
-        `JOB ORDER SUMMARY ${lotNum !== "—" ? `(${lotNum})` : ""}`,
-        PAGE.w / 2,
-        50,
-        { align: "center" }
+  // Grid row function with better spacing
+  const drawGridRow = async (items, { cols = items.length, rowGap = 16 } = {}) => {
+    const totalW = contentW();
+    const gapW = GRID_COL_GAP * (cols - 1);
+    const cardW = (totalW - gapW) / cols;
+
+    // Calculate heights with proper estimation
+    const padX = 14, padY = 12, labelH = F.label * 1.3;
+    const heights = items.map(({ value, label }) => {
+      const maxWidth = cardW - padX * 2;
+      const txt = (value || "—").toString();
+      
+      // Check if this is the Priority card for font size adjustment
+      const isPriorityCard = label?.toLowerCase() === "priority";
+      const bodyFontSize = isPriorityCard ? F.body - 2 : F.body;
+      const lineH = (bodyFontSize - 1) * 1.2;
+      
+      const lines = doc.splitTextToSize(txt, maxWidth);
+      
+      const priorityValue = isPriorityCard ? txt.toLowerCase() : "";
+      const isRepeatedPriority = isPriorityCard && (
+        priorityValue.includes("lot_repeated") || 
+        priorityValue.includes("repeated_lot") || 
+        priorityValue.includes("repeated") ||
+        priorityValue.includes("repeat")
       );
+      
+      const extraHeight = isRepeatedPriority ? 18 : 0;
+      
+      return padY + labelH + 6 + Math.max(lineH, lines.length * lineH) + padY + extraHeight;
+    });
+    
+    const rowH = Math.max(...heights);
+    await ensurePageRoom(rowH + rowGap);
 
-      // Order Summary Box
-      {
-        const short = (s, n) => {
-          s = asText(s);
-          return s === "—" || s.length <= n ? s : s.slice(0, n - 1) + "…";
-        };
-
-        const pairs = [
-          { label: "Job Order No", value: joNum },
-          { label: "Date", value: vDate("Date") },
-          { label: "Lot Number", value: val("Lot Number") },
-          { label: "Party Name", value: short(val("Party Name"), 28) },
-          { label: "Fabric", value: short(val("Fabric"), 40) },
-          { label: "Brand", value: short(val("Brand"), 40) },
-          { label: "Garment Type", value: short(val("Garment Type"), 40) },
-          { label: "Section", value: short(val("Section"), 40) },
-          { label: "Season", value: short(val("Season"), 40) },
-          { label: "Shade", value: short(val("Shade"), 40) },
-          { label: "Quantity", value: val("Quantity") },
-          { label: "Unit", value: val("Unit") },
-          { label: "Style", value: short(val("Style"), 40) },
-          { label: "Priority", value: val("Priority") },
-          { label: "Pattern", value: short(val("Pattern"), 40) },
-          { label: "Size", value: short(val("Size"), 40) },
-          { label: "Embroidery", value: short(val("Emb"), 40) },
-          { label: "Printing", value: short(val("Printing"), 40) },
-          { label: "Direct Stitching", value: asBool(row?.["Direct Stitching"]) ? "Yes" : asText(row?.["Direct Stitching"]) },
-          { label: "Embroidery Details", value: short(val("Emb Details"), 50) },
-          { label: "Printing Details", value: short(val("Printing Details"), 50) },
-          { label: "Component", value: short(val("Component"), 40) },
-          { label: "Remarks", value: short(row?.["Remarks"] ?? "No remarks provided", 80) }
-        ];
-
-        const cols = 4;
-        const rowHeight = 24;
-        const rowGap = 10;
-        const pad = 18;
-        const titleH = 26;
-        const titleGap = 10;
-
-        const rows = Math.ceil(pairs.length / cols);
-        const gridH = rows * (rowHeight + rowGap) - rowGap;
-        const boxW = contentW();
-        const boxH = pad + titleH + titleGap + gridH + pad;
-
-        await ensurePageRoom(boxH);
-
-        const boxX = M;
-        const boxY = y;
-
-        doc.setDrawColor(...C.black);
-        doc.setFillColor(...C.white);
-        doc.setLineWidth(1);
-        doc.rect(boxX, boxY, boxW, boxH, "FD");
-
-        setFont("bold", F.h3);
-        doc.text("Order Summary", boxX + pad, boxY + pad + titleH - 6);
-
-        const innerX = boxX + pad;
-        const innerYStart = boxY + pad + titleH + titleGap;
-        const colW = (boxW - pad * 2 - GRID_COL_GAP * (cols - 1)) / cols;
-
-        let drawY = innerYStart;
-        for (let i = 0; i < pairs.length; i += cols) {
-          const rowSlice = pairs.slice(i, i + cols);
-
-          rowSlice.forEach((p, idx) => {
-            const x = innerX + idx * (colW + GRID_COL_GAP);
-
-            setFont("bold", F.small);
-            doc.text((p.label || "").toUpperCase(), x, drawY);
-
-            setFont("bold", F.small);
-
-            const line = doc.splitTextToSize(asText(p.value), colW)[0] || "—";
-            doc.text(line, x, drawY + 12);
-          });
-
-          drawY += rowHeight + rowGap;
-        }
-
-        y = boxY + boxH + GRID_ROW_GAP;
-      }
-
-      await sectionHeader("Full Remarks & Visual");
-      const colGap = GRID_COL_GAP;
-      const colW = (contentW() - colGap) / 2;
-      const leftX = M;
-      const rightX = M + colW + colGap;
-      const yTop = y;
-
-      const remarksTextFull = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
-      await drawCard({ label: "Complete Remarks", value: remarksTextFull, x: leftX, w: colW });
-      const bottomLeft = y;
-
+    const yTop = y;
+    let maxBottom = yTop;
+    
+    for (let i = 0; i < items.length; i++) {
+      const cardX = M + i * (cardW + GRID_COL_GAP);
+      const oldY = y;
       y = yTop;
-      const estRightH = Math.max(220, bottomLeft - yTop);
-      await tryDrawImage({
-        url: row?.["Image URL"],
-        x: rightX, w: colW, h: estRightH
+      const bottom = await drawCard({ 
+        ...items[i], 
+        x: cardX, 
+        w: cardW,
+        isLastInRow: i === items.length - 1
       });
-      const bottomRight = yTop + estRightH;
+      maxBottom = Math.max(maxBottom, bottom);
+      y = oldY;
+    }
+    
+    y = maxBottom + rowGap;
+  };
 
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1);
-      doc.line(M + colW + colGap / 2, yTop + 6, M + colW + colGap / 2, Math.max(bottomLeft, bottomRight) - 6);
+  // Section header with better spacing
+  const sectionHeader = async (text, opts = {}) => {
+    await ensurePageRoom(40);
+    
+    const yMid = y + 8; // Add some vertical padding
 
-      y = Math.max(bottomLeft, bottomRight) + GRID_ROW_GAP;
+    setFont("bold", F.h3);
+    doc.text(text, PAGE.w / 2, yMid, { align: "center" });
 
-      await sectionHeader("Cutting Schedule");
-      const shades = parseShades(val("Shade"));
-      const minRows = Math.max(6, shades.length);
-      const rowCount = Math.min(10, Math.max(minRows, shades.length));
+    if (opts.rightBigText) {
+      setFont("bold", 26);
+      const padRight = 6;
+      const yOffset = 14;
+      doc.text(String(opts.rightBigText), PAGE.w - M - padRight, yMid - yOffset, { align: "right" });
+    }
 
-      const tableHeaders = [
-        { label: "Table", key: "table", width: 1 },
-        { label: "Shade", key: "shade", width: 2 },
-        { label: "Quantity", key: "qty", width: 1 },
-        { label: "Kharcha", key: "kharcha", width: 1 },
-        { label: "Date of Cutting", key: "cut", width: 1.5 },
-      ];
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(1.5);
+    doc.line(PAGE.w / 2 - 80, yMid + 12, PAGE.w / 2 + 80, yMid + 12);
 
-      const tableData = Array.from({ length: rowCount }, (_, i) => ({
-        table: "",
-        shade: i < shades.length ? String(shades[i]) : "",
-        qty: "",
-        kharcha: "Yes / No",
-        cut: "",
-      }));
+    y += 28; // Consistent spacing after section header
+    await pause(0);
+  };
 
-      await drawTable(tableHeaders, tableData, { rowH: 26, headerH: 32, fontScale: 0.95 });
-      y += 40;
+  // ====== MAIN CONTENT ======
+  
+  // Add some spacing before first section
+  y += 10;
+  
+  await sectionHeader("Order Details", { rightBigText: ` ${val("Lot Number")}` });
+  
+  // Order Details - 5 columns
+  await drawGridRow([
+    { label: "Job Order No", value: joNum },
+    { label: "Date", value: vDate("Date") },
+    { label: "Lot Number", value: val("Lot Number") },
+    { label: "Party Name", value: val("Party Name") },
+    { label: "Brand", value: val("Brand") },
+  ], { cols: 5, rowGap: 16 });
+
+  await drawGridRow([
+    { label: "Fabric", value: val("Fabric") },
+    { label: "Garment Type", value: val("Garment Type") },
+    { label: "Section", value: val("Section") },
+    { label: "Quantity", value: val("Quantity") },
+    { label: "Unit", value: val("Unit") },
+  ], { cols: 5, rowGap: 16 });
+
+  await drawGridRow([
+    { label: "Season", value: val("Season") },
+    { label: "Style", value: val("Style") },
+    { label: "Pattern", value: val("Pattern") },
+    { label: "Size", value: val("Size") },
+    { label: "Priority", value: val("Priority") },
+  ], { cols: 5, rowGap: 16 });
+
+  await drawGridRow([
+    { label: "Shade", value: val("Shade") }
+  ], { cols: 1, rowGap: 20 });
+
+  await sectionHeader("Special Processes");
+  
+  await drawGridRow([
+    { label: "Embroidery", value: val("Emb") },
+    { label: "Printing", value: val("Printing") },
+    { label: "Direct Stitching", value: dsEnabled ? "Yes" : asText(row?.["Direct Stitching"]) },
+    { label: "Component", value: val("Component") },
+  ], { cols: 4, rowGap: 16 });
+
+  await drawGridRow([
+    { label: "Embroidery Details", value: val("Emb Details") },
+    { label: "Printing Details", value: val("Printing Details") },
+  ], { cols: 2, rowGap: 20 });
+
+  await sectionHeader("Remarks & Visual Reference");
+  
+  // Two-column layout for Remarks and Image
+  const twoColW = (contentW() - GRID_COL_GAP) / 2;
+  const imageHeight = 220; // Increased for better image display
+
+  // Draw image function
+  const tryDrawImage = async ({ url, x, w, h }) => {
+    const padX = 14, padY = 12, labelH = F.label * 1.3;
+    const cardH = h;
+
+    await ensurePageRoom(cardH);
+
+    // Draw curved image box
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(1);
+    doc.setFillColor(...C.white);
+    doc.roundedRect(x, y, w, cardH, 6, 6, "FD");
+    
+    setFont("bold", F.label);
+    doc.text("VISUAL REFERENCE", x + w / 2, y + padY + labelH/2 - 2, { align: "center" });
+
+    let drew = false;
+    try {
+      const cleanUrl = asText(url) === "—" ? "" : url;
+      if (cleanUrl) {
+        const dataUrl = await withTimeout(
+          loadImageAsBase64ForPdf(cleanUrl, { maxWidth: IMG_MAX, maxHeight: IMG_MAX }),
+          IMG_TIMEOUT_MS
+        );
+        if (dataUrl) {
+          const p = doc.getImageProperties(dataUrl);
+          const fitW = w - 30, fitH = cardH - (padY + labelH + 6) - 20;
+          const ratio = Math.min(fitW / p.width, fitH / p.height);
+          const iw = Math.max(1, p.width * ratio);
+          const ih = Math.max(1, p.height * ratio);
+          const ix = x + (w - iw) / 2;
+          const iy = y + padY + labelH + 10 + (fitH - ih) / 2;
+          doc.addImage(dataUrl, "JPEG", ix, iy, iw, ih);
+          drew = true;
+        }
+      }
+    } catch (_) { }
+    if (!drew) {
+      setFont("normal", F.meta);
+      doc.text("No image provided / failed to load", x + w / 2, y + cardH / 2, { align: "center" });
+    }
+
+    y = y + cardH + 20;
+    await pause(0);
+  };
+
+  // Draw Remarks card - CENTERED
+  {
+    const oldY = y;
+    const remarksText = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
+    const padX = 14, padY = 12, labelH = F.label * 1.3;
+    const maxWidth = twoColW - padX * 2;
+    const txt = remarksText;
+    const lines = doc.splitTextToSize(txt, maxWidth);
+    const lineH = (F.body - 1) * 1.2;
+    const contentH = Math.max(lineH, lines.length * lineH);
+    const h = padY + labelH + 6 + Math.max(lineH, contentH) + padY;
+
+    await ensurePageRoom(h);
+
+    // Draw curved box
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(1);
+    doc.setFillColor(...C.white);
+    doc.roundedRect(M, y, twoColW, h, 6, 6, "FD");
+
+    // Label - CENTERED
+    setFont("bold", F.label);
+    doc.text("REMARKS", M + twoColW / 2, y + padY + labelH/2 - 2, { align: "center" });
+
+    // Value - CENTERED
+    setFont("normal", F.body);
+    const textY = y + padY + labelH + 6 + (h - (padY + labelH + 6 + lines.length * lineH)) / 2;
+    
+    lines.forEach((line, i) => {
+      doc.text(line, M + twoColW / 2, textY + i * lineH, { align: "center" });
+    });
+
+    y = oldY;
+  }
+
+  // Draw Image card aligned with Remarks
+  await tryDrawImage({
+    url: row?.["Image URL"],
+    x: M + twoColW + GRID_COL_GAP, 
+    w: twoColW, 
+    h: imageHeight
+  });
+
+  // Final page check - add footer space if needed
+  const PAGE_BOTTOM_MARGIN = 30;
+  if (y < PAGE.h - PAGE_BOTTOM_MARGIN) {
+    // Add some empty space at bottom
+    y = PAGE.h - PAGE_BOTTOM_MARGIN;
+  }
+};
+
+const renderSecondPage = async () => {
+  PAGE = innerPageScaffold();
+  
+  // Check if we should show stars (same logic as first page)
+  const priorityText = val("Priority")?.toString() || "";
+  const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
+                     priorityText.toLowerCase().includes("repeated_lot") || 
+                     priorityText.toLowerCase().includes("repeated") ||
+                     priorityText.toLowerCase().includes("repeat");
+  
+  // Adjust y position based on stars
+  let startY = 50;
+  if (shouldStars) {
+    startY = 80; // Make room for stars
+  }
+
+  setFont("bold", 24);
+  const lotNum = asText(row?.["Lot Number"]);
+  doc.text(
+    `JOB ORDER SUMMARY ${lotNum !== "—" ? `(${lotNum})` : ""}`,
+    doc.internal.pageSize.getWidth() / 2,
+    startY,
+    { align: "center" }
+  );
+
+  // Add stars if lot is repeated
+  if (shouldStars) {
+    // Draw 5 gold stars below the title
+    const starSize = 12;
+    const starSpacing = 24;
+    const totalWidth = 5 * starSpacing - starSpacing/2;
+    const startX = PAGE.w / 2 - totalWidth / 2;
+    const starY = startY + 25; // Position below the title
+    
+    // Draw 5 stars
+    for (let i = 0; i < 5; i++) {
+      drawStar(doc, startX + (i * starSpacing), starY, starSize);
+    }
+    
+    // Add "LOT REPEATED" text below stars with MORE SPACING
+    setFont("bold", 16);
+    doc.text("LOT REPEATED", PAGE.w / 2, starY + 30, { align: "center" }); // Increased from 20 to 30
+    
+    // Update y position for the rest of the content - with more spacing
+    y = starY + 55; // Increased from 45 to 55 for more spacing
+  } else {
+    y = startY + 35;
+  }
+
+  // Order Summary Box
+  {
+    const short = (s, n) => {
+      s = asText(s);
+      return s === "—" || s.length <= n ? s : s.slice(0, n - 1) + "…";
     };
+
+    const pairs = [
+      { label: "Job Order No", value: joNum },
+      { label: "Date", value: vDate("Date") },
+      { label: "Lot Number", value: val("Lot Number") },
+      { label: "Party Name", value: short(val("Party Name"), 28) },
+      { label: "Fabric", value: short(val("Fabric"), 40) },
+      { label: "Brand", value: short(val("Brand"), 40) },
+      { label: "Garment Type", value: short(val("Garment Type"), 40) },
+      { label: "Section", value: short(val("Section"), 40) },
+      { label: "Season", value: short(val("Season"), 40) },
+      { label: "Shade", value: short(val("Shade"), 40) },
+      { label: "Quantity", value: val("Quantity") },
+      { label: "Unit", value: val("Unit") },
+      { label: "Style", value: short(val("Style"), 40) },
+      { label: "Priority", value: val("Priority") },
+      { label: "Pattern", value: short(val("Pattern"), 40) },
+      { label: "Size", value: short(val("Size"), 40) },
+      { label: "Embroidery", value: short(val("Emb"), 40) },
+      { label: "Printing", value: short(val("Printing"), 40) },
+      { label: "Direct Stitching", value: asBool(row?.["Direct Stitching"]) ? "Yes" : asText(row?.["Direct Stitching"]) },
+      { label: "Embroidery Details", value: short(val("Emb Details"), 50) },
+      { label: "Printing Details", value: short(val("Printing Details"), 50) },
+      { label: "Component", value: short(val("Component"), 40) },
+      { label: "Remarks", value: short(row?.["Remarks"] ?? "No remarks provided", 80) }
+    ];
+
+    const cols = 4;
+    const rowHeight = 24;
+    const rowGap = 10;
+    const pad = 18;
+    const titleH = 26;
+    const titleGap = 10;
+
+    const rows = Math.ceil(pairs.length / cols);
+    const gridH = rows * (rowHeight + rowGap) - rowGap;
+    const boxW = contentW();
+    const boxH = pad + titleH + titleGap + gridH + pad;
+
+    await ensurePageRoom(boxH);
+
+    const boxX = M;
+    const boxY = y;
+
+    // Outer box only - use C.black for border
+    doc.setDrawColor(...C.black);
+    doc.setFillColor(...C.white);
+    doc.setLineWidth(1);
+    doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8, "FD");
+
+    // Title
+    setFont("bold", F.h3);
+    doc.text("Order Summary", boxX + pad, boxY + pad + titleH - 6);
+
+    // Content (NO inner borders)
+    const innerX = boxX + pad;
+    const innerYStart = boxY + pad + titleH + titleGap;
+    const colW = (boxW - pad * 2 - GRID_COL_GAP * (cols - 1)) / cols;
+
+    let drawY = innerYStart;
+    for (let i = 0; i < pairs.length; i += cols) {
+      const rowSlice = pairs.slice(i, i + cols);
+
+      rowSlice.forEach((p, idx) => {
+        const x = innerX + idx * (colW + GRID_COL_GAP);
+
+        // Label: bold
+        setFont("bold", F.small);
+        doc.text((p.label || "").toUpperCase(), x, drawY);
+
+        // Value: bold
+        setFont("bold", F.small);
+
+        const line = doc.splitTextToSize(asText(p.value), colW)[0] || "—";
+        doc.text(line, x, drawY + 12);
+      });
+
+      drawY += rowHeight + rowGap;
+    }
+
+    // Advance after box
+    y = boxY + boxH + GRID_ROW_GAP;
+  }
+
+  await sectionHeader("Full Remarks & Visual");
+  const colGap = GRID_COL_GAP;
+  const colW = (contentW() - colGap) / 2;
+  const leftX = M;
+  const rightX = M + colW + colGap;
+  const yTop = y;
+
+  const remarksTextFull = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
+  await drawCard({ label: "Complete Remarks", value: remarksTextFull, x: leftX, w: colW });
+  const bottomLeft = y;
+
+  y = yTop;
+  const estRightH = Math.max(220, bottomLeft - yTop);
+  await tryDrawImage({
+    url: row?.["Image URL"],
+    x: rightX, w: colW, h: estRightH
+  });
+  const bottomRight = yTop + estRightH;
+
+  // Use C.black for the vertical line
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1);
+  doc.line(M + colW + colGap / 2, yTop + 6, M + colW + colGap / 2, Math.max(bottomLeft, bottomRight) - 6);
+
+  y = Math.max(bottomLeft, bottomRight) + GRID_ROW_GAP;
+
+  await sectionHeader("Cutting Schedule");
+  const shades = parseShades(val("Shade"));
+  const minRows = Math.max(6, shades.length);
+  const rowCount = Math.min(10, Math.max(minRows, shades.length));
+
+  const tableHeaders = [
+    { label: "Table", key: "table", width: 1 },
+    { label: "Shade", key: "shade", width: 2 },
+    { label: "Quantity", key: "qty", width: 1 },
+    { label: "Kharcha", key: "kharcha", width: 1 },
+    { label: "Date of Cutting", key: "cut", width: 1.5 },
+  ];
+
+  const tableData = Array.from({ length: rowCount }, (_, i) => ({
+    table: "",
+    shade: i < shades.length ? String(shades[i]) : "",
+    qty: "",
+    kharcha: "Yes / No",
+    cut: "",
+  }));
+
+  await drawTable(tableHeaders, tableData, { rowH: 26, headerH: 32, fontScale: 0.95 });
+  y += 40;
+};
 
     const renderThirdPage = async () => {
       PAGE = innerPageScaffold();
@@ -1979,6 +2354,13 @@ const renderLandscapeTablePage = async () => {
   const LANDSCAPE_W = doc.internal.pageSize.getWidth();  // ~297mm
   const LANDSCAPE_H = doc.internal.pageSize.getHeight(); // ~210mm
   
+  // Check if we should show stars
+  const priorityText = val("Priority")?.toString() || "";
+  const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
+                     priorityText.toLowerCase().includes("repeated_lot") || 
+                     priorityText.toLowerCase().includes("repeated") ||
+                     priorityText.toLowerCase().includes("repeat");
+  
   // ====== SHADES INFORMATION ======
   const shades = parseShades(val("Shade"));
   
@@ -2016,14 +2398,17 @@ const renderLandscapeTablePage = async () => {
     return text.substring(0, maxLength - 3) + "...";
   };
   
-  // Function to draw page header (updated with additional fields)
+  // Function to draw page header (updated with stars)
   const drawPageHeader = (pageNumber, totalPages) => {
     // Add top margin
     const TOP_MARGIN = 15; // Add 15pt margin from top
     
-    // Set white background for header area - extend height by TOP_MARGIN
+    // Calculate star height adjustment
+    const starAdjustment = shouldStars ? 45 : 0;
+    
+    // Set white background for header area - extend height by TOP_MARGIN + starAdjustment
     doc.setFillColor(...C.white);
-    doc.rect(0, 0, LANDSCAPE_W, 85 + TOP_MARGIN, "F");
+    doc.rect(0, 0, LANDSCAPE_W, 85 + TOP_MARGIN + starAdjustment, "F");
     
     // Get quantity and unit from job order
     const quantity = val("Quantity") || "";
@@ -2108,14 +2493,34 @@ const renderLandscapeTablePage = async () => {
       doc.text(patternGarment, LANDSCAPE_W - M, rightY, { align: "right" });
     }
     
-    // CENTER: Main Heading with LOT NUMBER - Add TOP_MARGIN
+    // CENTER: Main Heading with LOT NUMBER - Add TOP_MARGIN + starAdjustment
     let centerY = 22 + TOP_MARGIN;
     
     setFont("bold", 16);
     doc.text("CUTTING TABLE ______", LANDSCAPE_W / 2, centerY, { align: "center" });
     centerY += 16;
     
-    // LOT NUMBER in center
+    // Add stars if lot is repeated
+    if (shouldStars) {
+      // Draw 5 gold stars below the CUTTING TABLE heading
+      const starSize = 10;
+      const starSpacing = 20;
+      const totalWidth = 5 * starSpacing - starSpacing/2;
+      const startX = LANDSCAPE_W / 2 - totalWidth / 2;
+      const starY = centerY;
+      
+      // Draw 5 stars
+      for (let i = 0; i < 5; i++) {
+        drawStar(doc, startX + (i * starSpacing), starY, starSize);
+      }
+      
+      // Add "LOT REPEATED" text below stars
+      setFont("bold", 14);
+      doc.text("LOT REPEATED", LANDSCAPE_W / 2, starY + 25, { align: "center" });
+      centerY = starY + 40;
+    }
+    
+    // LOT NUMBER in center (below stars if they exist)
     const lotNumber = val("Lot Number") || "—";
     setFont("bold", 14);
     doc.text(`LOT NUMBER: ${lotNumber}`, LANDSCAPE_W / 2, centerY, { align: "center" });
@@ -2141,7 +2546,7 @@ const renderLandscapeTablePage = async () => {
     }
     
     // Calculate header height - Add TOP_MARGIN to base
-    let headerHeight = 75 + TOP_MARGIN; // Add TOP_MARGIN
+    let headerHeight = 75 + TOP_MARGIN + starAdjustment; // Add TOP_MARGIN and starAdjustment
     
     // Adjust header height for content
     if (remarksText && remarksText !== "") headerHeight += 14;
@@ -2836,14 +3241,47 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
     // ====== RENDER FIRST PAGE ======
     const renderFirstPage = async (row) => {
       const joNum = (row?.["Job Order No"] ?? "").toString().trim() || "Unknown";
+      
+      // Check if we should show stars
+      const priorityText = val("Priority", row)?.toString() || "";
+      const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
+                         priorityText.toLowerCase().includes("repeated_lot") || 
+                         priorityText.toLowerCase().includes("repeated") ||
+                         priorityText.toLowerCase().includes("repeat");
+      
       PAGE = firstPageScaffold();
-      y = 170;
+      y = shouldStars ? 190 : 170; // Adjust Y position based on stars
 
       // Blue headings on white
       setFont("bold", 32, C.primary);
       doc.text("JOB ORDER", doc.internal.pageSize.getWidth() / 2, 65, { align: "center" });
-      setFont("bold", 16, C.primary);
-      doc.text(`Order #${joNum}`, doc.internal.pageSize.getWidth() / 2, 90, { align: "center" });
+      
+      // Add stars if lot is repeated
+      if (shouldStars) {
+        // Draw 5 gold stars below the main title
+        const starSize = 12;
+        const starSpacing = 24;
+        const totalWidth = 5 * starSpacing - starSpacing/2;
+        const startX = PAGE.w / 2 - totalWidth / 2;
+        const starY = 85;
+        
+        // Draw 5 stars
+        for (let i = 0; i < 5; i++) {
+          drawStar(doc, startX + (i * starSpacing), starY, starSize);
+        }
+        
+        // Add "LOT REPEATED" text below stars
+        setFont("bold", 16, C.highlight);
+        doc.text("LOT REPEATED", PAGE.w / 2, 110, { align: "center" });
+        
+        // Order # positioned below LOT REPEATED text
+        setFont("bold", 16, C.primary);
+        doc.text(`Order #${joNum}`, PAGE.w / 2, 135, { align: "center" });
+      } else {
+        // Normal position when not "repeated"
+        setFont("bold", 16, C.primary);
+        doc.text(`Order #${joNum}`, doc.internal.pageSize.getWidth() / 2, 90, { align: "center" });
+      }
 
       // JO badge: white circle with black outline, black text
       doc.setFillColor(...C.white);
@@ -2864,7 +3302,7 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
         setFont("bold", 12, C.white);
         const wChip = doc.getTextWidth(label) + padX * 2 + 14;
         const xChip = PAGE.w - M - wChip;
-        const yChip = 85;
+        const yChip = shouldStars ? 150 : 85; // Adjust Y position based on stars
         doc.setFillColor(...C.success);
         doc.roundedRect(xChip, yChip - hChip + 2, wChip, hChip, r, r, "F");
         doc.text(label, xChip + padX + 12, yChip - 8);
@@ -2934,8 +3372,18 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
     // ====== RENDER SECOND PAGE ======
     const renderSecondPage = async (row) => {
       const joNum = (row?.["Job Order No"] ?? "").toString().trim() || "Unknown";
+      
+      // Check if we should show stars
+      const priorityText = val("Priority", row)?.toString() || "";
+      const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
+                         priorityText.toLowerCase().includes("repeated_lot") || 
+                         priorityText.toLowerCase().includes("repeated") ||
+                         priorityText.toLowerCase().includes("repeat");
 
       PAGE = innerPageScaffold();
+      
+      // Adjust Y position based on stars
+      let startY = shouldStars ? 80 : 50;
       y = 100;
 
       setFont("bold", 24, C.primary);
@@ -2943,9 +3391,33 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
       doc.text(
         `JOB ORDER SUMMARY ${lotNum !== "—" ? `(${lotNum})` : ""}`,
         doc.internal.pageSize.getWidth() / 2,
-        50,
+        startY,
         { align: "center" }
       );
+
+      // Add stars if lot is repeated
+      if (shouldStars) {
+        // Draw 5 gold stars below the title
+        const starSize = 12;
+        const starSpacing = 24;
+        const totalWidth = 5 * starSpacing - starSpacing/2;
+        const startX = PAGE.w / 2 - totalWidth / 2;
+        const starY = startY + 25;
+        
+        // Draw 5 stars
+        for (let i = 0; i < 5; i++) {
+          drawStar(doc, startX + (i * starSpacing), starY, starSize);
+        }
+        
+        // Add "LOT REPEATED" text below stars
+        setFont("bold", 16, C.highlight);
+        doc.text("LOT REPEATED", PAGE.w / 2, starY + 30, { align: "center" });
+        
+        // Update y position for the rest of the content
+        y = starY + 60;
+      } else {
+        y = startY + 35;
+      }
 
       // ===== Boxed "Order Summary" (ONLY OUTER BORDER) =====
       {
@@ -3099,9 +3571,19 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
     // ====== RENDER MATERIAL PLANNING PAGE ======
     const renderMaterialPage = async (row) => {
       const joNum = (row?.["Job Order No"] ?? "").toString().trim() || "Unknown";
+      
+      // Check if we should show stars
+      const priorityText = val("Priority", row)?.toString() || "";
+      const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
+                         priorityText.toLowerCase().includes("repeated_lot") || 
+                         priorityText.toLowerCase().includes("repeated") ||
+                         priorityText.toLowerCase().includes("repeat");
 
       PAGE = innerPageScaffold();
-      y = 75;
+      
+      // Adjust Y position based on stars
+      let startY = shouldStars ? 95 : 75;
+      y = startY;
 
       // Helper function for shortening text
       const shortenText = (text, maxLength) => {
@@ -3113,6 +3595,28 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
       // ===== HEADER SECTION =====
       setFont("bold", 28, C.primary);
       doc.text("MATERIAL REQUISITION PLANNING", PAGE.w / 2, 55, { align: "center" });
+
+      // Add stars if lot is repeated
+      if (shouldStars) {
+        // Draw 5 gold stars below the main title
+        const starSize = 12;
+        const starSpacing = 24;
+        const totalWidth = 5 * starSpacing - starSpacing/2;
+        const startX = PAGE.w / 2 - totalWidth / 2;
+        const starY = 75;
+        
+        // Draw 5 stars
+        for (let i = 0; i < 5; i++) {
+          drawStar(doc, startX + (i * starSpacing), starY, starSize);
+        }
+        
+        // Add "LOT REPEATED" text below stars
+        setFont("bold", 16, C.highlight);
+        doc.text("LOT REPEATED", PAGE.w / 2, starY + 25, { align: "center" });
+        
+        // Update y position
+        y = starY + 50;
+      }
 
       // Thicker decorative line
       doc.setDrawColor(...C.accent);
@@ -3532,7 +4036,6 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
     setPdfBatchBusy(null);
   }
 };
-
 
   /* =================== UI (unchanged) =================== */
   return (

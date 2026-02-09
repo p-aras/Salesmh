@@ -1642,7 +1642,7 @@ const generateJobOrderPDF = async (order) => {
   onClick={() => onGenerateClick(order)}
   className="view-button green"
 >
-  {order['Status'] ? '🔒 Regenerate Job Order' : 'Create Job Order'}
+  {order['Status'] ? '🔒 RJO' : 'Cte JO'}
 </button>
   <button
   onClick={() => createMohitAndProceed(order)}
@@ -1651,7 +1651,7 @@ const generateJobOrderPDF = async (order) => {
   title="Create & download Job Order, update Sheet, then continue"
   disabled={creatingMohitId === (order?.['Order No.'] ?? '')}
 >
-  {creatingMohitId === (order?.['Order No.'] ?? '') ? 'Working…' : '🧩 Create Mohit Hosiery Job Order'}
+  {creatingMohitId === (order?.['Order No.'] ?? '') ? 'Working…' : '🧩 Create MH-JO'}
 </button>
 
 
