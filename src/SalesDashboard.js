@@ -34,7 +34,7 @@ const THEME = {
   primaryDark: '#1d4ed8',
   secondary: '#06b6d4',
   accent: '#8b5cf6',
-  background: '#f8fafc',
+  background: '#ffffff',
   cardBackground: '#ffffff',
   textPrimary: '#1e293b',
   textSecondary: '#64748b',

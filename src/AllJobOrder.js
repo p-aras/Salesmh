@@ -5,6 +5,10 @@ import { useNavigate } from "react-router-dom";
 const API_KEY = "AIzaSyAomDFBkOySlIxKWSKGHe6ATv9gvaBr7uk";
 const SHEET_ID = "1fKSwGBIpzWEFk566WRQ4bzQ0anJlmasoY8TwrTLQHXI";
 const TAB_NAME = "JobOrder";
+// Add these tracking configuration variables
+const TRACKING_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzV1WU0QyYN1brvsX1GNttlehah1eQMsgpnBshjRXpf7GxW2KfFJyYNqPGJiclE0NRX/exec"; // Replace with your deployed Apps Script Web App URL
+const TRACKING_SHEET_ID = "1jTju43L6-M1_f-zl67IMsI-sj7RMiLXOXN6z0vzSyck"; // Your tracking sheet ID
+const TRACKING_TAB_NAME = "PDF_Log"; // Tab name for tracking
 
 /** ====== fetching limits ====== */
 const INITIAL_LIMIT = 2000;   // first load
@@ -19,6 +23,57 @@ const HEADERS = [
   "Submitted By","Image URL","Lot Number","Component","Priority",
   "Tape/Lace", "Bottom Type", "Zip"  // Add these 3 new headers
 ];
+// Function to log PDF generation to Google Sheets
+const logPdfGeneration = async (row, pdfType, status = "Generated", notes = "") => {
+  try {
+    const jobOrderNo = row?.["Job Order No"] || "";
+    const lotNumber = row?.["Lot Number"] || "";
+    const generatedBy = "JobOrders Component";
+    const fileName = `JobOrder_${jobOrderNo}_${new Date().toISOString().slice(0,10)}.pdf`;
+    
+    let ipAddress = "";
+    try {
+      const ipResponse = await fetch('https://api.ipify.org?format=json');
+      const ipData = await ipResponse.json();
+      ipAddress = ipData.ip;
+    } catch (e) {
+      console.log("Could not fetch IP:", e);
+    }
+    
+    const sessionId = Math.random().toString(36).substring(2, 15) + 
+                      Math.random().toString(36).substring(2, 15);
+    
+    const trackingData = {
+      trackingSheetId: TRACKING_SHEET_ID,
+      tabName: TRACKING_TAB_NAME,
+      jobOrderNo: jobOrderNo,
+      lotNumber: lotNumber,
+      generatedBy: generatedBy,
+      fileName: fileName,
+      ipAddress: ipAddress,
+      sessionId: sessionId,
+      status: status,
+      pdfType: pdfType,
+      notes: notes,
+      updateMainSheet: true,
+      mainSheetId: SHEET_ID,
+      mainTabName: TAB_NAME
+    };
+    
+    await fetch(TRACKING_WEB_APP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(trackingData)
+    });
+    
+    console.log(`PDF generation logged for ${pdfType}: ${jobOrderNo}`);
+  } catch (error) {
+    console.error("Failed to log PDF generation:", error);
+  }
+};
 /* ---------- helpers ---------- */
 async function loadJsPDF() {
   const mod = await import("jspdf");
@@ -278,6 +333,10 @@ const [fZip, setFZip] = useState("");
 // const [fTapeLace, setFTapeLace] = useState("");
 // const [fBottomType, setFBottomType] = useState("");
 // const [fZip, setFZip] = useState("");
+// const [pdfBusyId, setPdfBusyId] = useState(null);
+// ADD THIS NEW STATE
+const [generatedLots, setGeneratedLots] = useState(new Set()); // Track which lots have PDFs generated
+const [loadingGeneratedLots, setLoadingGeneratedLots] = useState(false);
 
 
   const [preview, setPreview] = useState({ open: false, src: "", alt: "" });
@@ -364,7 +423,155 @@ const range = `${encodeURIComponent(TAB_NAME)}!A1:AO${upto}`;
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-
+// Add this new function to fetch already generated lots from PDF_log
+// Add this new function to fetch successfully generated lots from PDF_log
+// Fetch only Lot Numbers from the tracking sheet
+// Fetch only Lot Numbers from the tracking sheet
+// Fetch successfully generated lots from the tracking sheet
+const fetchGeneratedLots = async () => {
+  try {
+    setLoadingGeneratedLots(true);
+    
+    // Fetch all data from the tracking sheet
+    const range = `${encodeURIComponent(TRACKING_TAB_NAME)}!A:Z`; // Fetch up to column Z
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${TRACKING_SHEET_ID}/values/${range}?key=${API_KEY}`;
+    
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    
+    const data = await res.json();
+    const values = data.values || [];
+    
+    if (values.length === 0) {
+      console.log("No data found in tracking sheet");
+      setGeneratedLots(new Set());
+      return;
+    }
+    
+    console.log("Tracking sheet headers:", values[0]);
+    
+    // Find the column indices
+    const headers = values[0] || [];
+    let lotNumberColIndex = -1;
+    let statusColIndex = -1;
+    let jobOrderColIndex = -1;
+    
+    // Map headers to find correct columns
+    headers.forEach((header, index) => {
+      const headerLower = (header || "").toString().toLowerCase().trim();
+      
+      // Look for Lot Number column
+      if (headerLower.includes("lot") && headerLower.includes("number")) {
+        lotNumberColIndex = index;
+        console.log(`Found Lot Number column at index ${index}: "${header}"`);
+      } else if (headerLower === "lot" || headerLower === "lot no" || headerLower === "lot #") {
+        lotNumberColIndex = index;
+        console.log(`Found Lot Number column at index ${index}: "${header}"`);
+      }
+      
+      // Look for Status column
+      if (headerLower.includes("status")) {
+        statusColIndex = index;
+        console.log(`Found Status column at index ${index}: "${header}"`);
+      }
+      
+      // Look for Job Order column (optional, for debugging)
+      if (headerLower.includes("job") || headerLower.includes("order")) {
+        jobOrderColIndex = index;
+      }
+    });
+    
+    // If Lot Number column not found by header, try common positions
+    if (lotNumberColIndex === -1) {
+      console.warn("Lot Number column not found in headers, trying common positions");
+      // Try common positions (A=0, B=1, C=2, D=3) - usually Lot Number is in column C (index 2)
+      const possibleIndices = [2, 1, 3, 0]; // C, B, D, A in order of likelihood
+      
+      for (const idx of possibleIndices) {
+        if (idx < headers.length) {
+          lotNumberColIndex = idx;
+          console.log(`Using column ${String.fromCharCode(65 + idx)} as Lot Number column (header: "${headers[idx] || 'empty'}")`);
+          break;
+        }
+      }
+    }
+    
+    // If still not found, default to column C (index 2)
+    if (lotNumberColIndex === -1) {
+      console.warn("Could not determine Lot Number column, defaulting to column C (index 2)");
+      lotNumberColIndex = 2;
+    }
+    
+    // Collect all lot numbers with successful status
+    const lots = new Set();
+    let successCount = 0;
+    let totalRows = 0;
+    let failedCount = 0;
+    let startedCount = 0;
+    
+    // Start from index 1 to skip header row
+    for (let i = 1; i < values.length; i++) {
+      const row = values[i];
+      if (!row || row.length === 0) continue;
+      
+      totalRows++;
+      
+      // Get lot number if available
+      if (row.length > lotNumberColIndex) {
+        const lot = row[lotNumberColIndex]?.toString().trim();
+        
+        if (lot) {
+          // Check status if status column exists
+          let includeLot = false;
+          
+          if (statusColIndex !== -1 && row.length > statusColIndex) {
+            const status = row[statusColIndex]?.toString().toLowerCase().trim() || "";
+            
+            // Only include if status is successful (not "Failed" or "Started")
+            if (status === "generated" || status === "success" || status === "completed" || status === "done") {
+              includeLot = true;
+              successCount++;
+            } else if (status === "failed") {
+              failedCount++;
+            } else if (status === "started") {
+              startedCount++;
+            } else if (status) {
+              // Unknown status - include it to be safe
+              includeLot = true;
+              console.log(`Unknown status "${status}" for lot ${lot} - including it`);
+            }
+          } else {
+            // If no status column, include all lots that appear
+            includeLot = true;
+          }
+          
+          if (includeLot) {
+            lots.add(lot);
+          }
+        }
+      }
+    }
+    
+    setGeneratedLots(lots);
+    console.log(`=== Tracking Summary ===`);
+    console.log(`Total rows in tracking sheet: ${totalRows}`);
+    console.log(`Lots with successful PDFs: ${lots.size}`);
+    console.log(`Success count: ${successCount}, Failed: ${failedCount}, Started: ${startedCount}`);
+    console.log(`Sample of tracked lots:`, Array.from(lots).slice(0, 10));
+    
+  } catch (error) {
+    console.error("Failed to fetch generated lots:", error);
+    setGeneratedLots(new Set()); // Reset on error
+  } finally {
+    setLoadingGeneratedLots(false);
+  }
+};
+useEffect(() => {
+  const c = new AbortController();
+  fetchData({ isRefresh: false, signal: c.signal });
+  fetchGeneratedLots(); // Fetch generated lots on component mount
+  return () => c.abort();
+}, [rowLimit]);
   /* --------- Unique options --------- */
   const uniqueOptions = (key) => {
     const s = new Set();
@@ -1172,10 +1379,19 @@ const generatePdf = async (row) => {
   }
 
   const joNum = (row?.["Job Order No"] ?? "").toString().trim() || "Unknown";
+  
+  // ADD THIS CHECK - Prevent generation if lot already has successful PDF
+  if (generatedLots.has(lot)) {
+    alert(`PDF has already been successfully generated for Lot Number: ${lot}. Further generation is blocked.`);
+    return;
+  }
+  
   if (pdfBusyId) return;
   setPdfBusyId(joNum);
 
   try {
+    await logPdfGeneration(row, "single", "Started", "PDF generation started");
+    
     await pause(0);
 
     const jsPDF = await loadJsPDF();
@@ -1229,9 +1445,8 @@ const vDate = (k) => {
   if (!iso) return value;
   
   const d = new Date(iso);
-  // Format: "9 Dec 2026"
-  const day = d.getDate(); // No leading zero
-  const month = d.toLocaleDateString('en-US', { month: 'short' }); // Dec, Jan, Feb, etc.
+  const day = d.getDate();
+  const month = d.toLocaleDateString('en-US', { month: 'short' });
   const year = d.getFullYear();
   
   return `${day} ${month} ${year}`;
@@ -2347,6 +2562,7 @@ const renderSecondPage = async () => {
     };
 
     // ====== LANDSCAPE PRODUCTION TABLE PAGE ======
+// ====== LANDSCAPE PRODUCTION TABLE PAGE ======
 const renderLandscapeTablePage = async () => {
   // Switch to landscape A4
   doc.addPage("a4", "landscape");
@@ -2360,6 +2576,9 @@ const renderLandscapeTablePage = async () => {
                      priorityText.toLowerCase().includes("repeated_lot") || 
                      priorityText.toLowerCase().includes("repeated") ||
                      priorityText.toLowerCase().includes("repeat");
+  
+  // Check Direct Stitching status
+  const dsEnabled = asBool(row?.["Direct Stitching"]);
   
   // ====== SHADES INFORMATION ======
   const shades = parseShades(val("Shade"));
@@ -2398,7 +2617,7 @@ const renderLandscapeTablePage = async () => {
     return text.substring(0, maxLength - 3) + "...";
   };
   
-  // Function to draw page header (updated with stars)
+  // Function to draw page header (updated with stars and Direct Stitching)
   const drawPageHeader = (pageNumber, totalPages) => {
     // Add top margin
     const TOP_MARGIN = 15; // Add 15pt margin from top
@@ -2450,13 +2669,27 @@ const renderLandscapeTablePage = async () => {
       leftY += 12;
     }
     
-    // RIGHT SIDE: Brand + NEW FIELDS (Tape/Lace, Zip, Bottom Type) - Add TOP_MARGIN
+    // RIGHT SIDE: Brand + NEW FIELDS (Direct Stitching, Tape/Lace, Zip, Bottom Type)
     let rightY = 22 + TOP_MARGIN;
     
     setFont("bold", 10);
     const brand = val("Brand") || "—";
     doc.text(`BRAND: ${brand}`, LANDSCAPE_W - M, rightY, { align: "right" });
     rightY += 14;
+    
+    // ADD DIRECT STITCHING INFO HERE
+    if (dsEnabled) {
+      setFont("bold", 10);
+      doc.text(`DIRECT STITCHING: YES`, LANDSCAPE_W - M, rightY, { align: "right" });
+      rightY += 14;
+    } else {
+      const dsValue = asText(row?.["Direct Stitching"]);
+      if (dsValue && dsValue !== "—" && dsValue.toLowerCase() !== "no") {
+        setFont("bold", 10);
+        doc.text(`Direct Stitching: ${dsValue}`, LANDSCAPE_W - M, rightY, { align: "right" });
+        rightY += 14;
+      }
+    }
     
     // NEW FIELDS: Tape/Lace, Zip, Bottom Type
     const tapeLace = val("Tape/Lace") || val("Tape Lace") || val("Tape") || val("Lace") || "—";
@@ -2493,7 +2726,7 @@ const renderLandscapeTablePage = async () => {
       doc.text(patternGarment, LANDSCAPE_W - M, rightY, { align: "right" });
     }
     
-    // CENTER: Main Heading with LOT NUMBER - Add TOP_MARGIN + starAdjustment
+    // CENTER: Main Heading with LOT NUMBER
     let centerY = 22 + TOP_MARGIN;
     
     setFont("bold", 16);
@@ -2545,13 +2778,13 @@ const renderLandscapeTablePage = async () => {
       centerY += 14;
     }
     
-    // Calculate header height - Add TOP_MARGIN to base
-    let headerHeight = 75 + TOP_MARGIN + starAdjustment; // Add TOP_MARGIN and starAdjustment
+    // Calculate header height
+    let headerHeight = 75 + TOP_MARGIN + starAdjustment;
     
     // Adjust header height for content
     if (remarksText && remarksText !== "") headerHeight += 14;
     
-    // Separator line under header - PROPER GAP
+    // Separator line under header
     const separatorY = headerHeight + 5;
     doc.setDrawColor(...C.black);
     doc.setLineWidth(0.5);
@@ -2591,8 +2824,6 @@ const renderLandscapeTablePage = async () => {
     doc.line(boxX + 10, contentY, boxX + boxWidth - 10, contentY);
     contentY += 12;
     
-    // REMOVED LOT NUMBER FROM STICKER BOX
-    
     // DATE section only
     setFont("bold", 10);
     doc.text("DATE :", boxX + 15, contentY);
@@ -2624,7 +2855,7 @@ const renderLandscapeTablePage = async () => {
     return boxY + boxHeight;
   };
   
-  // Function to draw a table page
+  // Function to draw a table page (rest remains the same)
   const drawTablePage = (shadeBatch, pageIndex, totalPages, startSrNo) => {
     // Draw page header (same on every page)
     const tableStartY = drawPageHeader(pageIndex + 1, totalPages);
@@ -2896,51 +3127,51 @@ const renderLandscapeTablePage = async () => {
     await renderLandscapeTablePage();        // Page 5+ (Landscape with 7 colors per page)
 
     // ====== FOOTERS FOR ALL PAGES ======
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      const w = doc.internal.pageSize.getWidth();
-      const h = doc.internal.pageSize.getHeight();
+   const totalPages = doc.internal.getNumberOfPages();
+for (let i = 1; i <= totalPages; i++) {
+  doc.setPage(i);
+  const w = doc.internal.pageSize.getWidth();
+  const h = doc.internal.pageSize.getHeight();
 
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(2);
-      doc.line(M, h - FOOTER_H - 24, M + 120, h - FOOTER_H - 24);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1.5);
+  doc.line(M, h - FOOTER_H - 10, M + 100, h - FOOTER_H - 10);
 
-      setFont("normal", F.meta);
-      doc.text(`Page ${i} of ${totalPages} • ${joNum}`, w - M, h - FOOTER_H - 5, { align: "right" });
+  setFont("normal", F.meta);
+  doc.text(`Page ${i} of ${totalPages} • ${joNum}`, w - M, h - FOOTER_H, { align: "right" });
 
-      if (i === totalPages) {
-        // Last page (Landscape)
-        setFont("normal", F.meta);
-        doc.text(`Signature __________`, M, h - FOOTER_H - 5);
-      } else if (i === totalPages - 1) {
-        // Fourth page
-        setFont("normal", F.meta);
-        doc.text(`Signature ___________`, M, h - FOOTER_H - 5);
-      } else if (i === totalPages - 2) {
-        // Third page
-        setFont("normal", F.meta);
-        doc.text(`Checked by: Production Manager`, M, h - FOOTER_H - 5);
-      } else {
-        setFont("normal", F.meta);
-        // doc.text(`Submitted by: ${submittedBy}`, M, h - FOOTER_H - 5);
-      }
-    }
-
-    const safe = (s) => String(s || "").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 80);
-    try {
-      await doc.save(`JobOrder_${safe(joNum)}.pdf`, { returnPromise: true });
-    } catch {
-      doc.save(`JobOrder_${safe(joNum)}.pdf`);
-    }
-  } catch (e) {
-    alert(`Could not create PDF: ${e.message}`);
-  } finally {
-    setPdfBusyId(null);
+  if (i === totalPages) {
+    setFont("normal", F.meta);
+    doc.text(`Signature __________`, M, h - FOOTER_H);
+  } else if (i === totalPages - 1) {
+    setFont("normal", F.meta);
+    doc.text(`Signature __________`, M, h - FOOTER_H);
+  } else if (i === totalPages - 2) {
+    setFont("normal", F.meta);
+    doc.text(`Checked by: Production Manager`, M, h - FOOTER_H);
   }
+}
+
+// Log successful generation
+await logPdfGeneration(row, "single", "Generated", "PDF generated successfully");
+
+// Refresh the generated lots list after successful generation
+await fetchGeneratedLots();
+
+const safe = (s) => String(s || "").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 80);
+try {
+  await doc.save(`JobOrder_${safe(joNum)}.pdf`, { returnPromise: true });
+} catch {
+  doc.save(`JobOrder_${safe(joNum)}.pdf`);
+}
+ } catch (e) {
+  // Log error
+  await logPdfGeneration(row, "single", "Failed", `Error: ${e.message}`);
+  alert(`Could not create PDF: ${e.message}`);
+} finally {
+  setPdfBusyId(null);
+}
 };
-
-
 const exportBatchPages = async (which /* "first" | "second" | "material" */) => {
   if (pdfBatchBusy) return;
   setPdfBatchBusy(which);
@@ -4194,18 +4425,16 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
               <span className="jox-ico">📤</span><span>Export CSV</span>
             </button>
 
-            <button
-              className="jox-btn"
-              onClick={() => {
-                const controller = new AbortController();
-                fetchData({ isRefresh: true, signal: controller.signal });
-              }}
-              disabled={loading || refreshing}
-              title="Refresh data from Google Sheets"
-            >
-              <span className="jox-ico">{refreshing ? "⏳" : "🔄"}</span>
-              <span>{refreshing ? "Refreshing…" : "Refresh"}</span>
-            </button>
+      <button
+  className="jox-btn jox-btn--light"
+  onClick={() => fetchGeneratedLots()}
+  disabled={loadingGeneratedLots}
+  title="Refresh generated lots status"
+>
+  <span className="jox-ico">{loadingGeneratedLots ? "⏳" : "🔄"}</span>
+  <span>{loadingGeneratedLots ? "Loading…" : "Check Generated"}</span>
+</button>
+            
             <button
   className="jox-btn"
   onClick={() => exportBatchPages("first")}
@@ -4216,7 +4445,7 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
   <span>{pdfBatchBusy === "first" ? "Building…" : "Download FP"}</span>
 </button>
 
-<button
+{/* <button
   className="jox-btn"
   onClick={() => exportBatchPages("second")}
   disabled={loading || refreshing || pdfBatchBusy || rows.length === 0}
@@ -4242,7 +4471,7 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
 >
   <span className="jox-ico">{pdfLandscapeBusy ? "⏳" : "📊"}</span>
   <span>{pdfLandscapeBusy ? "Building…" : "Download CT"}</span>
-</button>
+</button> */}
           </div>
         </header>
 
@@ -4466,29 +4695,48 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
 ))}
 
                             {/* Actions */}
-                            <td className="jox-td jox-td--actions">
-                              {(() => {
-                                const hasLot = Boolean((r["Lot Number"] ?? "").toString().trim());
-                                const jo = (r["Job Order No"] ?? "").toString().trim();
-                                const isBusyThis = pdfBusyId && pdfBusyId === jo;
+<td className="jox-td jox-td--actions">
+  {(() => {
+    const hasLot = Boolean((r["Lot Number"] ?? "").toString().trim());
+    const lotNumber = (r["Lot Number"] ?? "").toString().trim();
+    const jo = (r["Job Order No"] ?? "").toString().trim();
+    const isBusyThis = pdfBusyId && pdfBusyId === jo;
+    
+    // UPDATED - Check if lot already has at least one successful PDF generation
+    const hasExistingSuccessfulPdf = generatedLots.has(lotNumber);
+    
+    // Determine disabled state
+    const isDisabled = !hasLot || Boolean(pdfBusyId) || hasExistingSuccessfulPdf;
+    
+    // Determine title message
+    let titleMessage = "";
+    if (!hasLot) {
+      titleMessage = "No Lot Number — cannot export";
+    } else if (hasExistingSuccessfulPdf) {
+      titleMessage = "PDF already successfully generated for this Lot Number - further generation blocked";
+    } else if (isBusyThis) {
+      titleMessage = "Generating…";
+    } else {
+      titleMessage = "Download PDF of this Job Order";
+    }
 
-                                return (
-                                  <button
-                                    className="jox-btn"
-                                    onClick={() => hasLot && generatePdf(r)}
-                                    disabled={!hasLot || Boolean(pdfBusyId)}
-                                    title={
-                                      hasLot
-                                        ? (isBusyThis ? "Generating…" : "Download PDF of this Job Order")
-                                        : "No Lot Number — cannot export"
-                                    }
-                                  >
-                                    <span className="jox-ico">{isBusyThis ? "⏳" : "📝"}</span>
-                                    <span>{isBusyThis ? "Working…" : "Create PDF"}</span>
-                                  </button>
-                                );
-                              })()}
-                            </td>
+    return (
+      <button
+        className="jox-btn"
+        onClick={() => hasLot && generatePdf(r)}
+        disabled={isDisabled}
+        title={titleMessage}
+      >
+        <span className="jox-ico">
+          {isBusyThis ? "⏳" : (hasExistingSuccessfulPdf ? "✅" : "📝")}
+        </span>
+        <span>
+          {isBusyThis ? "Working…" : (hasExistingSuccessfulPdf ? "Already Generated" : "Create PDF")}
+        </span>
+      </button>
+    );
+  })()}
+</td>
                           </tr>
 
                           {/* Details row */}

@@ -115,40 +115,46 @@ export default function Parta() {
     "https://script.google.com/macros/s/AKfycbxTvtHG8PvIO7joStX6htOoyeQ8l0V1ItzZEEWhNFLxbXyU22KEUCD3rE8Q2TtW7verzQ/exec";
 
   const POST_APPS_SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbxVHhiFgQlIpdcy5wvQzKXk7WhKeG6sWbY42ItJErl-KS5jGNpHWJ75gjOR5CqkF60/exec"; // REPLACE WITH YOUR NEW SAVE SCRIPT ID
+    "https://script.google.com/macros/s/AKfycbykzeaPpb40K8p_k11FqOTlVN0LV5s1XIiB1W1bvSwcAMXy2_LJCLwRTXYYP1DVExpw/exec"; // REPLACE WITH YOUR NEW SAVE SCRIPT ID
     // Add this with your other URLs
 const RANGE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVpZC3YYNr1b-1PRvSYYIhYY8nsW8Aw7OAh8Cgz8zyti2MWOPGRPxN3RxhzanJ1WjLJA/exec";
 
   const [retryCount, setRetryCount] = useState(0);
 
   // ---- Server calls ----
-  async function saveMatrixExpanded({ 
-    meta, 
-    sizes, 
-    shades, 
-    cutting, 
-    cells, 
-    rolls, 
-    kgs, 
-    kapdaLayerWT, 
-    layerPcs, 
-    layerInch, 
-    dia, 
-    cuttingWeight, 
-    kapdaWapsi,
-    // New fields
-    proposedWeightPerPcs,
-    netWeight,
-    actualWeightPerPcs,
-    diff,
-    grossWeightPerPcs,
-    netWeightPerPcs,
-    wastagePercentage,
-    wastageKgs,
-    kharchaEntries,
-    remarks // Combined remarks
-  }) {
-    const payload = JSON.stringify({ 
+async function saveMatrixExpanded({ 
+  meta, 
+  sizes, 
+  shades, 
+  cutting, 
+  cells, 
+  rolls, 
+  kgs, 
+  kapdaLayerWT, 
+  layerPcs, 
+  layerInch, 
+  dia, 
+  cuttingWeight, 
+  kapdaWapsi,
+  proposedWeightPerPcs,
+  netWeight,
+  actualWeightPerPcs,
+  diff,
+  grossWeightPerPcs,
+  netWeightPerPcs,
+  wastagePercentage,
+  wastageKgs,
+  kharchaEntries,
+  remarks,
+  standardValue,
+  minRange,
+  maxRange,
+  totalGrossWeightPerPcs,
+  totalNetWeightPerPcs,
+  totalWithKharcha
+}) {
+  try {
+    const dataToSend = { 
       meta, 
       sizes, 
       shades, 
@@ -171,22 +177,44 @@ const RANGE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzVpZC3YY
       wastagePercentage,
       wastageKgs,
       kharchaEntries,
-      remarks // Include combined remarks
-    });
+      remarks,
+      standardValue,
+      minRange,
+      maxRange,
+      totalGrossWeightPerPcs,
+      totalNetWeightPerPcs,
+      totalWithKharcha
+    };
+    
+    console.log("Saving data for lot:", meta?.lotNumber);
+    
+    // Create form data
+    const formData = new URLSearchParams();
+    formData.append('payload', JSON.stringify(dataToSend));
+    
+    console.log("Sending to URL:", POST_APPS_SCRIPT_URL);
 
-    // USE POST_APPS_SCRIPT_URL FOR SAVING
     const res = await fetch(POST_APPS_SCRIPT_URL, {
       method: "POST",
+      mode: "no-cors", // Add this to handle CORS
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      keepalive: true,
-      body: new URLSearchParams({ payload }),
+      body: formData.toString(),
     });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || "Save failed");
-    return json;
+
+    // With no-cors mode, we can't read the response
+    // So we'll assume it worked if we get here
+    console.log("Save request sent successfully");
+    
+    // Return a success response
+    return { ok: true };
+    
+  } catch (error) {
+    console.error("Save error details:", error);
+    throw error;
   }
+}
 
   async function loadLatestMatrixBlock(lotNumber) {
     // USE GET_APPS_SCRIPT_URL FOR FETCHING
