@@ -9,7 +9,7 @@ const SHEET_ID1 = "1fKSwGBIpzWEFk566WRQ4bzQ0anJlmasoY8TwrTLQHXI";
 
 const MAX_ROWS = 10000;
 const GAS_WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbzEx67RgS6dLt1DOVTrYlyVZw0jciNtlA00ZG49xHMS1Uuk6Am8xS_2HszrbvkfPrl5/exec";
+  "https://script.google.com/macros/s/AKfycbwEI5pTBwZpYEGAkbaOR89SYYV4UFMdn1oX8qgjEVfacqCw_8uzM2hSNKHYQ6G1TTd5AA/exec";
 
 const HEADER_MAP = {
   partyName: "Party Name",
@@ -31,6 +31,7 @@ const REFERRERS = ["Mohit Goyal", "EA", "Varun Goyal"];
 const TAPE_LACE_OPTIONS = ["YES", "NO", "NOT DECIDED"];
 const OTHER_REFERRER_TOKEN = "__ANY_OTHER__";
 const PRIORITY_OPTIONS = ["HIGH", "MEDIUM", "LOW", "REPEATED_LOT"];
+const STICKER_OPTIONS = ["YES", "NO","Silicon","Fusing", "NOT DECIDED"];
 
 const JobOrderForm = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -61,6 +62,7 @@ const JobOrderForm = () => {
     directStitching: "no",
     orderNo: "",
     priority: "MEDIUM",
+    sticker: "",
   });
 
   const [lists, setLists] = useState(
@@ -124,6 +126,7 @@ const JobOrderForm = () => {
     "Tape/Lace",
     "Remarks",
     "Direct Stitching",
+    "Sticker",
     "Submitted By",
     "Image URL",
     "Priority",
@@ -272,6 +275,7 @@ const JobOrderForm = () => {
       "Direct Stitching": isDirect ? "yes" : directRaw || "",
       "Emb Details": pick(src, "Emb Details", "Embroidery Details"),
       "Printing Details": pick(src, "Printing Details", "Print Details"),
+      "Sticker": pick(src, "Sticker", "Sticker Option"),
     };
   }
 
@@ -305,6 +309,7 @@ const JobOrderForm = () => {
       directStitching: "",
       orderNo: currentOrderNo,
       priority: "MEDIUM",
+      sticker: "",
     };
   }
 
@@ -845,16 +850,12 @@ const JobOrderForm = () => {
     const garmentType = String(row["Garment Type"] || "");
     const isShirt = isShirtGarment(garmentType);
 
-    // Handle priority - check if it's a repeated lot
     const priorityFromRow = String(row["Priority"] || "").toUpperCase();
     let priority = priorityFromRow || "MEDIUM";
     
-    // Check if it's already in repeated lot format
     if (priorityFromRow.startsWith("REPEATED_LOT#")) {
-      // Keep the same format
       priority = priorityFromRow;
     } else if (priorityFromRow === "REPEATED_LOT") {
-      // Add a generic lot number if none exists
       priority = "REPEATED_LOT#N/A";
     }
 
@@ -882,6 +883,7 @@ const JobOrderForm = () => {
       remarks: String(row["Remarks"] || ""),
       directStitching: isDirect ? "yes" : "no",
       priority: priority,
+      sticker: String(row["Sticker"] || ""),
     }));
     setEmbPositions(nextEmbPos);
     setPrintPositions(nextPrintPos);
@@ -944,7 +946,6 @@ const JobOrderForm = () => {
     });
 
   const handleClearAll = useCallback(() => {
-    // Clear form but preserve job order number and reset date
     setFormData((prev) => ({
       jobOrderNo: prev.jobOrderNo,
       date: new Date().toISOString().split("T")[0],
@@ -969,6 +970,7 @@ const JobOrderForm = () => {
       directStitching: "no",
       orderNo: "",
       priority: "MEDIUM",
+      sticker: "",
     }));
     setImageFile(null);
     setEmbPositions({
@@ -1019,19 +1021,16 @@ const JobOrderForm = () => {
     const { name } = e.target;
     let { value } = e.target;
 
-    // If garment type is changing, check if it's a shirt and clear/disable bottom type
     if (name === "garmentType") {
       const isShirt = isShirtGarment(value);
       
       if (isShirt) {
-        // If it's a shirt, clear the bottom type
         setFormData((prev) => ({
           ...prev,
           garmentType: value,
-          bottomType: "", // Clear bottom type for shirts
+          bottomType: "",
         }));
       } else {
-        // For non-shirt garments, just update normally
         setFormData((prev) => ({ ...prev, garmentType: value }));
       }
       return;
@@ -1119,7 +1118,6 @@ const JobOrderForm = () => {
       return;
     }
 
-    // Handle priority change - check for repeated lot
     if (name === "priority") {
       if (value === "REPEATED_LOT") {
         setShowRepeatedLotDialog(true);
@@ -1157,7 +1155,6 @@ const JobOrderForm = () => {
       if (!formData.unit) throw new Error("Please select a unit");
       if (!formData.priority) throw new Error("Please select a priority");
       
-      // NEW: Validate required fields for gsheet storage
       if (!formData.partyName?.trim()) throw new Error("Party Name is required");
       if (!formData.garmentType?.trim()) throw new Error("Garment Type is required");
       if (!formData.section?.trim()) throw new Error("Gender/Section is required");
@@ -1196,6 +1193,7 @@ const JobOrderForm = () => {
         zip: formData.zip || "",
         bottomType: formData.bottomType || "",
         tapeLace: formData.tapeLace || "",
+        sticker: formData.sticker || "",
         embDetails: isDirect
           ? ""
           : (() => {
@@ -1235,7 +1233,6 @@ const JobOrderForm = () => {
     }
   };
 
-  // Helper function to get priority display
   const getPriorityDisplay = (priority) => {
     if (priority && priority.startsWith("REPEATED_LOT#")) {
       const lotNumber = priority.split("#")[1];
@@ -1246,576 +1243,507 @@ const JobOrderForm = () => {
 
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
-      {/* Enhanced Header */}
-      <div className="paper paper--header">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 20,
-          }}
-        >
-          <div style={styles.headerRow}>
-            <div style={styles.logo}>
-              <span style={{ fontSize: 28 }}>📋</span>
+      {/* Enhanced Header with modern design */}
+      <div style={styles.header}>
+        <div style={styles.headerTop}>
+          <div style={styles.headerLeft}>
+            <div style={styles.logoWrapper}>
+              <div style={styles.logo}>📋</div>
             </div>
-            <div>
-              <div style={styles.titleContainer}>
-                <h1 style={styles.title}>Cutting Job Order Form</h1>
-                <div style={styles.titleBadge}>ENHANCED</div>
+            <div style={styles.headerTitleSection}>
+              <h1 style={styles.mainTitle}>Cutting Job Order</h1>
+              <div style={styles.badgeContainer}>
+                <span style={styles.badge}>Production</span>
+                <span style={styles.badge}>Manufacturing</span>
               </div>
-              <p style={styles.subtitle}>
-                Complete the form to create a new production order with enhanced features
-              </p>
+              <p style={styles.headerSubtitle}>Create and manage production orders with precision</p>
             </div>
           </div>
-
-          <div style={styles.headerActions}>
-            <div style={styles.headerBadges}>
-              <div style={styles.badgeRow}>
-                <span style={styles.badge} title="Job Order Number">
-                  🔢 {formData.jobOrderNo || "JO-PENDING"}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await fetchNextJobNo();
-                      } catch {
-                        // no-op
-                      }
-                    }}
-                    style={styles.badgeButton}
-                    title="Refresh Job Order No."
-                  >
-                    ↻
-                  </button>
-                </span>
-
-                <label style={styles.badge} title="Date of Job Order">
-                  📅
-                  <input
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                    style={styles.badgeDateInput}
-                    required
-                  />
-                </label>
+          
+          <div style={styles.headerRight}>
+            <div style={styles.orderInfo}>
+              <div style={styles.orderNumber}>
+                <span style={styles.orderLabel}>Order #</span>
+                <span style={styles.orderValue}>{formData.jobOrderNo || "JO-PENDING"}</span>
+                <button
+                  type="button"
+                  onClick={fetchNextJobNo}
+                  style={styles.refreshOrderBtn}
+                  title="Refresh Job Order No."
+                >
+                  ↻
+                </button>
+              </div>
+              <div style={styles.datePicker}>
+                <span style={styles.dateLabel}>Date</span>
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleChange}
+                  style={styles.dateInput}
+                  required
+                />
               </div>
             </div>
-
-            <div style={styles.actionButtons}>
+            
+            <div style={styles.actionGroup}>
               <button
                 type="button"
                 onClick={() => setShowRepeatDialog(true)}
-                style={styles.linkAction}
+                style={styles.actionButton}
                 title="Pick a previous order to repeat"
               >
-                ⟳ Repeat Order
+                <span style={styles.actionIcon}>↻</span>
+                Repeat Order
               </button>
               <button
                 type="button"
                 onClick={handleClearAll}
-                style={styles.linkAction}
+                style={styles.actionButton}
                 title="Clear all fields"
               >
-                ✧ Clear All
+                <span style={styles.actionIcon}>✕</span>
+                Clear All
               </button>
               <button
                 type="button"
                 onClick={handleRefreshAll}
-                style={styles.refreshPill}
-                title="Refresh dropdowns, next JO number & recent orders"
+                style={styles.refreshButton}
                 disabled={refreshing}
               >
-                <span style={styles.refreshIcon}>
-                  {refreshing ? (
-                    <span
-                      style={{
-                        ...styles.spinner,
-                        width: 14,
-                        height: 14,
-                        borderWidth: 2,
-                      }}
-                    />
-                  ) : (
-                    "↻"
-                  )}
-                </span>
-                <span>{refreshing ? "Refreshing…" : "Refresh Data"}</span>
+                <span style={styles.refreshIcon}>{refreshing ? "⋯" : "↻"}</span>
+                {refreshing ? "Refreshing" : "Refresh"}
               </button>
               <button
                 type="button"
                 onClick={() => window.history.back()}
                 style={styles.backButton}
               >
-                ← Back
+                ←
               </button>
             </div>
           </div>
         </div>
-        <div className="paper__rule" />
       </div>
 
-      {/* Enhanced Grid Layout */}
-      <div style={styles.formGrid}>
-        {/* Product Details Section */}
-        <div style={styles.section}>
-          <div style={styles.sectionHeader}>
-            <div style={styles.sectionIconContainer}>
-              <span style={styles.sectionIcon}>🧵</span>
+      {/* Main Content Grid */}
+      <div style={styles.mainGrid}>
+        {/* Left Column - Product Details */}
+        <div style={styles.column}>
+          <div style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <div style={styles.sectionIcon}>🧵</div>
+              <div>
+                <h3 style={styles.sectionTitle}>Product Details</h3>
+                <p style={styles.sectionSubtitle}>Material specifications and measurements</p>
+              </div>
             </div>
-            <div>
-              <h3 style={styles.sectionTitle}>Product Details</h3>
-              <p style={styles.sectionSubtitle}>Material specifications and measurements</p>
-            </div>
-          </div>
 
-          <div style={styles.sectionContent}>
-            <Field label="Sale Order No." emoji="📑" required={false}>
-              <input
-                name="orderNo"
-                value={formData.orderNo}
-                readOnly
-                style={{
-                  ...styles.input,
-                  backgroundColor: "rgba(248,250,252,0.9)",
-                  cursor: "not-allowed",
-                }}
-                placeholder="(auto from All Orders)"
-                title="Comes from All Orders"
-              />
-            </Field>
-
-            <Field label="Fabric" emoji="🧶">
-              <input
-                name="fabric"
-                value={formData.fabric}
-                onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., Organic Cotton 180 GSM"
-                required
-              />
-            </Field>
-
-            <Field label="Brand" emoji="🏷️" required={false}>
-              <input
-                name="brand"
-                value={formData.brand}
-                onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., Alpha Fashion Co."
-              />
-            </Field>
-
-            <div style={styles.inlineGroup}>
-              <Field label="Shades" emoji="🎨">
+            <div style={styles.sectionContent}>
+              <Field label="Sale Order No." emoji="📑" required={false}>
                 <input
-                  name="shade"
-                  value={formData.shade}
+                  name="orderNo"
+                  value={formData.orderNo}
                   readOnly
-                  onClick={() => {
-                    setShadeRows(parseShadeString(formData.shade));
-                    setShowShadeDialog(true);
-                  }}
-                  style={{
-                    ...styles.input,
-                    cursor: "pointer",
-                    backgroundColor: "rgba(255,255,255,0.9)",
-                  }}
-                  placeholder="Click to add"
-                  title="Click to add shades & combinations"
+                  style={styles.readOnlyInput}
+                  placeholder="Auto from All Orders"
                 />
               </Field>
 
-              <Field label="Size" emoji="📏" required={false}>
+              <Field label="Fabric" emoji="🧶">
                 <input
-                  name="size"
-                  value={formData.size}
-                  readOnly
-                  onClick={() => {
-                    setSizeRows(parseSizeString(formData.size));
-                    setShowSizeDialog(true);
-                  }}
-                  style={{
-                    ...styles.input,
-                    cursor: "pointer",
-                    backgroundColor: "rgba(255,255,255,0.9)",
-                  }}
-                  placeholder="Click to add"
-                  title="Click to add multiple sizes"
-                />
-              </Field>
-            </div>
-
-            <div style={styles.inlineGroup}>
-              <Field label="Quantity" emoji="🔢">
-                <input
-                  type="number"
-                  name="quantity"
-                  value={formData.quantity}
+                  name="fabric"
+                  value={formData.fabric}
                   onChange={handleChange}
-                  style={{ ...styles.input, flex: 2 }}
-                  placeholder="e.g., 150"
-                  min="0"
-                  step="1"
-                  inputMode="numeric"
+                  style={styles.input}
+                  placeholder="e.g., Organic Cotton 180 GSM"
                   required
                 />
               </Field>
-              <Field label="Unit" emoji="📦" required={false}>
-                <select
-                  name="unit"
-                  value={formData.unit}
+
+              <Field label="Brand" emoji="🏷️" required={false}>
+                <input
+                  name="brand"
+                  value={formData.brand}
                   onChange={handleChange}
-                  style={{ ...styles.input, flex: 1 }}
-                  required
-                >
-                  <option value="">Select</option>
-                  {UNIT_OPTIONS.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </select>
+                  style={styles.input}
+                  placeholder="e.g., Alpha Fashion Co."
+                />
               </Field>
+
+              <div style={styles.rowGroup}>
+                <Field label="Shades" emoji="🎨">
+                  <input
+                    name="shade"
+                    value={formData.shade}
+                    readOnly
+                    onClick={() => {
+                      setShadeRows(parseShadeString(formData.shade));
+                      setShowShadeDialog(true);
+                    }}
+                    style={styles.clickableInput}
+                    placeholder="Click to add shades"
+                  />
+                </Field>
+
+                <Field label="Size" emoji="📏" required={false}>
+                  <input
+                    name="size"
+                    value={formData.size}
+                    readOnly
+                    onClick={() => {
+                      setSizeRows(parseSizeString(formData.size));
+                      setShowSizeDialog(true);
+                    }}
+                    style={styles.clickableInput}
+                    placeholder="Click to add sizes"
+                  />
+                </Field>
+              </div>
+
+              <div style={styles.rowGroup}>
+                <Field label="Quantity" emoji="🔢">
+                  <input
+                    type="number"
+                    name="quantity"
+                    value={formData.quantity}
+                    onChange={handleChange}
+                    style={styles.input}
+                    placeholder="e.g., 150"
+                    min="0"
+                    step="1"
+                    required
+                  />
+                </Field>
+                <Field label="Unit" emoji="📦">
+                  <select
+                    name="unit"
+                    value={formData.unit}
+                    onChange={handleChange}
+                    style={styles.select}
+                    required
+                  >
+                    <option value="">Select Unit</option>
+                    {UNIT_OPTIONS.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Selection Details Section */}
-        <div style={styles.section}>
-          <div style={styles.sectionHeader}>
-            <div style={styles.sectionIconContainer}>
-              <span style={styles.sectionIcon}>📊</span>
+        {/* Middle Column - Selection Details */}
+        <div style={styles.column}>
+          <div style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <div style={styles.sectionIcon}>📊</div>
+              <div>
+                <h3 style={styles.sectionTitle}>Selection Details</h3>
+                <p style={styles.sectionSubtitle}>Client and garment specifications</p>
+              </div>
             </div>
-            <div>
-              <h3 style={styles.sectionTitle}>Selection Details</h3>
-              <p style={styles.sectionSubtitle}>Client and garment specifications</p>
-            </div>
-          </div>
 
-          <div style={styles.sectionContent}>
-            <Select
-              label="Party Name"
-              emoji="🏢"
-              name="partyName"
-              value={formData.partyName}
-              options={lists.partyName}
-              onChange={handleChange}
-              loading={loading}
-              required={true}
-            />
-            <Select
-              label="Garment Type"
-              emoji="👕"
-              name="garmentType"
-              value={formData.garmentType}
-              options={lists.garmentType}
-              onChange={handleChange}
-              loading={loading}
-              required={true}
-            />
-            <Select
-              label="Gender"
-              emoji="📌"
-              name="section"
-              value={formData.section}
-              options={lists.section}
-              onChange={handleChange}
-              loading={loading}
-              required={true}
-            />
-            <Select
-              label="Season"
-              emoji="🌤️"
-              name="season"
-              value={formData.season}
-              options={lists.season}
-              onChange={handleChange}
-              loading={loading}
-              required={true}
-            />
-
-            <div style={styles.inlineGroup}>
+            <div style={styles.sectionContent}>
               <Select
-                label="Embroidery"
-                emoji="🧵"
-                name="emb"
-                value={formData.emb}
-                options={lists.emb}
+                label="Party Name"
+                emoji="🏢"
+                name="partyName"
+                value={formData.partyName}
+                options={lists.partyName}
                 onChange={handleChange}
                 loading={loading}
-                disabled={formData.directStitching === "yes"}
+                required={true}
               />
-
               <Select
-                label="Printing"
-                emoji="🖨️"
-                name="printing"
-                value={formData.printing}
-                options={lists.printing}
+                label="Garment Type"
+                emoji="👕"
+                name="garmentType"
+                value={formData.garmentType}
+                options={lists.garmentType}
                 onChange={handleChange}
                 loading={loading}
-                disabled={formData.directStitching === "yes"}
+                required={true}
               />
-            </div>
+              <Select
+                label="Gender"
+                emoji="📌"
+                name="section"
+                value={formData.section}
+                options={lists.section}
+                onChange={handleChange}
+                loading={loading}
+                required={true}
+              />
+              <Select
+                label="Season"
+                emoji="🌤️"
+                name="season"
+                value={formData.season}
+                options={lists.season}
+                onChange={handleChange}
+                loading={loading}
+                required={true}
+              />
 
-            <div style={styles.field}>
-              <label style={styles.label}>
-                <span style={styles.emoji}>🪡</span>
-                Direct Stitching
-                <span style={styles.requiredIndicator}>*</span>
-              </label>
-              <div style={styles.radioGroup}>
-                {["no", "yes"].map((option) => (
-                  <label
-                    key={option}
-                    style={{
-                      ...styles.radioLabel,
-                      background:
-                        formData.directStitching === option
-                          ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
-                          : "white",
-                      color: formData.directStitching === option ? "white" : "#334155",
-                    }}
-                  >
+              <div style={styles.rowGroup}>
+                <Select
+                  label="Embroidery"
+                  emoji="🧵"
+                  name="emb"
+                  value={formData.emb}
+                  options={lists.emb}
+                  onChange={handleChange}
+                  loading={loading}
+                  disabled={formData.directStitching === "yes"}
+                />
+                <Select
+                  label="Printing"
+                  emoji="🖨️"
+                  name="printing"
+                  value={formData.printing}
+                  options={lists.printing}
+                  onChange={handleChange}
+                  loading={loading}
+                  disabled={formData.directStitching === "yes"}
+                />
+              </div>
+
+              <div style={styles.radioField}>
+                <label style={styles.radioLabel}>
+                  <span style={styles.emoji}>🪡</span>
+                  Direct Stitching
+                  <span style={styles.requiredIndicator}>*</span>
+                </label>
+                <div style={styles.radioGroup}>
+                  <label style={styles.radioOption}>
                     <input
                       type="radio"
                       name="directStitching"
-                      value={option}
-                      checked={formData.directStitching === option}
+                      value="no"
+                      checked={formData.directStitching === "no"}
                       onChange={handleChange}
-                      style={styles.radioInput}
                     />
-                    {option === "yes" ? "Yes" : "No"}
+                    <span>No</span>
                   </label>
-                ))}
+                  <label style={styles.radioOption}>
+                    <input
+                      type="radio"
+                      name="directStitching"
+                      value="yes"
+                      checked={formData.directStitching === "yes"}
+                      onChange={handleChange}
+                    />
+                    <span>Yes</span>
+                  </label>
+                </div>
               </div>
-            </div>
 
-            <Select
-              label="Pattern"
-              emoji="📐"
-              name="pattern"
-              value={formData.pattern}
-              options={patternOptionsWithOther}
-              onChange={handleChange}
-              loading={loading}
-            />
+              <Field label="Sticker" emoji="🏷️" required={false}>
+                <select
+                  name="sticker"
+                  value={formData.sticker}
+                  onChange={handleChange}
+                  style={styles.select}
+                >
+                  <option value="">Select Sticker Option</option>
+                  {STICKER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Select
+                label="Pattern"
+                emoji="📐"
+                name="pattern"
+                value={formData.pattern}
+                options={patternOptionsWithOther}
+                onChange={handleChange}
+                loading={loading}
+              />
+            </div>
           </div>
         </div>
 
-        {/* Additional Information Section */}
-        <div style={styles.section}>
-          <div style={styles.sectionHeader}>
-            <div style={styles.sectionIconContainer}>
-              <span style={styles.sectionIcon}>📝</span>
-            </div>
-            <div>
-              <h3 style={styles.sectionTitle}>Additional Information</h3>
-              <p style={styles.sectionSubtitle}>Style, finishing options, and attachments</p>
-            </div>
-          </div>
-
-          <div style={styles.sectionContent}>
-            <Select
-              label="Style"
-              emoji="👔"
-              name="style"
-              value={formData.style}
-              options={styleOptionsWithOther}
-              onChange={handleChange}
-              loading={loading}
-            />
-
-            {/* Priority Field - Moved to Additional Information */}
-            <Field label="Priority" emoji="⚡" required={true}>
-              <select
-                name="priority"
-                value={formData.priority.startsWith("REPEATED_LOT#") ? "REPEATED_LOT" : formData.priority}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "REPEATED_LOT") {
-                    setShowRepeatedLotDialog(true);
-                  } else {
-                    setFormData((prev) => ({ ...prev, priority: value }));
-                  }
-                }}
-                style={styles.input}
-                required
-              >
-                <option value="">-- Select Priority --</option>
-                <option value="HIGH">HIGH</option>
-                <option value="MEDIUM">MEDIUM</option>
-                <option value="LOW">LOW</option>
-                <option value="REPEATED_LOT">REPEATED LOT</option>
-              </select>
-              {/* Show repeated lot number if selected */}
-              {formData.priority.startsWith("REPEATED_LOT#") && (
-                <div style={{
-                  fontSize: "13px",
-                  color: "#92400e",
-                  marginTop: "4px",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 8px",
-                  background: "rgba(251, 191, 36, 0.1)",
-                  borderRadius: "6px",
-                  border: "1px solid rgba(251, 191, 36, 0.3)",
-                }}>
-                  <span>🔁</span>
-                  <span>Lot Number: {formData.priority.split("#")[1] || ""}</span>
-                </div>
-              )}
-            </Field>
-
-            {/* Zip Field */}
-            <Field label="Zip" emoji="🤐" required={false}>
-              <select
-                name="zip"
-                value={formData.zip}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option value="">-- Select Zip Option --</option>
-                {ZIP_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            {/* Bottom Type Field */}
-            <Field label="Bottom Type" emoji="👖" required={false}>
-              <select
-                name="bottomType"
-                value={formData.bottomType}
-                onChange={handleChange}
-                style={{
-                  ...styles.input,
-                  ...(isShirtGarment(formData.garmentType) ? {
-                    backgroundColor: "#f3f4f6",
-                    cursor: "not-allowed",
-                    color: "#9ca3af",
-                  } : {})
-                }}
-                disabled={isShirtGarment(formData.garmentType)}
-              >
-                <option value="">
-                  {isShirtGarment(formData.garmentType) 
-                    ? "Not applicable for Shirts" 
-                    : "-- Select Bottom Type --"}
-                </option>
-                {!isShirtGarment(formData.garmentType) && 
-                  BOTTOM_TYPE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))
-                }
-              </select>
-              {isShirtGarment(formData.garmentType) && (
-                <div style={{
-                  fontSize: "12px",
-                  color: "#6b7280",
-                  marginTop: "4px",
-                  fontStyle: "italic"
-                }}>
-                  Bottom type is not applicable for shirts
-                </div>
-              )}
-            </Field>
-
-            {/* Tape/Lace Field */}
-            <Field label="Tape/Lace" emoji="🎀" required={false}>
-              <select
-                name="tapeLace"
-                value={formData.tapeLace}
-                onChange={handleChange}
-                style={styles.input}
-              >
-                <option value="">-- Select Tape/Lace --</option>
-                {TAPE_LACE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Remarks" emoji="💬" required={false}>
-              <textarea
-                name="remarks"
-                value={formData.remarks}
-                onChange={handleChange}
-                style={{ ...styles.input, minHeight: 100, resize: "vertical" }}
-                placeholder="Special instructions, urgency level, etc."
-              />
-            </Field>
-
-            <Field label="Reference Image (optional)" emoji="🖼️" required={false}>
-              <div style={styles.fileUploadContainer}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-                  style={styles.fileInput}
-                  id="image-upload"
-                />
-                <label htmlFor="image-upload" style={styles.fileUploadLabel}>
-                  <span style={styles.fileUploadIcon}>📁</span>
-                  <span>{imageFile ? imageFile.name : "Choose an image file"}</span>
-                </label>
-                {imageFile && (
-                  <button
-                    type="button"
-                    onClick={() => setImageFile(null)}
-                    style={styles.fileClearButton}
-                    title="Remove image"
-                  >
-                    ✕
-                  </button>
-                )}
+        {/* Right Column - Additional Information */}
+        <div style={styles.column}>
+          <div style={styles.section}>
+            <div style={styles.sectionHeader}>
+              <div style={styles.sectionIcon}>📝</div>
+              <div>
+                <h3 style={styles.sectionTitle}>Additional Information</h3>
+                <p style={styles.sectionSubtitle}>Style, finishing options, and attachments</p>
               </div>
-            </Field>
+            </div>
+
+            <div style={styles.sectionContent}>
+              <Select
+                label="Style"
+                emoji="👔"
+                name="style"
+                value={formData.style}
+                options={styleOptionsWithOther}
+                onChange={handleChange}
+                loading={loading}
+              />
+
+              <Field label="Priority" emoji="⚡">
+                <select
+                  name="priority"
+                  value={formData.priority.startsWith("REPEATED_LOT#") ? "REPEATED_LOT" : formData.priority}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "REPEATED_LOT") {
+                      setShowRepeatedLotDialog(true);
+                    } else {
+                      setFormData((prev) => ({ ...prev, priority: value }));
+                    }
+                  }}
+                  style={styles.select}
+                  required
+                >
+                  <option value="">Select Priority</option>
+                  <option value="HIGH">HIGH</option>
+                  <option value="MEDIUM">MEDIUM</option>
+                  <option value="LOW">LOW</option>
+                  <option value="REPEATED_LOT">REPEATED LOT</option>
+                </select>
+                {formData.priority.startsWith("REPEATED_LOT#") && (
+                  <div style={styles.lotBadge}>
+                    <span>🔁</span>
+                    <span>Lot: {formData.priority.split("#")[1] || ""}</span>
+                  </div>
+                )}
+              </Field>
+
+              <Field label="Zip" emoji="🤐" required={false}>
+                <select
+                  name="zip"
+                  value={formData.zip}
+                  onChange={handleChange}
+                  style={styles.select}
+                >
+                  <option value="">Select Zip Option</option>
+                  {ZIP_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Bottom Type" emoji="👖" required={false}>
+                <select
+                  name="bottomType"
+                  value={formData.bottomType}
+                  onChange={handleChange}
+                  style={{
+                    ...styles.select,
+                    ...(isShirtGarment(formData.garmentType) ? styles.disabledSelect : {})
+                  }}
+                  disabled={isShirtGarment(formData.garmentType)}
+                >
+                  <option value="">
+                    {isShirtGarment(formData.garmentType) 
+                      ? "Not applicable for Shirts" 
+                      : "Select Bottom Type"}
+                  </option>
+                  {!isShirtGarment(formData.garmentType) && 
+                    BOTTOM_TYPE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))
+                  }
+                </select>
+                {isShirtGarment(formData.garmentType) && (
+                  <div style={styles.fieldNote}>Not applicable for shirts</div>
+                )}
+              </Field>
+
+              <Field label="Tape/Lace" emoji="🎀" required={false}>
+                <select
+                  name="tapeLace"
+                  value={formData.tapeLace}
+                  onChange={handleChange}
+                  style={styles.select}
+                >
+                  <option value="">Select Tape/Lace</option>
+                  {TAPE_LACE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Remarks" emoji="💬" required={false}>
+                <textarea
+                  name="remarks"
+                  value={formData.remarks}
+                  onChange={handleChange}
+                  style={styles.textarea}
+                  placeholder="Special instructions, urgency level, etc."
+                  rows={4}
+                />
+              </Field>
+
+              <Field label="Reference Image" emoji="🖼️" required={false}>
+                <div style={styles.fileUpload}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+                    style={styles.hiddenInput}
+                    id="image-upload"
+                  />
+                  <label htmlFor="image-upload" style={styles.fileUploadLabel}>
+                    <span style={styles.fileIcon}>📁</span>
+                    <span style={styles.fileName}>
+                      {imageFile ? imageFile.name : "Choose an image"}
+                    </span>
+                  </label>
+                  {imageFile && (
+                    <button
+                      type="button"
+                      onClick={() => setImageFile(null)}
+                      style={styles.fileClearButton}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </Field>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Messages */}
       {error && (
-        <div style={styles.error}>
-          <span style={styles.errorIcon}>❌</span>
+        <div style={styles.errorMessage}>
+          <span style={styles.messageIcon}>❌</span>
           <div>
-            <strong>Error occurred</strong>
-            <p style={styles.errorText}>{error}</p>
+            <strong>Error</strong>
+            <p>{error}</p>
           </div>
         </div>
       )}
 
       {submitSuccess && (
-        <div style={styles.success}>
-          <span style={styles.successIcon}>✅</span>
+        <div style={styles.successMessage}>
+          <span style={styles.messageIcon}>✅</span>
           <div>
             <strong>Success!</strong>
-            <p style={styles.successText}>Order has been saved successfully</p>
+            <p>Order has been saved successfully</p>
           </div>
         </div>
       )}
 
       {/* Submit Button */}
-      <div style={styles.buttonContainer}>
+      <div style={styles.submitContainer}>
         <button
           type="submit"
           style={{
-            ...styles.button,
-            ...(isSubmitting ? styles.buttonSubmitting : {}),
+            ...styles.submitButton,
+            ...(isSubmitting ? styles.submittingButton : {}),
           }}
           disabled={loading || isSubmitting}
         >
@@ -1826,14 +1754,14 @@ const JobOrderForm = () => {
             </>
           ) : (
             <>
-              <span style={styles.buttonIcon}>📤</span>
+              <span style={styles.submitIcon}>📤</span>
               <span>Submit Order</span>
             </>
           )}
         </button>
       </div>
 
-      {/* Repeated Lot Modal */}
+      {/* Modals - Keeping existing modal code but with enhanced styles */}
       {showRepeatedLotDialog && (
         <div style={styles.modalOverlay} onClick={() => setShowRepeatedLotDialog(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -1847,8 +1775,8 @@ const JobOrderForm = () => {
               type="text"
               value={repeatedLotNumber}
               onChange={(e) => setRepeatedLotNumber(e.target.value.toUpperCase())}
-              placeholder="e.g., LOT-001, JO-123, RPT-2024"
-              style={{ ...styles.input, width: "90%" }}
+              placeholder="e.g., LOT-001, JO-123"
+              style={styles.modalInput}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -1867,7 +1795,7 @@ const JobOrderForm = () => {
             <div style={styles.modalFooter}>
               <button
                 type="button"
-                style={{ ...styles.button, padding: "10px 18px" }}
+                style={styles.modalSaveButton}
                 onClick={() => {
                   if (repeatedLotNumber.trim()) {
                     setFormData((prev) => ({
@@ -1883,12 +1811,7 @@ const JobOrderForm = () => {
               </button>
               <button
                 type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 18px",
-                  background: "#e5e7eb",
-                  color: "#111827",
-                }}
+                style={styles.modalCancelButton}
                 onClick={() => {
                   setShowRepeatedLotDialog(false);
                   setRepeatedLotNumber("");
@@ -1905,56 +1828,37 @@ const JobOrderForm = () => {
       {/* Repeat Order Modal */}
       {showRepeatDialog && (
         <div style={styles.modalOverlay} onClick={() => setShowRepeatDialog(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div style={{ ...styles.modal, maxWidth: 800 }} onClick={(e) => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>Repeat a Previous Order</h3>
             <p style={styles.modalDescription}>
-              Pick an existing Job Order to prefill this form (Job Order No will be refreshed).
+              Pick an existing Job Order to prefill this form
             </p>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
+            <div style={styles.searchContainer}>
               <input
                 value={orderSearch}
                 onChange={(e) => setOrderSearch(e.target.value)}
-                placeholder="Search by JO number, Party, Fabric, Brand, Pattern…"
-                style={{ ...styles.input, width: "100%" }}
+                placeholder="Search by JO number, Party, Fabric..."
+                style={styles.searchInput}
               />
               <button
                 type="button"
-                style={{ ...styles.button, padding: "10px 14px", minWidth: 140 }}
+                style={styles.loadButton}
                 onClick={() => fetchRecentOrders()}
                 disabled={ordersLoading}
-                title="Load/refresh orders"
               >
                 {ordersLoading ? "Loading…" : "Load Orders"}
               </button>
             </div>
 
             {ordersError && (
-              <div style={{ ...styles.error, marginTop: 8 }}>
-                <span style={styles.errorIcon}>❌</span>
-                <div>
-                  <strong>Failed</strong>
-                  <p style={styles.errorText}>{ordersError}</p>
-                </div>
+              <div style={styles.modalError}>
+                <span>❌</span>
+                <div>{ordersError}</div>
               </div>
             )}
 
-            <div
-              style={{
-                maxHeight: 360,
-                overflow: "auto",
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
-                padding: 6,
-              }}
-            >
+            <div style={styles.ordersList}>
               {orders
                 .filter((o) => {
                   const q = orderSearch.trim().toLowerCase();
@@ -1965,10 +1869,6 @@ const JobOrderForm = () => {
                     o["Fabric"],
                     o["Brand"],
                     o["Pattern"],
-                    o["Shade"],
-                    o["Garment Type"],
-                    o["Section"],
-                    o["Season"],
                   ]
                     .map((x) => String(x || "").toLowerCase())
                     .join(" • ");
@@ -1980,51 +1880,29 @@ const JobOrderForm = () => {
                     key={i}
                     type="button"
                     onClick={() => applyOrderToForm(o)}
-                    style={{
-                      width: "100%",
-                      textAlign: "left",
-                      padding: "10px 12px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 8,
-                      marginBottom: 6,
-                      background: "#fff",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) => (e.target.style.background = "#f8fafc")}
-                    onMouseLeave={(e) => (e.target.style.background = "#fff")}
-                    title="Click to use this order"
+                    style={styles.orderItem}
                   >
-                    <div style={{ fontWeight: 700, color: "#1e293b" }}>
-                      {o["Job Order No"] || "—"} · {o["Party Name"] || "—"}
+                    <div style={styles.orderItemHeader}>
+                      <span style={styles.orderItemNumber}>{o["Job Order No"] || "—"}</span>
+                      <span style={styles.orderItemParty}>{o["Party Name"] || "—"}</span>
                     </div>
-                    <div style={{ fontSize: 13, color: "#475569", marginTop: 4 }}>
-                      Fabric: {o["Fabric"] || "—"} | Brand: {o["Brand"] || "—"} | Pattern:{" "}
-                      {o["Pattern"] || "—"}
+                    <div style={styles.orderItemDetails}>
+                      Fabric: {o["Fabric"] || "—"} | Brand: {o["Brand"] || "—"}
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                      Shade: {o["Shade"] || "—"} | Size: {o["Size"] || "—"} | Qty:{" "}
-                      {o["Quantity"] || "—"} {o["Unit"] || ""}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                      Priority: {getPriorityDisplay(o["Priority"] || "")}
+                    <div style={styles.orderItemMeta}>
+                      Qty: {o["Quantity"] || "—"} {o["Unit"] || ""}
                     </div>
                   </button>
                 ))}
               {!ordersLoading && !ordersError && orders.length === 0 && (
-                <div style={{ padding: 8, color: "#64748b" }}>No orders loaded yet.</div>
+                <div style={styles.emptyOrders}>No orders loaded yet</div>
               )}
             </div>
 
             <div style={styles.modalFooter}>
               <button
                 type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 18px",
-                  background: "#e5e7eb",
-                  color: "#111827",
-                }}
+                style={styles.modalCancelButton}
                 onClick={() => setShowRepeatDialog(false)}
               >
                 Close
@@ -2040,21 +1918,21 @@ const JobOrderForm = () => {
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>Custom Style</h3>
             <p style={styles.modalDescription}>
-              Type the style name to save with this Job Order.
+              Type the style name to save with this Job Order
             </p>
 
             <input
               autoFocus
               value={styleOtherText}
               onChange={(e) => setStyleOtherText(e.target.value)}
-              style={{ ...styles.input, width: "90%" }}
-              placeholder="e.g., Oversized Raglan / Regular Fit"
+              style={styles.modalInput}
+              placeholder="e.g., Oversized Raglan"
             />
 
             <div style={styles.modalFooter}>
               <button
                 type="button"
-                style={{ ...styles.button, padding: "10px 18px" }}
+                style={styles.modalSaveButton}
                 onClick={() => {
                   const val = (styleOtherText || "").trim();
                   if (!val) return;
@@ -2070,13 +1948,54 @@ const JobOrderForm = () => {
               </button>
               <button
                 type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 18px",
-                  background: "#e5e7eb",
-                  color: "#111827",
-                }}
+                style={styles.modalCancelButton}
                 onClick={() => setShowStyleDialog(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pattern Modal */}
+      {showPatternDialog && (
+        <div style={styles.modalOverlay} onClick={() => setShowPatternDialog(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Custom Pattern</h3>
+            <p style={styles.modalDescription}>
+              Type the pattern name to save with this Job Order
+            </p>
+
+            <input
+              autoFocus
+              value={patternOtherText}
+              onChange={(e) => setPatternOtherText(e.target.value)}
+              style={styles.modalInput}
+              placeholder="e.g., Chevron Micro-Dobby"
+            />
+
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                style={styles.modalSaveButton}
+                onClick={() => {
+                  const val = (patternOtherText || "").trim();
+                  if (!val) return;
+                  setFormData((prev) => ({ ...prev, pattern: val }));
+                  setLists((prev) => ({
+                    ...prev,
+                    pattern: Array.from(new Set([val, ...(prev.pattern || [])])),
+                  }));
+                  setShowPatternDialog(false);
+                }}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                style={styles.modalCancelButton}
+                onClick={() => setShowPatternDialog(false)}
               >
                 Cancel
               </button>
@@ -2091,13 +2010,13 @@ const JobOrderForm = () => {
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>Embroidery Positions</h3>
             <p style={styles.modalDescription}>
-              Select applicable positions and add any other instruction.
+              Select applicable positions and add any other instruction
             </p>
 
-            <div style={styles.checkboxGrid}>
-              {["FRONT", "BACK", "RIB", "ARM", "LEFT", "RIGHT", "POCKET", "COLLAR", "HOOD","GULLA"].map(
+            <div style={styles.positionGrid}>
+              {["FRONT", "BACK", "RIB", "ARM", "LEFT", "RIGHT", "POCKET", "COLLAR", "HOOD", "GULLA"].map(
                 (k) => (
-                  <label key={k} style={styles.checkboxRow}>
+                  <label key={k} style={styles.positionItem}>
                     <input
                       type="checkbox"
                       checked={!!embPositions[k]}
@@ -2105,42 +2024,36 @@ const JobOrderForm = () => {
                         setEmbPositions((prev) => ({ ...prev, [k]: e.target.checked }))
                       }
                     />
-                    <span style={{ color: "#111827" }}>{k}</span>
+                    <span>{k}</span>
                   </label>
                 )
               )}
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <label style={{ fontWeight: 600, fontSize: 14, color: "#111827" }}>
-                Any Other
-              </label>
+            <div style={styles.otherField}>
+              <label style={styles.otherLabel}>Any Other</label>
               <textarea
                 value={embPositions.other}
                 onChange={(e) =>
                   setEmbPositions((prev) => ({ ...prev, other: e.target.value }))
                 }
-                style={{ ...styles.input, width: "90%", minHeight: 80 }}
+                style={styles.otherTextarea}
                 placeholder="Describe any additional embroidery location or notes"
+                rows={3}
               />
             </div>
 
             <div style={styles.modalFooter}>
               <button
                 type="button"
-                style={{ ...styles.button, padding: "10px 18px" }}
+                style={styles.modalSaveButton}
                 onClick={() => setShowEmbDialog(false)}
               >
                 Save
               </button>
               <button
                 type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 18px",
-                  background: "#e5e7eb",
-                  color: "#111827",
-                }}
+                style={styles.modalCancelButton}
                 onClick={() => {
                   setEmbPositions({
                     FRONT: false,
@@ -2171,13 +2084,13 @@ const JobOrderForm = () => {
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>Printing Positions</h3>
             <p style={styles.modalDescription}>
-              Select applicable positions and add any other instruction.
+              Select applicable positions and add any other instruction
             </p>
 
-            <div style={styles.checkboxGrid}>
-              {["FRONT", "BACK", "RIB", "ARM", "LEFT", "RIGHT", "POCKET", "COLLAR", "HOOD","GULLA"].map(
+            <div style={styles.positionGrid}>
+              {["FRONT", "BACK", "RIB", "ARM", "LEFT", "RIGHT", "POCKET", "COLLAR", "HOOD", "GULLA"].map(
                 (k) => (
-                  <label key={k} style={styles.checkboxRow}>
+                  <label key={k} style={styles.positionItem}>
                     <input
                       type="checkbox"
                       checked={!!printPositions[k]}
@@ -2185,42 +2098,36 @@ const JobOrderForm = () => {
                         setPrintPositions((prev) => ({ ...prev, [k]: e.target.checked }))
                       }
                     />
-                    <span style={{ color: "#111827" }}>{k}</span>
+                    <span>{k}</span>
                   </label>
                 )
               )}
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <label style={{ fontWeight: 600, fontSize: 14, color: "#111827" }}>
-                Any Other
-              </label>
+            <div style={styles.otherField}>
+              <label style={styles.otherLabel}>Any Other</label>
               <textarea
                 value={printPositions.other}
                 onChange={(e) =>
                   setPrintPositions((prev) => ({ ...prev, other: e.target.value }))
                 }
-                style={{ ...styles.input, width: "90%", minHeight: 80 }}
+                style={styles.otherTextarea}
                 placeholder="Describe any additional printing location or notes"
+                rows={3}
               />
             </div>
 
             <div style={styles.modalFooter}>
               <button
                 type="button"
-                style={{ ...styles.button, padding: "10px 18px" }}
+                style={styles.modalSaveButton}
                 onClick={() => setShowPrintDialog(false)}
               >
                 Save
               </button>
               <button
                 type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 18px",
-                  background: "#e5e7eb",
-                  color: "#111827",
-                }}
+                style={styles.modalCancelButton}
                 onClick={() => {
                   setPrintPositions({
                     FRONT: false,
@@ -2245,103 +2152,191 @@ const JobOrderForm = () => {
         </div>
       )}
 
+      {/* Shade Modal */}
+      {showShadeDialog && (
+        <div style={styles.modalOverlay} onClick={() => setShowShadeDialog(false)}>
+          <div style={{ ...styles.modal, maxWidth: 700 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Shades & Combinations</h3>
+            <p style={styles.modalDescription}>
+              Add one or more shades with optional combinations
+            </p>
+
+            <div style={styles.shadeGrid}>
+              <div style={styles.shadeHeader}>
+                <div>Shade</div>
+                <div>Combinations</div>
+                <div></div>
+              </div>
+              
+              {shadeRows.map((row, idx) => (
+                <div key={idx} style={styles.shadeRow}>
+                  <input
+                    value={row.shade}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setShadeRows((prev) => {
+                        const copy = [...prev];
+                        copy[idx] = { ...copy[idx], shade: val };
+                        return copy;
+                      });
+                    }}
+                    placeholder="e.g., BLACK"
+                    style={styles.shadeInput}
+                    autoFocus={idx === shadeRows.length - 1 && !row.shade}
+                  />
+                  <input
+                    value={row.combos}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setShadeRows((prev) => {
+                        const copy = [...prev];
+                        copy[idx] = { ...copy[idx], combos: val };
+                        return copy;
+                      });
+                    }}
+                    placeholder="e.g., OFF-WHITE, OLIVE"
+                    style={styles.comboInput}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShadeRows((prev) =>
+                        prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev
+                      )
+                    }
+                    style={styles.removeButton}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={styles.shadeActions}>
+              <button
+                type="button"
+                style={styles.addRowButton}
+                onClick={() => {
+                  setShadeRows((prev) => [...prev, { shade: "", combos: "" }]);
+                }}
+              >
+                + Add Row
+              </button>
+              <button
+                type="button"
+                style={styles.clearAllButton}
+                onClick={() => setShadeRows([{ shade: "", combos: "" }])}
+              >
+                Clear All
+              </button>
+            </div>
+
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                style={styles.modalSaveButton}
+                onClick={() => {
+                  const txt = buildShadeString(shadeRows);
+                  setFormData((prev) => ({ ...prev, shade: txt }));
+                  setShowShadeDialog(false);
+                }}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                style={styles.modalCancelButton}
+                onClick={() => setShowShadeDialog(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Size Picker Modal */}
+      {showSizeDialog && (
+        <SizePickerModal
+          onClose={() => setShowSizeDialog(false)}
+          sizeRows={sizeRows}
+          setSizeRows={setSizeRows}
+          setFormData={setFormData}
+          buildSizeString={buildSizeString}
+        />
+      )}
+
       {/* Submitter Modal */}
       {showSubmitterDialog && (
         <div style={styles.modalOverlay} onClick={() => setShowSubmitterDialog(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>Submitted By</h3>
             <p style={styles.modalDescription}>
-              Select the submitter and the person who referred the order (defaults to Mohit
-              Goyal).
+              Select the submitter and the person who referred the order
             </p>
 
-            <label
-              style={{
-                fontWeight: 600,
-                fontSize: 14,
-                color: "#111827",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Submitter
-            </label>
-            <select
-              autoFocus
-              value={submitterName}
-              onChange={(e) => {
-                const v = e.target.value;
-                setSubmitterName(v);
-                if (v !== OTHER_SUBMITTER_TOKEN) setCustomSubmitter("");
-              }}
-              style={{ ...styles.input, width: "90%" }}
-            >
-              <option value="">-- Select Submitter --</option>
-              {SUBMITTERS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-              <option value={OTHER_SUBMITTER_TOKEN}>Any Other…</option>
-            </select>
-
-            {submitterName === OTHER_SUBMITTER_TOKEN && (
-              <input
+            <div style={styles.submitterField}>
+              <label style={styles.submitterLabel}>Submitter</label>
+              <select
                 autoFocus
-                placeholder="Enter submitter name"
-                value={customSubmitter}
-                onChange={(e) => setCustomSubmitter(e.target.value)}
-                style={{ ...styles.input, width: "90%", marginTop: 10 }}
-              />
-            )}
+                value={submitterName}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSubmitterName(v);
+                  if (v !== OTHER_SUBMITTER_TOKEN) setCustomSubmitter("");
+                }}
+                style={styles.submitterSelect}
+              >
+                <option value="">Select Submitter</option>
+                {SUBMITTERS.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+                <option value={OTHER_SUBMITTER_TOKEN}>Any Other…</option>
+              </select>
 
-            <label
-              style={{
-                fontWeight: 600,
-                fontSize: 14,
-                color: "#111827",
-                display: "block",
-                marginTop: 14,
-                marginBottom: 6,
-              }}
-            >
-              Order Referred By
-            </label>
-            <select
-              value={referrerName}
-              onChange={(e) => {
-                const v = e.target.value;
-                setReferrerName(v);
-                if (v !== OTHER_REFERRER_TOKEN) setCustomReferrer("");
-              }}
-              style={{ ...styles.input, width: "90%" }}
-            >
-              <option value="Mohit Goyal">Mohit Goyal (default)</option>
-              {REFERRERS.filter((n) => n !== "Mohit Goyal").map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-              <option value={OTHER_REFERRER_TOKEN}>Any Other…</option>
-            </select>
+              {submitterName === OTHER_SUBMITTER_TOKEN && (
+                <input
+                  autoFocus
+                  placeholder="Enter submitter name"
+                  value={customSubmitter}
+                  onChange={(e) => setCustomSubmitter(e.target.value)}
+                  style={styles.submitterInput}
+                />
+              )}
+            </div>
 
-            {referrerName === OTHER_REFERRER_TOKEN && (
-              <input
-                placeholder="Enter reference person's name"
-                value={customReferrer}
-                onChange={(e) => setCustomReferrer(e.target.value)}
-                style={{ ...styles.input, width: "90%", marginTop: 10 }}
-              />
-            )}
+            <div style={styles.submitterField}>
+              <label style={styles.submitterLabel}>Order Referred By</label>
+              <select
+                value={referrerName}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setReferrerName(v);
+                  if (v !== OTHER_REFERRER_TOKEN) setCustomReferrer("");
+                }}
+                style={styles.submitterSelect}
+              >
+                <option value="Mohit Goyal">Mohit Goyal (default)</option>
+                {REFERRERS.filter((n) => n !== "Mohit Goyal").map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+                <option value={OTHER_REFERRER_TOKEN}>Any Other…</option>
+              </select>
+
+              {referrerName === OTHER_REFERRER_TOKEN && (
+                <input
+                  placeholder="Enter reference person's name"
+                  value={customReferrer}
+                  onChange={(e) => setCustomReferrer(e.target.value)}
+                  style={styles.submitterInput}
+                />
+              )}
+            </div>
 
             <div style={styles.modalFooter}>
               <button
                 type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 18px",
-                  opacity: modalSubmitting || isSubmitting ? 0.7 : 1,
-                }}
+                style={styles.modalSaveButton}
                 disabled={modalSubmitting || isSubmitting}
                 onClick={async () => {
                   if (modalSubmitting || isSubmitting) return;
@@ -2409,6 +2404,7 @@ const JobOrderForm = () => {
                       remarks: "",
                       directStitching: "no",
                       priority: "MEDIUM",
+                      sticker: "",
                     });
                     setEmbPositions({
                       FRONT: false,
@@ -2458,13 +2454,7 @@ const JobOrderForm = () => {
 
               <button
                 type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 18px",
-                  background: "#e5e7eb",
-                  color: "#000000ff",
-                  opacity: modalSubmitting || isSubmitting ? 0.7 : 1,
-                }}
+                style={styles.modalCancelButton}
                 disabled={modalSubmitting || isSubmitting}
                 onClick={() => {
                   if (modalSubmitting || isSubmitting) return;
@@ -2478,254 +2468,16 @@ const JobOrderForm = () => {
           </div>
         </div>
       )}
-
-      {/* Shade Modal */}
-      {showShadeDialog && (
-        <div style={styles.modalOverlay} onClick={() => setShowShadeDialog(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>Shades & Combinations</h3>
-            <p style={styles.modalDescription}>
-              Add one or more shades. Optionally enter combinations for each shade
-              (comma-separated). Press Enter/Tab to move between fields and create new rows.
-            </p>
-
-            <div style={styles.modalBodyScroll}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "2fr 3fr auto",
-                  gap: 8,
-                  alignItems: "center",
-                }}
-              >
-                <div style={{ fontWeight: 700, color: "#111827" }}>Shade</div>
-                <div style={{ fontWeight: 700, color: "#111827" }}>
-                  Combinations (comma-separated)
-                </div>
-                <div />
-                {shadeRows.map((row, idx) => (
-                  <React.Fragment key={idx}>
-                    <input
-                      value={row.shade}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setShadeRows((prev) => {
-                          const copy = [...prev];
-                          copy[idx] = { ...copy[idx], shade: val };
-                          return copy;
-                        });
-                      }}
-                      onKeyDown={(e) => {
-                        // Tab moves to combos field
-                        if (e.key === "Tab" && !e.shiftKey) {
-                          e.preventDefault();
-                          // Focus on combos field of same row
-                          const combosInputs = document.querySelectorAll(`input[placeholder="e.g., OFF-WHITE, OLIVE"]`);
-                          if (combosInputs[idx]) {
-                            combosInputs[idx].focus();
-                          }
-                        }
-                        // Enter in shade field moves to combos field
-                        else if (e.key === "Enter") {
-                          e.preventDefault();
-                          const combosInputs = document.querySelectorAll(`input[placeholder="e.g., OFF-WHITE, OLIVE"]`);
-                          if (combosInputs[idx]) {
-                            combosInputs[idx].focus();
-                          }
-                        }
-                      }}
-                      placeholder="e.g., BLACK"
-                      style={styles.input}
-                      autoFocus={idx === shadeRows.length - 1 && !row.shade}
-                    />
-                    <input
-                      value={row.combos}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setShadeRows((prev) => {
-                          const copy = [...prev];
-                          copy[idx] = { ...copy[idx], combos: val };
-                          return copy;
-                        });
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          // Check if we're on the last row
-                          if (idx === shadeRows.length - 1) {
-                            // Add new row only if current shade is not empty
-                            if (row.shade.trim()) {
-                              setShadeRows((prev) => [...prev, { shade: "", combos: "" }]);
-                              // The new shade field will auto-focus due to autoFocus prop
-                            }
-                          } else {
-                            // Move focus to next row's shade field
-                            const shadeInputs = document.querySelectorAll(`input[placeholder="e.g., BLACK"]`);
-                            if (shadeInputs[idx + 1]) {
-                              shadeInputs[idx + 1].focus();
-                            }
-                          }
-                        }
-                        // Shift+Tab from combos goes back to shade field
-                        else if (e.key === "Tab" && e.shiftKey) {
-                          e.preventDefault();
-                          const shadeInputs = document.querySelectorAll(`input[placeholder="e.g., BLACK"]`);
-                          if (shadeInputs[idx]) {
-                            shadeInputs[idx].focus();
-                          }
-                        }
-                      }}
-                      placeholder="e.g., OFF-WHITE, OLIVE"
-                      style={styles.input}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShadeRows((prev) =>
-                          prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev
-                        )
-                      }
-                      style={{
-                        ...styles.button,
-                        padding: "10px 14px",
-                        background: "#e5e7eb",
-                        color: "#111827",
-                        minWidth: 0,
-                      }}
-                      title="Remove row"
-                    >
-                      ✕
-                    </button>
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-              <button
-                type="button"
-                style={{ ...styles.button, padding: "10px 14px" }}
-                onClick={() => {
-                  setShadeRows((prev) => [...prev, { shade: "", combos: "" }]);
-                  // Focus will be set on the new shade field via autoFocus
-                }}
-              >
-                + Add Row
-              </button>
-              <button
-                type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 14px",
-                  background: "#e5e7eb",
-                  color: "#111827",
-                }}
-                onClick={() => setShadeRows([{ shade: "", combos: "" }])}
-              >
-                Clear All
-              </button>
-            </div>
-
-            <div style={styles.modalFooter}>
-              <button
-                type="button"
-                style={{ ...styles.button, padding: "10px 18px" }}
-                onClick={() => {
-                  const txt = buildShadeString(shadeRows);
-                  setFormData((prev) => ({ ...prev, shade: txt }));
-                  setShowShadeDialog(false);
-                }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 18px",
-                  background: "#e5e7eb",
-                  color: "#111827",
-                }}
-                onClick={() => setShowShadeDialog(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Size Picker Modal */}
-      {showSizeDialog && (
-        <SizePickerModal
-          onClose={() => setShowSizeDialog(false)}
-          sizeRows={sizeRows}
-          setSizeRows={setSizeRows}
-          setFormData={setFormData}
-          buildSizeString={buildSizeString}
-        />
-      )}
-
-      {/* Pattern Modal */}
-      {showPatternDialog && (
-        <div style={styles.modalOverlay} onClick={() => setShowPatternDialog(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>Custom Pattern</h3>
-            <p style={styles.modalDescription}>
-              Type the pattern name to save with this Job Order.
-            </p>
-
-            <input
-              autoFocus
-              value={patternOtherText}
-              onChange={(e) => setPatternOtherText(e.target.value)}
-              style={{ ...styles.input, width: "90%" }}
-              placeholder="e.g., Chevron Micro-Dobby"
-            />
-
-            <div style={styles.modalFooter}>
-              <button
-                type="button"
-                style={{ ...styles.button, padding: "10px 18px" }}
-                onClick={() => {
-                  const val = (patternOtherText || "").trim();
-                  if (!val) return;
-                  setFormData((prev) => ({ ...prev, pattern: val }));
-                  setLists((prev) => ({
-                    ...prev,
-                    pattern: Array.from(new Set([val, ...(prev.pattern || [])])),
-                  }));
-                  setShowPatternDialog(false);
-                }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                style={{
-                  ...styles.button,
-                  padding: "10px 18px",
-                  background: "#e5e7eb",
-                  color: "#111827",
-                }}
-                onClick={() => setShowPatternDialog(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </form>
   );
 };
 
 const Field = ({ label, children, emoji, required = true }) => (
-  <div style={styles.field}>
-    <label style={styles.label}>
-      {emoji && <span style={styles.emoji}>{emoji}</span>}
+  <div style={styles.fieldContainer}>
+    <label style={styles.fieldLabel}>
+      <span style={styles.fieldEmoji}>{emoji}</span>
       {label}
-      {required && <span style={styles.requiredIndicator}>*</span>}
+      {required && <span style={styles.fieldRequired}>*</span>}
     </label>
     {children}
   </div>
@@ -2740,7 +2492,7 @@ const Select = ({ label, name, value, options, onChange, loading, emoji, disable
         name={name}
         value={value}
         onChange={onChange}
-        style={styles.input}
+        style={styles.select}
         disabled={isDisabled}
         required={required}
       >
@@ -2749,7 +2501,7 @@ const Select = ({ label, name, value, options, onChange, loading, emoji, disable
             ? "Disabled by Direct Stitching"
             : loading
             ? "Loading options..."
-            : `-- Select ${label} --`}
+            : `Select ${label}`}
         </option>
         {!isDisabled &&
           options.map((opt) => (
@@ -2763,743 +2515,897 @@ const Select = ({ label, name, value, options, onChange, loading, emoji, disable
 };
 
 const styles = {
+  // Layout
   form: {
-    maxWidth: 1400,
-    margin: "40px auto",
-    padding: "40px",
-    borderRadius: "24px",
-    background: "rgba(255, 255, 255, 1)",
-    backdropFilter: "blur(10px)",
-    boxShadow: `
-      0 10px 40px rgba(0, 0, 0, 0.08),
-      0 20px 80px rgba(99, 102, 241, 0.12),
-      0 0 0 1px rgba(255, 255, 255, 0.3) inset
-    `,
-    border: "1px solid rgba(255, 255, 255, 0.3)",
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    position: "relative",
-    overflow: "hidden",
-    animation: "fadeIn 0.5s ease-out",
-  },
-  modalOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(255, 255, 255, 0.45)",
-    backdropFilter: "blur(8px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 9999,
-    padding: 16,
-  },
-  modal: {
-    width: "min(560px, 96vw)",
-    background: "#fff",
-    borderRadius: 20,
-    padding: 24,
-    boxShadow: "0 25px 60px rgba(2, 6, 23, 0.3)",
-    border: "1px solid rgba(15, 23, 42, 0.06)",
-    maxHeight: "90vh",
-    overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-    animation: "modalSlideIn 0.3s ease-out",
-  },
-  modalTitle: {
-    marginTop: 0,
-    marginBottom: 12,
-    color: "#111827",
-    fontSize: "20px",
-    fontWeight: 700,
-  },
-  modalDescription: {
-    marginTop: 0,
-    color: "#111827",
-    fontSize: 14,
-    lineHeight: 1.5,
-  },
-  modalBodyScroll: {
-    flex: 1,
-    minHeight: 0,
-    overflow: "auto",
-    paddingRight: 8,
-  },
-  modalFooter: {
-    display: "flex",
-    gap: 12,
-    justifyContent: "flex-end",
-    marginTop: 20,
-    paddingTop: 20,
-    borderTop: "1px solid #e5e7eb",
-  },
-  checkboxGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-    gap: 12,
-    marginTop: 8,
-  },
-  checkboxRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "12px 14px",
-    border: "1px solid #e2e8f0",
-    borderRadius: 12,
+    maxWidth: 1440,
+    margin: "20px auto",
+    padding: "24px",
     background: "#f8fafc",
-    cursor: "pointer",
-    transition: "all 0.2s",
+    minHeight: "100vh",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   },
-  headerRow: {
+
+  // Header
+  header: {
+    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+    borderRadius: "16px",
+    padding: "24px",
+    marginBottom: "24px",
+    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.05)",
+    border: "1px solid rgba(226, 232, 240, 0.6)",
+  },
+  headerTop: {
     display: "flex",
-    alignItems: "center",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: "24px",
+  },
+  headerLeft: {
+    display: "flex",
     gap: "20px",
     flex: 1,
   },
-  logo: {
-    width: "72px",
-    height: "72px",
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    borderRadius: "20px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "32px",
-    color: "white",
-    boxShadow: "0 8px 20px rgba(99, 102, 241, 0.4)",
-  },
-  titleContainer: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 4,
-  },
-  title: {
-    margin: 0,
-    fontSize: "36px",
-    fontWeight: 800,
-    background: "linear-gradient(135deg, #1e293b 0%, #475569 100%)",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    backgroundClip: "text",
-    letterSpacing: "-0.5px",
-  },
-  titleBadge: {
-    background: "linear-gradient(135deg, #10b981, #059669)",
-    color: "white",
-    fontSize: "12px",
-    fontWeight: 700,
-    padding: "4px 12px",
-    borderRadius: "20px",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  },
-  subtitle: {
-    margin: "4px 0 0",
-    fontSize: "15px",
-    color: "#64748b",
-    fontWeight: 500,
-    maxWidth: "500px",
-  },
-  headerActions: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-    alignItems: "flex-end",
-  },
-  headerBadges: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  badgeRow: {
-    display: "flex",
-    gap: "12px",
-    alignItems: "center",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-  },
-  badge: {
-    background: "linear-gradient(135deg, #f1f5f9, #ffffff)",
-    color: "#334155",
-    fontSize: "14px",
-    fontWeight: 600,
-    padding: "10px 16px",
-    borderRadius: "12px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 1px 0 rgba(255,255,255,0.8) inset",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    border: "1px solid rgba(226, 232, 240, 0.8)",
-    transition: "all 0.2s",
-  },
-  badgeButton: {
-    border: "none",
-    background: "rgba(255,255,255,0.3)",
-    color: "#64748b",
-    borderRadius: 999,
-    padding: "4px 8px",
-    cursor: "pointer",
-    fontSize: "12px",
-    transition: "all 0.2s",
-  },
-  badgeDateInput: {
-    border: "none",
-    background: "transparent",
-    color: "#334155",
-    fontWeight: 700,
-    outline: "none",
-    padding: 0,
-    marginLeft: 6,
-    cursor: "pointer",
-    fontSize: "14px",
-  },
-  actionButtons: {
-    display: "flex",
-    gap: "12px",
-    alignItems: "center",
-  },
-  linkAction: {
-    background: "transparent",
-    border: "none",
-    color: "#4f46e5",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    padding: "10px 14px",
-    borderRadius: 10,
-    transition: "all 0.2s",
-    outline: "none",
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-  },
-  backButton: {
-    background: "linear-gradient(135deg, #f1f5f9, #ffffff)",
-    border: "1px solid #e2e8f0",
-    color: "#475569",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    padding: "10px 18px",
-    borderRadius: 10,
-    transition: "all 0.2s",
-    outline: "none",
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-  },
-  refreshPill: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "10px 18px",
-    borderRadius: 12,
-    border: "1px solid #e5e7eb",
-    background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-    color: "#111827",
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "all 0.2s",
-  },
-  refreshIcon: {
-    width: 20,
-    height: 20,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: "50%",
-    background: "#f1f5f9",
-    border: "1px solid #e5e7eb",
-  },
-  formGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))",
-    gap: "32px",
-    marginTop: "32px",
-  },
-  section: {
-    padding: "28px",
-    borderRadius: "20px",
-    background: "rgba(255, 255, 255, 0.8)",
-    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 0 rgba(255,255,255,0.8) inset",
-    border: "1px solid rgba(241, 245, 249, 0.8)",
-    transition: "all 0.3s ease",
-  },
-  sectionHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    marginBottom: "28px",
-    paddingBottom: "20px",
-    borderBottom: "2px solid rgba(226, 232, 240, 0.6)",
-  },
-  sectionIconContainer: {
+  logoWrapper: {
     width: "56px",
     height: "56px",
     background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    borderRadius: "14px",
+    borderRadius: "12px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
   },
-  sectionIcon: {
-    fontSize: "24px",
+  logo: {
+    fontSize: "28px",
     color: "white",
+  },
+  headerTitleSection: {
+    flex: 1,
+  },
+  mainTitle: {
+    margin: 0,
+    fontSize: "28px",
+    fontWeight: 700,
+    color: "#0f172a",
+    letterSpacing: "-0.5px",
+    lineHeight: 1.2,
+  },
+  badgeContainer: {
+    display: "flex",
+    gap: "8px",
+    marginTop: "4px",
+  },
+  badge: {
+    background: "#e2e8f0",
+    color: "#475569",
+    fontSize: "12px",
+    fontWeight: 600,
+    padding: "4px 10px",
+    borderRadius: "20px",
+  },
+  headerSubtitle: {
+    margin: "8px 0 0",
+    fontSize: "14px",
+    color: "#64748b",
+  },
+  headerRight: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+    alignItems: "flex-end",
+  },
+  orderInfo: {
+    display: "flex",
+    gap: "16px",
+    background: "#ffffff",
+    padding: "12px 16px",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+  },
+  orderNumber: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  orderLabel: {
+    fontSize: "13px",
+    color: "#64748b",
+    fontWeight: 500,
+  },
+  orderValue: {
+    fontSize: "16px",
+    fontWeight: 700,
+    color: "#0f172a",
+  },
+  refreshOrderBtn: {
+    border: "none",
+    background: "#f1f5f9",
+    width: "24px",
+    height: "24px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    color: "#475569",
+    fontSize: "14px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  datePicker: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  dateLabel: {
+    fontSize: "13px",
+    color: "#64748b",
+    fontWeight: 500,
+  },
+  dateInput: {
+    border: "1px solid #e2e8f0",
+    borderRadius: "6px",
+    padding: "6px 10px",
+    fontSize: "14px",
+    color: "#0f172a",
+    background: "#ffffff",
+  },
+  actionGroup: {
+    display: "flex",
+    gap: "8px",
+  },
+  actionButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#475569",
+    fontSize: "13px",
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: "all 0.2s",
+  },
+  actionIcon: {
+    fontSize: "14px",
+  },
+  refreshButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#475569",
+    fontSize: "13px",
+    fontWeight: 500,
+    cursor: "pointer",
+  },
+  refreshIcon: {
+    fontSize: "14px",
+  },
+  backButton: {
+    width: "36px",
+    height: "36px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#475569",
+    fontSize: "16px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Main Grid
+  mainGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "20px",
+    marginBottom: "24px",
+  },
+  column: {
+    minWidth: 0,
+  },
+
+  // Sections
+  section: {
+    background: "#ffffff",
+    borderRadius: "16px",
+    padding: "20px",
+    boxShadow: "0 2px 12px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03)",
+    border: "1px solid #edf2f7",
+    height: "fit-content",
+  },
+  sectionHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "20px",
+    paddingBottom: "16px",
+    borderBottom: "2px solid #f1f5f9",
+  },
+  sectionIcon: {
+    width: "40px",
+    height: "40px",
+    background: "linear-gradient(135deg, #f1f5f9, #ffffff)",
+    borderRadius: "10px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "20px",
+    border: "1px solid #e2e8f0",
   },
   sectionTitle: {
     margin: 0,
-    fontSize: "20px",
+    fontSize: "16px",
+    fontWeight: 600,
     color: "#1e293b",
-    fontWeight: 700,
   },
   sectionSubtitle: {
-    margin: "4px 0 0",
-    fontSize: "14px",
+    margin: "2px 0 0",
+    fontSize: "12px",
     color: "#64748b",
-    fontWeight: 500,
   },
   sectionContent: {
     display: "flex",
     flexDirection: "column",
-    gap: "20px",
+    gap: "16px",
   },
-  field: {
-    marginBottom: 0,
-    position: "relative",
+
+  // Form Fields
+  fieldContainer: {
+    width: "100%",
   },
-  label: {
+  fieldLabel: {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    fontWeight: 600,
-    marginBottom: "10px",
-    color: "#334155",
+    gap: "6px",
+    marginBottom: "6px",
+    fontSize: "13px",
+    fontWeight: 500,
+    color: "#475569",
+  },
+  fieldEmoji: {
     fontSize: "14px",
   },
-  emoji: {
-    fontSize: "16px",
-  },
-  requiredIndicator: {
+  fieldRequired: {
     color: "#ef4444",
     marginLeft: "2px",
     fontSize: "12px",
   },
   input: {
     width: "100%",
-    padding: "14px 16px",
-    borderRadius: "12px",
+    padding: "10px 12px",
+    borderRadius: "8px",
     border: "1px solid #e2e8f0",
-    outline: "none",
-    fontSize: "15px",
-    transition: "all 0.2s",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    fontSize: "14px",
     color: "#1e293b",
-    textTransform: "uppercase",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+    background: "#ffffff",
+    transition: "all 0.2s",
+    "&:focus": {
+      borderColor: "#6366f1",
+      boxShadow: "0 0 0 3px rgba(99, 102, 241, 0.1)",
+      outline: "none",
+    },
   },
-  inlineGroup: {
+  select: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    fontSize: "14px",
+    color: "#1e293b",
+    background: "#ffffff",
+    cursor: "pointer",
+    appearance: "none",
+    backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "right 12px center",
+    backgroundSize: "16px",
+  },
+  readOnlyInput: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    fontSize: "14px",
+    color: "#64748b",
+    background: "#f8fafc",
+    cursor: "not-allowed",
+  },
+  clickableInput: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    fontSize: "14px",
+    color: "#1e293b",
+    background: "#ffffff",
+    cursor: "pointer",
+    "&:hover": {
+      borderColor: "#6366f1",
+    },
+  },
+  textarea: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    fontSize: "14px",
+    color: "#1e293b",
+    background: "#ffffff",
+    resize: "vertical",
+    minHeight: "80px",
+    fontFamily: "inherit",
+  },
+  disabledSelect: {
+    background: "#f8fafc",
+    color: "#94a3b8",
+    cursor: "not-allowed",
+  },
+
+  // Layout Helpers
+  rowGroup: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: "16px",
-    alignItems: "flex-start",
+    gap: "12px",
+  },
+
+  // Radio Group
+  radioField: {
+    marginBottom: "0",
+  },
+  radioLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    marginBottom: "8px",
+    fontSize: "13px",
+    fontWeight: 500,
+    color: "#475569",
   },
   radioGroup: {
     display: "flex",
-    gap: "12px",
-    marginTop: "8px",
+    gap: "16px",
   },
-  radioLabel: {
-    flex: 1,
-    padding: "12px 16px",
-    borderRadius: "10px",
-    border: "1px solid #e2e8f0",
-    cursor: "pointer",
-    textAlign: "center",
-    fontSize: "14px",
-    fontWeight: 600,
-    transition: "all 0.2s",
+  radioOption: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
+    gap: "6px",
+    fontSize: "14px",
+    color: "#1e293b",
+    cursor: "pointer",
+    padding: "4px 0",
+  },
+
+  // File Upload
+  fileUpload: {
+    display: "flex",
+    alignItems: "center",
     gap: "8px",
   },
-  radioInput: {
-    margin: 0,
-  },
-  fileUploadContainer: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-  },
-  fileInput: {
+  hiddenInput: {
     display: "none",
   },
   fileUploadLabel: {
     flex: 1,
-    padding: "14px 16px",
-    borderRadius: "12px",
-    border: "2px dashed #e2e8f0",
-    backgroundColor: "#f8fafc",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px dashed #cbd5e1",
+    background: "#f8fafc",
     display: "flex",
     alignItems: "center",
-    gap: "12px",
+    gap: "8px",
     cursor: "pointer",
-    transition: "all 0.2s",
-    color: "#64748b",
-    fontSize: "15px",
+    fontSize: "14px",
+    color: "#475569",
   },
-  fileUploadIcon: {
-    fontSize: "18px",
+  fileIcon: {
+    fontSize: "16px",
+  },
+  fileName: {
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
   fileClearButton: {
-    padding: "10px 14px",
-    borderRadius: "10px",
-    border: "1px solid #ef4444",
-    background: "#fee2e2",
-    color: "#b91c1c",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#ef4444",
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: 600,
-    transition: "all 0.2s",
   },
-  buttonContainer: {
-    marginTop: "48px",
+
+  // Lot Badge
+  lotBadge: {
+    fontSize: "13px",
+    color: "#b45309",
+    marginTop: "4px",
+    padding: "4px 8px",
+    background: "rgba(251, 191, 36, 0.1)",
+    borderRadius: "6px",
+    border: "1px solid rgba(251, 191, 36, 0.2)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+  },
+  fieldNote: {
+    fontSize: "12px",
+    color: "#64748b",
+    marginTop: "4px",
+    fontStyle: "italic",
+  },
+
+  // Messages
+  errorMessage: {
+    background: "#fef2f2",
+    border: "1px solid #fee2e2",
+    borderRadius: "12px",
+    padding: "16px",
+    marginBottom: "20px",
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "12px",
+    color: "#991b1b",
+  },
+  successMessage: {
+    background: "#f0fdf4",
+    border: "1px solid #dcfce7",
+    borderRadius: "12px",
+    padding: "16px",
+    marginBottom: "20px",
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "12px",
+    color: "#166534",
+  },
+  messageIcon: {
+    fontSize: "20px",
+  },
+
+  // Submit Button
+  submitContainer: {
     display: "flex",
     justifyContent: "center",
+    marginTop: "32px",
   },
-  button: {
-    padding: "18px 40px",
+  submitButton: {
+    padding: "14px 48px",
     background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
     color: "white",
     border: "none",
-    borderRadius: "14px",
-    cursor: "pointer",
-    fontWeight: 700,
+    borderRadius: "40px",
     fontSize: "16px",
-    minWidth: "260px",
+    fontWeight: 600,
+    cursor: "pointer",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    gap: "12px",
-    transition: "all 0.3s ease",
-    boxShadow: "0 6px 20px rgba(99, 102, 241, 0.4)",
-    letterSpacing: "0.5px",
+    gap: "10px",
+    boxShadow: "0 4px 20px rgba(99, 102, 241, 0.4)",
+    transition: "all 0.2s",
+    "&:hover": {
+      transform: "translateY(-2px)",
+      boxShadow: "0 6px 25px rgba(99, 102, 241, 0.5)",
+    },
   },
-  buttonIcon: {
-    fontSize: "20px",
+  submitIcon: {
+    fontSize: "18px",
   },
-  buttonSubmitting: {
-    background: "linear-gradient(135deg, #c7d2fe, #a5b4fc)",
+  submittingButton: {
+    background: "linear-gradient(135deg, #a5b4fc, #c7d2fe)",
     cursor: "not-allowed",
-    transform: "none !important",
-    boxShadow: "none !important",
+    transform: "none",
+    boxShadow: "none",
   },
   spinner: {
-    display: "inline-block",
-    width: "20px",
-    height: "20px",
-    border: "3px solid rgba(255,255,255,0.3)",
+    width: "18px",
+    height: "18px",
+    border: "2px solid rgba(255,255,255,0.3)",
     borderRadius: "50%",
     borderTopColor: "white",
     animation: "spin 1s ease-in-out infinite",
   },
-  error: {
-    background: "linear-gradient(135deg, #fee2e2, #fecaca)",
-    color: "#b91c1c",
-    border: "1px solid #fca5a5",
-    padding: "20px",
-    borderRadius: "14px",
-    margin: "28px 0",
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "14px",
-    animation: "shake 0.5s ease-in-out",
-  },
-  errorIcon: {
-    fontSize: "24px",
-    marginTop: "2px",
-  },
-  errorText: {
-    margin: "6px 0 0",
-    fontSize: "14px",
-    color: "#b91c1c",
-  },
-  success: {
-    background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
-    color: "#166534",
-    border: "1px solid #86efac",
-    padding: "20px",
-    borderRadius: "14px",
-    margin: "28px 0",
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "14px",
-    animation: "fadeIn 0.5s ease-out",
-  },
-  successIcon: {
-    fontSize: "24px",
-    marginTop: "2px",
-  },
-  successText: {
-    margin: "6px 0 0",
-    fontSize: "14px",
-    color: "#166534",
-  },
-  stepBtn: {
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    borderRadius: 8,
-    width: 32,
-    height: 32,
-    fontWeight: 900,
-    cursor: "pointer",
-    fontSize: "16px",
+
+  // Modal Styles
+  modalOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15, 23, 42, 0.5)",
+    backdropFilter: "blur(4px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: "#111827",
+    zIndex: 9999,
+    padding: "20px",
   },
-  stepInput: {
-    width: 48,
-    textAlign: "center",
-    border: "1px solid #e5e7eb",
-    borderRadius: 8,
-    padding: "8px 6px",
-    fontWeight: 800,
-    background: "#fff",
-    fontSize: "14px",
-    color: "#111827",
+  modal: {
+    background: "#ffffff",
+    borderRadius: "20px",
+    padding: "24px",
+    maxWidth: "500px",
+    width: "100%",
+    maxHeight: "90vh",
+    overflow: "auto",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
   },
-  tabBtn: {
-    padding: "10px 16px",
-    borderRadius: 999,
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    color: "#111827",
+  modalTitle: {
+    margin: "0 0 8px",
+    fontSize: "20px",
     fontWeight: 700,
-    cursor: "pointer",
+    color: "#0f172a",
+  },
+  modalDescription: {
+    margin: "0 0 20px",
     fontSize: "14px",
-    transition: "all 0.2s",
+    color: "#64748b",
+    lineHeight: 1.5,
+  },
+  modalInput: {
+    width: "100%",
+    padding: "12px 16px",
+    borderRadius: "10px",
+    border: "1px solid #e2e8f0",
+    fontSize: "14px",
+    marginBottom: "20px",
+  },
+  modalFooter: {
+    display: "flex",
+    gap: "12px",
+    justifyContent: "flex-end",
+    marginTop: "20px",
+    paddingTop: "20px",
+    borderTop: "1px solid #edf2f7",
+  },
+  modalSaveButton: {
+    padding: "10px 20px",
+    borderRadius: "8px",
+    border: "none",
+    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    color: "white",
+    fontSize: "14px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  modalCancelButton: {
+    padding: "10px 20px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#475569",
+    fontSize: "14px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+
+  // Repeat Order Modal
+  searchContainer: {
+    display: "flex",
+    gap: "10px",
+    marginBottom: "16px",
+  },
+  searchInput: {
+    flex: 1,
+    padding: "10px 14px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    fontSize: "14px",
+  },
+  loadButton: {
+    padding: "10px 20px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#475569",
+    fontSize: "14px",
+    fontWeight: 500,
+    cursor: "pointer",
+  },
+  modalError: {
+    background: "#fef2f2",
+    border: "1px solid #fee2e2",
+    borderRadius: "8px",
+    padding: "12px",
+    marginBottom: "16px",
+    color: "#991b1b",
+    display: "flex",
+    gap: "8px",
+    alignItems: "center",
+  },
+  ordersList: {
+    maxHeight: "400px",
+    overflow: "auto",
+    border: "1px solid #edf2f7",
+    borderRadius: "10px",
+  },
+  orderItem: {
+    width: "100%",
+    textAlign: "left",
+    padding: "14px",
+    border: "none",
+    borderBottom: "1px solid #edf2f7",
+    background: "#ffffff",
+    cursor: "pointer",
+    transition: "background 0.2s",
+    "&:hover": {
+      background: "#f8fafc",
+    },
+    "&:last-child": {
+      borderBottom: "none",
+    },
+  },
+  orderItemHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "6px",
+  },
+  orderItemNumber: {
+    fontWeight: 700,
+    color: "#0f172a",
+    fontSize: "14px",
+  },
+  orderItemParty: {
+    color: "#64748b",
+    fontSize: "13px",
+  },
+  orderItemDetails: {
+    fontSize: "13px",
+    color: "#475569",
+    marginBottom: "4px",
+  },
+  orderItemMeta: {
+    fontSize: "12px",
+    color: "#94a3b8",
+  },
+  emptyOrders: {
+    padding: "24px",
+    textAlign: "center",
+    color: "#64748b",
+    fontSize: "14px",
+  },
+
+  // Position Grid
+  positionGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+    gap: "8px",
+    marginBottom: "16px",
+  },
+  positionItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "8px 10px",
+    background: "#f8fafc",
+    borderRadius: "6px",
+    fontSize: "13px",
+    color: "#1e293b",
+    cursor: "pointer",
+  },
+
+  // Other Field
+  otherField: {
+    marginTop: "12px",
+  },
+  otherLabel: {
+    display: "block",
+    fontSize: "13px",
+    fontWeight: 600,
+    color: "#0f172a",
+    marginBottom: "6px",
+  },
+  otherTextarea: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    fontSize: "13px",
+    resize: "vertical",
+  },
+
+  // Shade Modal
+  shadeGrid: {
+    marginBottom: "12px",
+  },
+  shadeHeader: {
+    display: "grid",
+    gridTemplateColumns: "1fr 2fr 40px",
+    gap: "8px",
+    padding: "8px 0",
+    fontSize: "12px",
+    fontWeight: 600,
+    color: "#64748b",
+    borderBottom: "1px solid #edf2f7",
+  },
+  shadeRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 2fr 40px",
+    gap: "8px",
+    marginBottom: "8px",
+  },
+  shadeInput: {
+    padding: "8px 10px",
+    borderRadius: "6px",
+    border: "1px solid #e2e8f0",
+    fontSize: "13px",
+  },
+  comboInput: {
+    padding: "8px 10px",
+    borderRadius: "6px",
+    border: "1px solid #e2e8f0",
+    fontSize: "13px",
+  },
+  removeButton: {
+    width: "32px",
+    height: "32px",
+    borderRadius: "6px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#ef4444",
+    fontSize: "14px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shadeActions: {
+    display: "flex",
+    gap: "10px",
+    marginBottom: "16px",
+  },
+  addRowButton: {
+    padding: "8px 14px",
+    borderRadius: "6px",
+    border: "1px solid #6366f1",
+    background: "#ffffff",
+    color: "#6366f1",
+    fontSize: "13px",
+    fontWeight: 500,
+    cursor: "pointer",
+  },
+  clearAllButton: {
+    padding: "8px 14px",
+    borderRadius: "6px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#64748b",
+    fontSize: "13px",
+    fontWeight: 500,
+    cursor: "pointer",
+  },
+
+  // Submitter Modal
+  submitterField: {
+    marginBottom: "16px",
+  },
+  submitterLabel: {
+    display: "block",
+    fontSize: "13px",
+    fontWeight: 600,
+    color: "#0f172a",
+    marginBottom: "6px",
+  },
+  submitterSelect: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    fontSize: "14px",
+    marginBottom: "8px",
+  },
+  submitterInput: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    fontSize: "14px",
+  },
+
+  // Size Picker Modal specific
+  tabBtn: {
+    padding: "8px 16px",
+    borderRadius: "20px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#475569",
+    fontSize: "13px",
+    fontWeight: 500,
+    cursor: "pointer",
   },
   tabBtnActive: {
     background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-    color: "#fff",
-    borderColor: "transparent",
-    boxShadow: "0 2px 8px rgba(99,102,241,0.25)",
+    color: "white",
+    border: "none",
   },
   counterBadge: {
-    fontSize: 13,
-    fontWeight: 700,
-    color: "#111827",
-    background: "#f1f5f9",
-    border: "1px solid #e2e8f0",
-    padding: "8px 12px",
-    borderRadius: 999,
-  },
-  checkCard: {
-    userSelect: "none",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "12px",
-    borderRadius: 12,
-    border: "1px solid #e5e7f0",
-    background: "linear-gradient(180deg,#ffffff,#f8fafc)",
-    fontWeight: 800,
-    fontSize: 15,
+    fontSize: "13px",
+    fontWeight: 600,
     color: "#0f172a",
-    cursor: "pointer",
-    transition: "all 0.2s",
-  },
-  checkCardChecked: {
-    borderColor: "#a5b4fc",
-    boxShadow: "0 0 0 2px rgba(99,102,241,0.28) inset",
-    background: "linear-gradient(180deg,#ffffff,#e0e7ff)",
+    background: "#f1f5f9",
+    padding: "4px 10px",
+    borderRadius: "20px",
   },
   ghostButton: {
-    padding: "10px 14px",
-    borderRadius: 8,
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-    color: "#111827",
-    fontSize: 13,
+    padding: "6px 12px",
+    borderRadius: "6px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#475569",
+    fontSize: "12px",
+    cursor: "pointer",
+  },
+  checkCard: {
+    padding: "8px",
+    borderRadius: "8px",
+    border: "1px solid #e2e8f0",
+    background: "#f8fafc",
+  },
+  checkCardChecked: {
+    borderColor: "#6366f1",
+    background: "#eef2ff",
+  },
+  stepBtn: {
+    width: "28px",
+    height: "28px",
+    borderRadius: "6px",
+    border: "1px solid #e2e8f0",
+    background: "#ffffff",
+    color: "#475569",
+    fontSize: "14px",
     fontWeight: 600,
     cursor: "pointer",
-    transition: "all 0.2s",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepInput: {
+    width: "40px",
+    textAlign: "center",
+    border: "1px solid #e2e8f0",
+    borderRadius: "6px",
+    padding: "4px",
+    fontSize: "13px",
+    fontWeight: 600,
   },
 };
 
-// Enhanced Global Styles with black text for modals
+// Global styles
 const globalStyles = `
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes modalSlideIn {
-    from { opacity: 0; transform: translateY(-30px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-    20%, 40%, 60%, 80% { transform: translateX(5px); }
-  }
-  
-  body {
-    background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
-    min-height: 100vh;
-    padding: 30px;
-    margin: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #111827;
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
   
   * {
     box-sizing: border-box;
   }
   
-  select {
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 16px center;
-    background-size: 18px;
-    padding-right: 48px !important;
+  body {
+    margin: 0;
+    padding: 0;
+    background: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   
   input:focus, select:focus, textarea:focus {
+    outline: none;
     border-color: #6366f1 !important;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
-    outline: none;
-  }
-  
-  .paper {
-    position: relative;
-    background: #ffffff;
-    border-radius: 20px;
-    border: 1px solid rgba(15, 23, 42, 0.06);
-    box-shadow:
-      0 15px 40px rgba(0,0,0,0.08),
-      0 1px 0 rgba(255,255,255,0.8) inset;
-    padding: 28px;
-    overflow: hidden;
-  }
-  
-  .paper::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      repeating-linear-gradient(
-        to bottom,
-        rgba(2, 6, 23, 0.06) 0px,
-        rgba(2, 6, 23, 0.06) 1px,
-        transparent 24px,
-        transparent 26px
-      );
-    pointer-events: none;
-    opacity: 0.3;
-    mix-blend-mode: multiply;
-    border-radius: inherit;
-  }
-  
-  .paper::after {
-    content: "";
-    position: absolute;
-    top: -12px;
-    right: 20px;
-    width: 120px;
-    height: 30px;
-    background: radial-gradient(ellipse at center, rgba(99,102,241,0.12), transparent 70%);
-    transform: rotate(2.5deg);
-    opacity: 0.4;
-    filter: blur(4px);
-    pointer-events: none;
-  }
-  
-  .paper--header {
-    padding: 32px 32px 24px 32px;
-    background:
-      radial-gradient(120% 100% at 0% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 60%),
-      radial-gradient(120% 100% at 100% 0%, rgba(139,92,246,0.12) 0%, transparent 60%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.65) 0%, rgba(255,255,255,0.75) 100%);
-    border: 1px solid rgba(148,163,184,0.2);
-    border-radius: 20px;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.8),
-      0 12px 40px rgba(2,6,23,0.1);
-    backdrop-filter: blur(12px);
-  }
-  
-  .paper__rule {
-    height: 2px;
-    width: 100%;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.8), rgba(139,92,246,0.8), rgba(255, 255, 255, 0.8));
-    margin-top: 20px;
-    border-radius: 999px;
-    opacity: 0.6;
-  }
-  
-  button {
-    transition: all 0.2s ease;
   }
   
   button:hover:not(:disabled) {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
   }
   
   button:active:not(:disabled) {
     transform: translateY(0);
   }
-  
-  .linkAction:hover {
-    background: rgba(99, 102, 241, 0.08);
-  }
-  
-  .refreshPill:hover:not(:disabled) {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-    transform: translateY(-2px);
-  }
-  
-  .backButton:hover {
-    background: linear-gradient(135deg, #e2e8f0, #ffffff);
-    border-color: #cbd5e1;
-  }
-  
-  .checkboxRow:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-  }
-  
-  .fileUploadLabel:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-  }
-  
-  .checkCard:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  }
-  
-  /* Modal text colors */
-  .modal h3,
-  .modal p,
-  .modal label,
-  .modal span {
-    color: #111827 !important;
-  }
-  
-  .modal input,
-  .modal textarea,
-  .modal select {
-    color: #111827 !important;
-  }
 `;
- 
+
 const styleElement = document.createElement("style");
 styleElement.innerHTML = globalStyles;
 document.head.appendChild(styleElement);

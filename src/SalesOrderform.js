@@ -38,72 +38,70 @@ const SalesOrderForm = () => {
   const [fileInputKey, setFileInputKey] = useState(Date.now());
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [submittedOrderNo, setSubmittedOrderNo] = useState(null);
 
+  const navigate = useNavigate();
 
-
-   const navigate = useNavigate();
-
-const validateForm = () => {
-  const newErrors = {};
-  if (!formData.partyName) newErrors.partyName = 'Party name is required';
-  if (!formData.season) newErrors.season = 'Season is required';
-  if (!formData.itemName) newErrors.itemName = 'Item name is required';
-  // Removed required validation for quantity and rateaccept
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.partyName) newErrors.partyName = 'Party name is required';
+    if (!formData.season) newErrors.season = 'Season is required';
+    if (!formData.itemName) newErrors.itemName = 'Item name is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   useEffect(() => {
-  const cachedParties = sessionStorage.getItem('parties');
-  const cachedLastOrder = sessionStorage.getItem('lastOrder');
+    const cachedParties = sessionStorage.getItem('parties');
+    const cachedLastOrder = sessionStorage.getItem('lastOrder');
 
-  if (cachedParties && cachedLastOrder) {
-    setPartyOptions(JSON.parse(cachedParties));
-    setFormData(f => ({ ...f, orderNo: cachedLastOrder }));
-    setLoading(false);
-  } else {
-    (async () => {
-      try {
-        const [pRes, oRes] = await Promise.all([
-          fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(PARTY_RANGE)}?key=${API_KEY}`),
-          fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(ORDER_RANGE)}?key=${API_KEY}`)
-        ]);
+    if (cachedParties && cachedLastOrder) {
+      setPartyOptions(JSON.parse(cachedParties));
+      setFormData(f => ({ ...f, orderNo: cachedLastOrder }));
+      setLoading(false);
+    } else {
+      (async () => {
+        try {
+          const [pRes, oRes] = await Promise.all([
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(PARTY_RANGE)}?key=${API_KEY}`),
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(ORDER_RANGE)}?key=${API_KEY}`)
+          ]);
 
-        const { values: pRaw } = await pRes.json();
-        const parties = Array.isArray(pRaw)
-          ? [...new Set(pRaw.map(r => r[0]).filter(Boolean))].sort()
-          : [];
+          const { values: pRaw } = await pRes.json();
+          const parties = Array.isArray(pRaw)
+            ? [...new Set(pRaw.map(r => r[0]).filter(Boolean))].sort()
+            : [];
 
-        setPartyOptions(parties);
-        sessionStorage.setItem('parties', JSON.stringify(parties));
+          setPartyOptions(parties);
+          sessionStorage.setItem('parties', JSON.stringify(parties));
 
-        const { values: oRaw } = await oRes.json();
-        const lastOrder = Array.isArray(oRaw) && oRaw.length
-          ? String(+oRaw[oRaw.length - 1][0] + 1)
-          : '1';
+          const { values: oRaw } = await oRes.json();
+          const lastOrder = Array.isArray(oRaw) && oRaw.length
+            ? String(+oRaw[oRaw.length - 1][0] + 1)
+            : '1';
 
-        setFormData(f => ({ ...f, orderNo: lastOrder }));
-        sessionStorage.setItem('lastOrder', lastOrder);
-      } catch (err) {
-        console.error('❌ Error fetching party/order data:', err);
-        setFormData(f => ({ ...f, orderNo: '1' }));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }
+          setFormData(f => ({ ...f, orderNo: lastOrder }));
+          sessionStorage.setItem('lastOrder', lastOrder);
+        } catch (err) {
+          console.error('❌ Error fetching party/order data:', err);
+          setFormData(f => ({ ...f, orderNo: '1' }));
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
 
-  // 🔁 Trigger retry queue: on load, every 30s, and on reconnect
-  retryFailedSubmissions(); // once when component loads
+    // 🔁 Trigger retry queue: on load, every 30s, and on reconnect
+    retryFailedSubmissions(); // once when component loads
 
-  const interval = setInterval(retryFailedSubmissions, 30000); // retry every 30s
-  window.addEventListener('online', retryFailedSubmissions); // retry when back online
+    const interval = setInterval(retryFailedSubmissions, 30000); // retry every 30s
+    window.addEventListener('online', retryFailedSubmissions); // retry when back online
 
-  return () => {
-    clearInterval(interval);
-    window.removeEventListener('online', retryFailedSubmissions);
-  };
-}, []);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', retryFailedSubmissions);
+    };
+  }, []);
 
   const handleChange = useCallback(e => {
     const { name, value, type, files } = e.target;
@@ -133,115 +131,111 @@ const validateForm = () => {
       });
     }
   }, [errors]);
+
   const uploadImageToDrive = async (file, orderNo) => {
-  try {
-    const base64 = await imageCompression.getDataUrlFromFile(file);
-    const imageBase64 = base64.split(',')[1]; // Remove "data:image/jpeg;base64,"
-
-    const uploadRes = await fetch('https://script.google.com/macros/s/AKfycbwh24O_HFs9ihShK5ArOOvJOXfPkveX9Tx6VFyaKSNhK0WMT_-TSZoo5p5q_k8ZlDbR/exec', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        image: imageBase64,
-        filename: `order_${orderNo}_${Date.now()}.jpg`,
-      }),
-    });
-
-    const uploadJson = await uploadRes.json();
-
-    if (uploadJson.status === 'success' && uploadJson.url) {
-      const fileId = uploadJson.url.split('/d/')[1]?.split('/')[0];
-      return fileId
-        ? `https://drive.google.com/uc?id=${fileId}`
-        : uploadJson.url;
-    } else {
-      console.error('❌ Upload response error:', uploadJson);
-      throw new Error('Image upload failed');
-    }
-  } catch (err) {
-    console.error('❌ Image upload error:', err);
-    throw err;
-  }
-};
-const saveToRetryQueue = (entry) => {
-  const queue = JSON.parse(localStorage.getItem('retryQueue') || '[]');
-  queue.push(entry);
-  localStorage.setItem('retryQueue', JSON.stringify(queue));
-};
-const retryFailedSubmissions = async () => {
-  const queue = JSON.parse(localStorage.getItem('retryQueue') || '[]');
-  if (!queue.length) return;
-
-  const remaining = [];
-
-  for (const entry of queue) {
     try {
-      // Retry image upload if needed (base64 string check)
-      if (entry.photo && entry.photo.startsWith('data:image')) {
-        const response = await fetch(entry.photo);
-        const blob = await response.blob();
-        const file = new File([blob], `retry_${Date.now()}.jpg`, { type: blob.type });
-        const url = await uploadImageToDrive(file, entry.orderNo);
-        entry.photo = url;
-      }
+      const base64 = await imageCompression.getDataUrlFromFile(file);
+      const imageBase64 = base64.split(',')[1]; // Remove "data:image/jpeg;base64,"
 
-      const res = await fetch(WEB_APP_URL, {
+      const uploadRes = await fetch('https://script.google.com/macros/s/AKfycbwh24O_HFs9ihShK5ArOOvJOXfPkveX9Tx6VFyaKSNhK0WMT_-TSZoo5p5q_k8ZlDbR/exec', {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(entry),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          image: imageBase64,
+          filename: `order_${orderNo}_${Date.now()}.jpg`,
+        }),
       });
 
-      const json = await res.json();
-      if (json.status !== 'success') throw new Error('Retry failed');
+      const uploadJson = await uploadRes.json();
 
-      console.log(`✅ Retried order #${entry.orderNo} successfully`);
+      if (uploadJson.status === 'success' && uploadJson.url) {
+        const fileId = uploadJson.url.split('/d/')[1]?.split('/')[0];
+        return fileId
+          ? `https://drive.google.com/uc?id=${fileId}`
+          : uploadJson.url;
+      } else {
+        console.error('❌ Upload response error:', uploadJson);
+        throw new Error('Image upload failed');
+      }
     } catch (err) {
-      console.warn('⚠ Retry failed:', err);
-      remaining.push(entry); // Preserve for next retry
+      console.error('❌ Image upload error:', err);
+      throw err;
     }
-  }
+  };
 
-  localStorage.setItem('retryQueue', JSON.stringify(remaining));
-};
+  const saveToRetryQueue = (entry) => {
+    const queue = JSON.parse(localStorage.getItem('retryQueue') || '[]');
+    queue.push(entry);
+    localStorage.setItem('retryQueue', JSON.stringify(queue));
+  };
 
+  const retryFailedSubmissions = async () => {
+    const queue = JSON.parse(localStorage.getItem('retryQueue') || '[]');
+    if (!queue.length) return;
 
-const handleSubmit = useCallback(async (e) => {
-  e.preventDefault();
-  if (!validateForm()) return;
+    const remaining = [];
 
-  // Make a snapshot BEFORE we mutate anything
-  const payload = { ...formData };
-  const photoPreview = formData.photoPreview;
+    for (const entry of queue) {
+      try {
+        // Retry image upload if needed (base64 string check)
+        if (entry.photo && entry.photo.startsWith('data:image')) {
+          const response = await fetch(entry.photo);
+          const blob = await response.blob();
+          const file = new File([blob], `retry_${Date.now()}.jpg`, { type: blob.type });
+          const url = await uploadImageToDrive(file, entry.orderNo);
+          entry.photo = url;
+        }
 
-  // ✅ Combine quantity + unit for saving in ONE column (e.g., "15 SETS")
-  if (payload.quantity) {
-    const unit = payload.qtyUnit || 'PCS';
-    payload.quantity = `${String(payload.quantity).trim()} ${unit}`.trim();
-  }
-  // We don't want to store/send a separate unit
-  delete payload.qtyUnit;
+        const res = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(entry),
+        });
 
-  // 🔹 Optimistic UI
-  setShowSuccess(true);
-  sessionStorage.removeItem('lastOrder');
-  setFormData(prev => ({
-    date: today,
-    ...initialState,
-    orderNo: String(parseInt(prev.orderNo, 10) + 1),
-    qtyUnit: 'PCS', // keep default after reset
-  }));
-  setTimeout(() => setShowSuccess(false), 3000);
+        const json = await res.json();
+        if (json.status !== 'success') throw new Error('Retry failed');
 
-  // 🔹 Background Process
-  (async () => {
+        console.log(`✅ Retried order #${entry.orderNo} successfully`);
+      } catch (err) {
+        console.warn('⚠ Retry failed:', err);
+        remaining.push(entry); // Preserve for next retry
+      }
+    }
+
+    localStorage.setItem('retryQueue', JSON.stringify(remaining));
+  };
+
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setSubmitting(true);
+    setSubmitStatus(null);
+
+    // Make a snapshot BEFORE we mutate anything
+    const payload = { ...formData };
+    const photoPreview = formData.photoPreview;
+
+    // ✅ Combine quantity + unit for saving in ONE column (e.g., "15 SETS")
+    if (payload.quantity) {
+      const unit = payload.qtyUnit || 'PCS';
+      payload.quantity = `${String(payload.quantity).trim()} ${unit}`.trim();
+    }
+    // We don't want to store/send a separate unit
+    delete payload.qtyUnit;
+
     try {
+      // Upload image if exists
       if (payload.photo) {
+        setUploadingImage(true);
         const url = await uploadImageToDrive(payload.photo, payload.orderNo);
         payload.photo = url;
+        setUploadingImage(false);
       }
 
+      // Submit to Google Sheets
       const response = await fetch(WEB_APP_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -249,20 +243,49 @@ const handleSubmit = useCallback(async (e) => {
       });
 
       const json = await response.json();
-      if (json.status !== 'success') throw new Error('Google Sheets Error');
+      
+      if (json.status !== 'success') {
+        throw new Error('Google Sheets Error');
+      }
 
-      console.log(`✅ Order #${payload.orderNo} saved in background`);
+      // ✅ Only show success after everything is complete
+      setSubmittedOrderNo(payload.orderNo);
+      setShowSuccess(true);
+      
+      // Update session storage and reset form
+      sessionStorage.removeItem('lastOrder');
+      setFormData(prev => ({
+        date: today,
+        ...initialState,
+        orderNo: String(parseInt(prev.orderNo, 10) + 1),
+        qtyUnit: 'PCS', // keep default after reset
+      }));
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+        setSubmittedOrderNo(null);
+      }, 3000);
+
+      console.log(`✅ Order #${payload.orderNo} saved successfully`);
+
     } catch (err) {
-      console.error('❌ Background error:', err);
-      // Convert photo preview to base64 for retry if necessary
+      console.error('❌ Submission error:', err);
+      setSubmitStatus('error');
+      
+      // Save to retry queue for later
       if (photoPreview && !payload.photo?.startsWith('https://')) {
         payload.photo = photoPreview;
       }
-      // payload already has combined "QTY UNIT" and no qtyUnit
       saveToRetryQueue(payload);
+      
+      // Show error message
+      setTimeout(() => setSubmitStatus(null), 5000);
+    } finally {
+      setSubmitting(false);
+      setUploadingImage(false);
     }
-  })();
-}, [formData, today, validateForm]);
+  }, [formData, today, validateForm]);
 
   const removePhoto = () => {
     setFormData(f => ({ ...f, photo: null, photoPreview: null }));
@@ -280,21 +303,19 @@ const handleSubmit = useCallback(async (e) => {
   return (
     <div style={styles.pageContainer}>
       {/* Success Notification */}
-    
-    {showSuccess && (
-  <div style={styles.popupOverlay}>
-    <div style={styles.popupBox}>
-      <h2 style={styles.popupTitle}>🎉 Order Saved!</h2>
-      <p style={styles.popupMessage}>
-        Your order <strong>#{formData.orderNo - 1}</strong> has been recorded successfully.
-      </p>
-      <button style={styles.popupButton} onClick={() => setShowSuccess(false)}>
-        OK
-      </button>
-    </div>
-  </div>
-)}
-
+      {showSuccess && (
+        <div style={styles.popupOverlay}>
+          <div style={styles.popupBox}>
+            <h2 style={styles.popupTitle}>🎉 Order Saved!</h2>
+            <p style={styles.popupMessage}>
+              Your order <strong>#{submittedOrderNo}</strong> has been recorded successfully.
+            </p>
+            <button style={styles.popupButton} onClick={() => setShowSuccess(false)}>
+              OK
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Error Notification */}
       {submitStatus === 'error' && (
@@ -303,7 +324,7 @@ const handleSubmit = useCallback(async (e) => {
             <span style={styles.emoji}>⚠</span>
             <div>
               <h3 style={styles.notificationTitle}>Oops! Something went wrong</h3>
-              <p style={styles.notificationMessage}>Please try again or contact support</p>
+              <p style={styles.notificationMessage}>The order has been saved for retry. We'll try again automatically.</p>
             </div>
           </div>
           <button 
@@ -316,18 +337,9 @@ const handleSubmit = useCallback(async (e) => {
       )}
 
       <div style={styles.card}>
-  {/* Form Header */}
-  <div style={styles.header}>
-    {/* Back Button: floats over the header */}
-    {/* <button
-      type="button"
-      onClick={() => window.history.back()}
-      className="back-button"
-      style={styles.backButton}
-    >
-      ←
-    </button> */}
-   <button
+        {/* Form Header */}
+        <div style={styles.header}>
+          <button
             type="button"
             onClick={() => {
               if (window.history.length > 1) {
@@ -342,17 +354,17 @@ const handleSubmit = useCallback(async (e) => {
             ← 
           </button>
 
-    <div style={styles.headerContent}>
-      <div>
-        <h1 style={styles.title}>📝 Sales Order</h1>
-        <p style={styles.subtitle}>Fill in the details to create a new order</p>
-      </div>
-      <div style={styles.badgeContainer}>
-        <span style={styles.badge}>🆔 Order #{formData.orderNo}</span>
-        <span style={styles.badge}>📅 {formData.date}</span>
-      </div>
-    </div>
-  </div>
+          <div style={styles.headerContent}>
+            <div>
+              <h1 style={styles.title}>📝 Sales Order</h1>
+              <p style={styles.subtitle}>Fill in the details to create a new order</p>
+            </div>
+            <div style={styles.badgeContainer}>
+              <span style={styles.badge}>🆔 Order #{formData.orderNo}</span>
+              <span style={styles.badge}>📅 {formData.date}</span>
+            </div>
+          </div>
+        </div>
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -399,7 +411,6 @@ const handleSubmit = useCallback(async (e) => {
                   <option value="">🌍 Select Season</option>
                   <option value="SUMMER">☀ SUMMER</option>
                   <option value="WINTER">❄ WINTER</option>
-      
                 </select>
                 {errors.season && (
                   <p style={styles.errorText}>❌ {errors.season}</p>
@@ -472,40 +483,39 @@ const handleSubmit = useCallback(async (e) => {
             </div>
 
             {/* Quantity */}
-           {/* Quantity */}
-<div style={styles.inputGroup}>
-  <label style={styles.label}>📦 Quantity *</label>
-  <div style={styles.qtyRow}>
-    <input
-      type="number"
-      style={{
-        ...styles.input,
-        ...styles.qtyNumber,
-        borderColor: errors.quantity ? styles.colors.error : styles.colors.border,
-      }}
-      name="quantity"
-      value={formData.quantity}
-      onChange={handleChange}
-      disabled={submitting}
-      min="1"
-      placeholder="0"
-    />
-    <select
-      name="qtyUnit"
-      value={formData.qtyUnit}
-      onChange={handleChange}
-      disabled={submitting}
-      style={styles.qtyUnit}
-      aria-label="Quantity unit"
-    >
-      <option value="PCS">PCS</option>
-      <option value="SETS">SETS</option>
-      <option value="DOZ">DOZ</option>
-      <option value="CARTONS">CARTONS</option>
-    </select>
-  </div>
-  {errors.quantity && <p style={styles.errorText}>❌ {errors.quantity}</p>}
-</div>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>📦 Quantity *</label>
+              <div style={styles.qtyRow}>
+                <input
+                  type="number"
+                  style={{
+                    ...styles.input,
+                    ...styles.qtyNumber,
+                    borderColor: errors.quantity ? styles.colors.error : styles.colors.border,
+                  }}
+                  name="quantity"
+                  value={formData.quantity}
+                  onChange={handleChange}
+                  disabled={submitting}
+                  min="1"
+                  placeholder="0"
+                />
+                <select
+                  name="qtyUnit"
+                  value={formData.qtyUnit}
+                  onChange={handleChange}
+                  disabled={submitting}
+                  style={styles.qtyUnit}
+                  aria-label="Quantity unit"
+                >
+                  <option value="PCS">PCS</option>
+                  <option value="SETS">SETS</option>
+                  <option value="DOZ">DOZ</option>
+                  <option value="CARTONS">CARTONS</option>
+                </select>
+              </div>
+              {errors.quantity && <p style={styles.errorText}>❌ {errors.quantity}</p>}
+            </div>
 
             {/* Rate */}
             <div style={styles.inputGroup}>
@@ -558,18 +568,17 @@ const handleSubmit = useCallback(async (e) => {
                   </button>
                 </div>
               ) : (
-               <div style={styles.fileUploadLabel} onClick={() => setShowUploadDialog(true)}>
-  <div style={styles.fileUploadContent}>
-    <div style={styles.uploadIconContainer}>
-      <span style={styles.uploadEmoji}>📤</span>
-    </div>
-    <p style={styles.fileUploadText}>
-      <span style={styles.fileUploadHighlight}>Click to upload</span> or drag and drop
-    </p>
-    <p style={styles.fileUploadSubtext}>PNG, JPG, JPEG (MAX. 5MB)</p>
-  </div>
-</div>
-
+                <div style={styles.fileUploadLabel} onClick={() => setShowUploadDialog(true)}>
+                  <div style={styles.fileUploadContent}>
+                    <div style={styles.uploadIconContainer}>
+                      <span style={styles.uploadEmoji}>📤</span>
+                    </div>
+                    <p style={styles.fileUploadText}>
+                      <span style={styles.fileUploadHighlight}>Click to upload</span> or drag and drop
+                    </p>
+                    <p style={styles.fileUploadSubtext}>PNG, JPG, JPEG (MAX. 5MB)</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -590,158 +599,156 @@ const handleSubmit = useCallback(async (e) => {
 
           {/* Form Actions */}
           <div style={styles.actionsContainer}>
-  {/* Image Uploading Status */}
-  {uploadingImage && (
-    <div style={styles.uploadingNotice}>
-      📤 Uploading image to Google Drive, please wait...
-    </div>
-  )}
+            {/* Image Uploading Status */}
+            {uploadingImage && (
+              <div style={styles.uploadingNotice}>
+                📤 Uploading image to Google Drive, please wait...
+              </div>
+            )}
 
-  <button
-    type="submit"
-    disabled={submitting}
-    style={submitting ? styles.submitButtonDisabled : styles.submitButton}
-  >
-    {submitting ? (
-      <>
-        <span style={styles.submitSpinner}>🌀</span>
-        Processing...
-      </>
-    ) : (
-      <>
-        <span style={styles.submitIcon}>✨</span>
-        Submit Order
-      </>
-    )}
-  </button>
-</div>
-
+            <button
+              type="submit"
+              disabled={submitting}
+              style={submitting ? styles.submitButtonDisabled : styles.submitButton}
+            >
+              {submitting ? (
+                <>
+                  <span style={styles.submitSpinner}>🌀</span>
+                  {uploadingImage ? 'Uploading image...' : 'Saving order...'}
+                </>
+              ) : (
+                <>
+                  <span style={styles.submitIcon}>✨</span>
+                  Submit Order
+                </>
+              )}
+            </button>
+          </div>
         </form>
-{showUploadDialog && (
-  <div style={styles.dialogOverlay}>
-    <div style={styles.dialogBox}>
-      <h3 style={{ marginBottom: '16px' }}>Upload Photo</h3>
-      <button
-        style={styles.dialogButton}
-        onClick={() => {
-          setShowCamera(true);
-          setShowUploadDialog(false);
-        }}
-      >
-        📷 Take Live Photo
-      </button>
-      <button
-        style={styles.dialogButton}
-        onClick={() => {
-          document.getElementById('galleryInput')?.click();
-          setShowUploadDialog(false);
-        }}
-      >
-        🖼 Choose from Gallery
-      </button>
-      <button
-        style={styles.dialogCancel}
-        onClick={() => setShowUploadDialog(false)}
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-)}
 
-
+        {showUploadDialog && (
+          <div style={styles.dialogOverlay}>
+            <div style={styles.dialogBox}>
+              <h3 style={{ marginBottom: '16px' }}>Upload Photo</h3>
+              <button
+                style={styles.dialogButton}
+                onClick={() => {
+                  setShowCamera(true);
+                  setShowUploadDialog(false);
+                }}
+              >
+                📷 Take Live Photo
+              </button>
+              <button
+                style={styles.dialogButton}
+                onClick={() => {
+                  document.getElementById('galleryInput')?.click();
+                  setShowUploadDialog(false);
+                }}
+              >
+                🖼 Choose from Gallery
+              </button>
+              <button
+                style={styles.dialogCancel}
+                onClick={() => setShowUploadDialog(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
       {/* Hidden Camera Input */}
-<input
-  key={`camera-${fileInputKey}`}
-  id="cameraInput"
-  type="file"
-  accept="image/*"
-  capture="environment"
-  name="photo"
-  style={{ display: 'none' }}
-  onChange={async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+      <input
+        key={`camera-${fileInputKey}`}
+        id="cameraInput"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        name="photo"
+        style={{ display: 'none' }}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
 
-    console.log('📸 Camera captured file:', file);
+          console.log('📸 Camera captured file:', file);
 
-    try {
-      const shouldCompress = file.size > 150 * 1024;
+          try {
+            const shouldCompress = file.size > 150 * 1024;
 
-      const compressedFile = shouldCompress
-        ? await imageCompression(file, {
-            maxSizeMB: 0.5,
-            maxWidthOrHeight: 800,
-            useWebWorker: true,
-          })
-        : file;
+            const compressedFile = shouldCompress
+              ? await imageCompression(file, {
+                  maxSizeMB: 0.5,
+                  maxWidthOrHeight: 800,
+                  useWebWorker: true,
+                })
+              : file;
 
-      const base64 = await imageCompression.getDataUrlFromFile(compressedFile);
+            const base64 = await imageCompression.getDataUrlFromFile(compressedFile);
 
-      setFormData((f) => ({
-        ...f,
-        photo: compressedFile,
-        photoPreview: base64,
-      }));
-      setFileInputKey(Date.now());
-      console.log('✅ Camera image preview ready');
-    } catch (err) {
-      console.error('❌ Camera image error:', err);
-    }
-  }}
-/>
+            setFormData((f) => ({
+              ...f,
+              photo: compressedFile,
+              photoPreview: base64,
+            }));
+            setFileInputKey(Date.now());
+            console.log('✅ Camera image preview ready');
+          } catch (err) {
+            console.error('❌ Camera image error:', err);
+          }
+        }}
+      />
 
-{/* Hidden Gallery Input */}
-<input
-  key={`gallery-${fileInputKey}`}
-  id="galleryInput"
-  type="file"
-  accept="image/*"
-  name="photo"
-  style={{ display: 'none' }}
-  onChange={(e) => {
-    const file = e.target.files?.[0];
-    console.log('🖼 Gallery selected file:', file);
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        console.log('✅ FileReader result:', reader.result);
-        setFormData(f => ({
-          ...f,
-          photo: file,
-          photoPreview: reader.result,
-        }));
-      };
-      reader.onerror = (err) => {
-        console.error('❌ FileReader error:', err);
-      };
-      reader.readAsDataURL(file);
-      setFileInputKey(Date.now());
-    }
-  }}
-/>
-{showCamera && (
-  <CameraDialog
-    onClose={() => setShowCamera(false)}
-    onCapture={(file, preview) => {
-      setFormData(f => ({
-        ...f,
-        photo: file,
-        photoPreview: preview,
-      }));
-      setShowCamera(false);
-      setFileInputKey(Date.now());
-    }}
-  />
-)}
+      {/* Hidden Gallery Input */}
+      <input
+        key={`gallery-${fileInputKey}`}
+        id="galleryInput"
+        type="file"
+        accept="image/*"
+        name="photo"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          console.log('🖼 Gallery selected file:', file);
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              console.log('✅ FileReader result:', reader.result);
+              setFormData(f => ({
+                ...f,
+                photo: file,
+                photoPreview: reader.result,
+              }));
+            };
+            reader.onerror = (err) => {
+              console.error('❌ FileReader error:', err);
+            };
+            reader.readAsDataURL(file);
+            setFileInputKey(Date.now());
+          }
+        }}
+      />
 
-
+      {showCamera && (
+        <CameraDialog
+          onClose={() => setShowCamera(false)}
+          onCapture={(file, preview) => {
+            setFormData(f => ({
+              ...f,
+              photo: file,
+              photoPreview: preview,
+            }));
+            setShowCamera(false);
+            setFileInputKey(Date.now());
+          }}
+        />
+      )}
     </div>
   );
 };
 
-// Enhanced Styles object with modern touches
+// ... (keep all the styles exactly as they were)
 const styles = {
   colors: {
     primary: '#6d28d9',
@@ -756,18 +763,17 @@ const styles = {
     accent: '#8b5cf6',
   },
   qtyRow: { display: 'flex', alignItems: 'center', gap: '12px' },
-qtyNumber: { flex: '1 1 60%' },
-qtyUnit: {
-  flex: '0 0 120px',
-  padding: '14px 16px',
-  border: '1px solid #e5e7eb',
-  borderRadius: '10px',
-  fontSize: '14px',
-  backgroundColor: '#fff',
-  outline: 'none',
-  boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
-},
-
+  qtyNumber: { flex: '1 1 60%' },
+  qtyUnit: {
+    flex: '0 0 120px',
+    padding: '14px 16px',
+    border: '1px solid #e5e7eb',
+    borderRadius: '10px',
+    fontSize: '14px',
+    backgroundColor: '#fff',
+    outline: 'none',
+    boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
+  },
   pageContainer: {
     minHeight: '100vh',
     backgroundColor: '#f9fafb',
@@ -787,10 +793,10 @@ qtyUnit: {
     background: 'linear-gradient(135deg, #4c3aedff 0%, #100f64ff 100%)',
     padding: '28px 32px',
     color: 'white',
-  position: 'relative',  // ensure positioned parent
+    position: 'relative',
     overflow: 'hidden',
   },
-   backButton: {
+  backButton: {
     position: 'absolute',
     top: '16px',
     left: '16px',
@@ -803,63 +809,52 @@ qtyUnit: {
     borderRadius: '8px',
     cursor: 'pointer',
     transition: 'background-color 0.2s ease',
-    /* If your CSS-in-JS supports pseudo-selectors:
-    ':hover': {
-      backgroundColor: 'rgba(255,255,255,0.25)',
-    }
-    */
   },
   popupOverlay: {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.4)',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 10000,
-  animation: 'fadeIn 0.2s ease-in-out',
-  backdropFilter: 'blur(4px)',
-},
-
-popupBox: {
-  backgroundColor: '#ffffff',
-  padding: '32px',
-  borderRadius: '16px',
-  width: 'min(90vw, 400px)',
-  boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-  textAlign: 'center',
-  animation: 'scaleIn 0.25s ease',
-},
-
-popupTitle: {
-  fontSize: '24px',
-  fontWeight: '700',
-  color: '#10b981',
-  marginBottom: '10px',
-},
-
-popupMessage: {
-  fontSize: '16px',
-  color: '#374151',
-  marginBottom: '20px',
-},
-
-popupButton: {
-  backgroundColor: '#10b981',
-  color: 'white',
-  padding: '12px 24px',
-  border: 'none',
-  borderRadius: '8px',
-  fontSize: '16px',
-  fontWeight: '600',
-  cursor: 'pointer',
-  transition: 'background-color 0.2s ease',
-},
-
-
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10000,
+    animation: 'fadeIn 0.2s ease-in-out',
+    backdropFilter: 'blur(4px)',
+  },
+  popupBox: {
+    backgroundColor: '#ffffff',
+    padding: '32px',
+    borderRadius: '16px',
+    width: 'min(90vw, 400px)',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+    textAlign: 'center',
+    animation: 'scaleIn 0.25s ease',
+  },
+  popupTitle: {
+    fontSize: '24px',
+    fontWeight: '700',
+    color: '#10b981',
+    marginBottom: '10px',
+  },
+  popupMessage: {
+    fontSize: '16px',
+    color: '#374151',
+    marginBottom: '20px',
+  },
+  popupButton: {
+    backgroundColor: '#10b981',
+    color: 'white',
+    padding: '12px 24px',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s ease',
+  },
   headerContent: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -881,7 +876,7 @@ popupButton: {
     margin: '4px 0 0',
     opacity: 0.9,
     fontWeight: '400',
-        marginLeft: '30px'
+    marginLeft: '30px'
   },
   badgeContainer: {
     display: 'flex',
@@ -904,8 +899,7 @@ popupButton: {
   },
   grid: {
     display: 'grid',
-gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-
+    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
     gap: '24px',
     marginBottom: '32px',
   },
@@ -1054,13 +1048,12 @@ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
     objectFit: 'cover',
   },
   uploadingNotice: {
-  marginBottom: '10px',
-  fontSize: '14px',
-  color: '#6b7280',
-  textAlign: 'right',
-  fontStyle: 'italic',
-},
-
+    marginBottom: '10px',
+    fontSize: '14px',
+    color: '#6b7280',
+    textAlign: 'right',
+    fontStyle: 'italic',
+  },
   removePhotoButton: {
     position: 'absolute',
     top: '12px',
@@ -1136,98 +1129,92 @@ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
     fontSize: '20px',
     animation: 'spin 1s linear infinite',
   },
- dialogOverlay: {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 9999,
-  backdropFilter: 'blur(8px)',
-  animation: 'fadeIn 0.3s ease-out forwards',
-  '@keyframes fadeIn': {
-    '0%': { opacity: 0 },
-    '100%': { opacity: 1 }
-  }
-},
-
-dialogBox: {
-  backgroundColor: '#fff',
-  padding: '32px',
-  borderRadius: '16px',
-  width: 'min(90vw, 380px)',
-  textAlign: 'center',
-  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  animation: 'scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-  transformOrigin: 'center center',
-  '@keyframes scaleIn': {
-    '0%': { transform: 'scale(0.95)', opacity: 0 },
-    '100%': { transform: 'scale(1)', opacity: 1 }
+  dialogOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+    backdropFilter: 'blur(8px)',
+    animation: 'fadeIn 0.3s ease-out forwards',
+    '@keyframes fadeIn': {
+      '0%': { opacity: 0 },
+      '100%': { opacity: 1 }
+    }
   },
-  '& h3': {
-    fontSize: '20px',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '24px',
+  dialogBox: {
+    backgroundColor: '#fff',
+    padding: '32px',
+    borderRadius: '16px',
+    width: 'min(90vw, 380px)',
+    textAlign: 'center',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    animation: 'scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+    transformOrigin: 'center center',
+    '@keyframes scaleIn': {
+      '0%': { transform: 'scale(0.95)', opacity: 0 },
+      '100%': { transform: 'scale(1)', opacity: 1 }
+    },
+    '& h3': {
+      fontSize: '20px',
+      fontWeight: '600',
+      color: '#111827',
+      marginBottom: '24px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px'
+    }
+  },
+  dialogButton: {
+    width: '100%',
+    padding: '14px',
+    marginBottom: '12px',
+    backgroundColor: '#7c3aed',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontSize: '15px',
+    fontWeight: '500',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '8px'
-  }
-},
-
-dialogButton: {
-  width: '100%',
-  padding: '14px',
-  marginBottom: '12px',
-  backgroundColor: '#7c3aed',
-  color: '#fff',
-  border: 'none',
-  borderRadius: '12px',
-  cursor: 'pointer',
-  fontSize: '15px',
-  fontWeight: '500',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '8px',
-  transition: 'all 0.3s ease',
-  boxShadow: '0 4px 6px -1px rgba(124, 58, 237, 0.2)',
-  '&:hover': {
-    backgroundColor: '#6d28d9',
-    transform: 'translateY(-2px)',
-    boxShadow: '0 10px 15px -3px rgba(124, 58, 237, 0.3)'
+    gap: '8px',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 4px 6px -1px rgba(124, 58, 237, 0.2)',
+    '&:hover': {
+      backgroundColor: '#6d28d9',
+      transform: 'translateY(-2px)',
+      boxShadow: '0 10px 15px -3px rgba(124, 58, 237, 0.3)'
+    },
+    '&:active': {
+      transform: 'translateY(0)'
+    }
   },
-  '&:active': {
-    transform: 'translateY(0)'
-  }
-},
-
-dialogCancel: {
-  width: '100%',
-  padding: '14px',
-  backgroundColor: 'transparent',
-  color: '#6b7280',
-  border: '1px solid #e5e7eb',
-  borderRadius: '12px',
-  cursor: 'pointer',
-  fontSize: '15px',
-  fontWeight: '500',
-  transition: 'all 0.3s ease',
-  '&:hover': {
-    backgroundColor: '#f9fafb',
-    borderColor: '#d1d5db',
-    color: '#111827'
-  }
-},
-
-
-
+  dialogCancel: {
+    width: '100%',
+    padding: '14px',
+    backgroundColor: 'transparent',
+    color: '#6b7280',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontSize: '15px',
+    fontWeight: '500',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+      backgroundColor: '#f9fafb',
+      borderColor: '#d1d5db',
+      color: '#111827'
+    }
+  },
   errorText: {
     marginTop: '6px',
     fontSize: '13px',

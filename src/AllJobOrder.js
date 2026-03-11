@@ -16,12 +16,13 @@ const LOAD_MORE_CHUNK = 1000; // "Load more" chunk size
 
 /** ====== sheet columns ====== */
 /** ====== sheet columns ====== */
+/** ====== sheet columns ====== */
 const HEADERS = [
   "Job Order No","Date","Fabric","Brand","Shade","Size","Quantity","Unit",
   "Party Name","Garment Type","Section","Season","Emb","Emb Details",
   "Printing","Printing Details","Pattern","Style","Remarks","Direct Stitching",
   "Submitted By","Image URL","Lot Number","Component","Priority",
-  "Tape/Lace", "Bottom Type", "Zip"  // Add these 3 new headers
+  "Tape/Lace", "Bottom Type", "Zip", "Sticker"  // <-- ADDED STICKER
 ];
 // Function to log PDF generation to Google Sheets
 const logPdfGeneration = async (row, pdfType, status = "Generated", notes = "") => {
@@ -327,14 +328,11 @@ const [lotEnd, setLotEnd] = useState("");
   const [fSubmittedBy, setFSubmittedBy] = useState("");
   const [pdfBatchBusy, setPdfBatchBusy] = useState(null);
   const [fPriority, setFPriority] = useState("");
-  const [fTapeLace, setFTapeLace] = useState("");
+const [fTapeLace, setFTapeLace] = useState("");
 const [fBottomType, setFBottomType] = useState("");
 const [fZip, setFZip] = useState("");
-// const [fTapeLace, setFTapeLace] = useState("");
-// const [fBottomType, setFBottomType] = useState("");
-// const [fZip, setFZip] = useState("");
-// const [pdfBusyId, setPdfBusyId] = useState(null);
-// ADD THIS NEW STATE
+const [fSticker, setFSticker] = useState(""); // Add this line
+
 const [generatedLots, setGeneratedLots] = useState(new Set()); // Track which lots have PDFs generated
 const [loadingGeneratedLots, setLoadingGeneratedLots] = useState(false);
 
@@ -342,7 +340,7 @@ const [loadingGeneratedLots, setLoadingGeneratedLots] = useState(false);
   const [preview, setPreview] = useState({ open: false, src: "", alt: "" });
 const VISIBLE_HEADERS = [
   "Job Order No","Date","Party Name","Fabric","Shade","Quantity","Unit","Lot Number",
-  "Priority"
+  "Priority", "Sticker"  // <-- ADDED STICKER (if you want it visible in main table)
   // You can add the new headers here if you want them visible in the main table
   // "Tape/Lace","Bottom Type","Zip"
 ];
@@ -595,10 +593,11 @@ useEffect(() => {
   const submittedByOpts = useMemo(() => uniqueOptions("Submitted By"), [rows]);
   const lotOpts = useMemo(() => uniqueOptions("Lot Number"), [rows]);
   const priorityOpts = useMemo(() => uniqueOptions("Priority"), [rows]);
-  // Add these near other uniqueOptions calls
+// Add these near other uniqueOptions calls
 const tapeLaceOpts = useMemo(() => uniqueOptions("Tape/Lace"), [rows]);
 const bottomTypeOpts = useMemo(() => uniqueOptions("Bottom Type"), [rows]);
 const zipOpts = useMemo(() => uniqueOptions("Zip"), [rows]);
+const stickerOpts = useMemo(() => uniqueOptions("Sticker"), [rows]); // Add this line
 
   /* --------- Filter + search --------- */
   const filtered = useMemo(() => {
@@ -623,9 +622,10 @@ const zipOpts = useMemo(() => uniqueOptions("Zip"), [rows]);
     const matchesPattern     = !fPattern     || (row["Pattern"] ?? "") === fPattern;
     const matchesSubmittedBy = !fSubmittedBy || (row["Submitted By"] ?? "") === fSubmittedBy;
     const matchesPriority = !fPriority || (row["Priority"] ?? "") === fPriority;
-    const matchesTapeLace = !fTapeLace || (row["Tape/Lace"] ?? "") === fTapeLace;
-    const matchesBottomType = !fBottomType || (row["Bottom Type"] ?? "") === fBottomType;
-    const matchesZip = !fZip || (row["Zip"] ?? "") === fZip;
+   const matchesTapeLace = !fTapeLace || (row["Tape/Lace"] ?? "") === fTapeLace;
+const matchesBottomType = !fBottomType || (row["Bottom Type"] ?? "") === fBottomType;
+const matchesZip = !fZip || (row["Zip"] ?? "") === fZip;
+const matchesSticker = !fSticker || (row["Sticker"] ?? "") === fSticker; // Add this line
 
 
     // NEW: inclusive range filters for JO No and Lot Number
@@ -633,31 +633,32 @@ const zipOpts = useMemo(() => uniqueOptions("Zip"), [rows]);
     const matchesLotRange = inRange(row["Lot Number"], lotStart, lotEnd);
 
     return (
-      matchesText &&
-      matchesFabric &&
-      matchesBrand &&
-      matchesShade &&
-      matchesParty &&
-      matchesSeason &&
-      matchesSection &&
-      matchesUnit &&
-      matchesDS &&
-      matchesLotSelect &&
-      matchesPattern &&
-      matchesSubmittedBy &&
-      matchesJoRange &&
-      matchesLotRange &&
-        matchesTapeLace &&
-      matchesBottomType &&
-      matchesZip&&
-      matchesPriority
-    );
+  matchesText &&
+  matchesFabric &&
+  matchesBrand &&
+  matchesShade &&
+  matchesParty &&
+  matchesSeason &&
+  matchesSection &&
+  matchesUnit &&
+  matchesDS &&
+  matchesLotSelect &&
+  matchesPattern &&
+  matchesSubmittedBy &&
+  matchesJoRange &&
+  matchesLotRange &&
+  matchesTapeLace &&
+  matchesBottomType &&
+  matchesZip &&
+  matchesSticker && // Add this line
+  matchesPriority
+);
   });
 }, [
 rows, q,
   fFabric, fBrand, fShade, fParty, fSeason, fSection, fUnit, fDS, fLot,
   fPattern, fSubmittedBy, fPriority,
-  fTapeLace, fBottomType, fZip,  // Add these
+  fTapeLace, fBottomType, fZip, fSticker,  // Add fSticker here
   joStart, joEnd, lotStart, lotEnd
 ]);
 
@@ -718,7 +719,7 @@ const clearFilters = () => {
   setFFabric(""); setFBrand(""); setFShade(""); setFParty(""); setFSeason(""); setFSection("");
   setFPattern(""); setFSubmittedBy(""); setFUnit(""); setFDS(""); setFLot("");
   setFPriority(""); 
-  setFTapeLace(""); setFBottomType(""); setFZip("");  // Add these
+  setFTapeLace(""); setFBottomType(""); setFZip(""); setFSticker(""); // Add setFSticker here
   setQ(""); setPage(1);
   setJoStart(""); setJoEnd("");
   setLotStart(""); setLotEnd("");
@@ -737,12 +738,12 @@ const exportLandscapePages = async () => {
     const doc = new jsPDFConstructor({
       orientation: "landscape",
       unit: "pt",
-      format: "a4",
+      format: "a3",
       compress: true,
     });
 
     // ====== LANDSCAPE PRODUCTION TABLE PAGE FUNCTION ======
-    const renderLandscapeTablePage = async (doc, row, isFirstPage = false) => {
+  const renderLandscapeTablePage = async (doc, row, isFirstPage = false) => {
       // For first row, use existing page. For subsequent rows, create new page
       if (!isFirstPage) {
         try {
@@ -776,8 +777,8 @@ const exportLandscapePages = async () => {
       
       const sizes = parseSizes(row["Size"] || "");
       
-      // Calculate table dimensions
-      const M = 42; // Margin
+      // Calculate table dimensions - REDUCED MARGINS
+      const M = 25; // Reduced from 42 to 25 to give more space
       const tableX = M;
       const tableWidth = LANDSCAPE_W - 2 * M;
       const tableMaxHeight = LANDSCAPE_H - 100 - 90;
@@ -833,16 +834,11 @@ const formatJobDate = (dateValue) => {
         year = 2000 + year;
       }
       
-      // Return formatted as "Sep 27 2022" or "27 Sep 2022"
+      // Return formatted as "27 Sep 2022"
       if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const monthName = monthNames[month - 1] || '';
-        
-        // Format 1: "Sep 27 2022" (Month Day Year)
-        // return `${monthName} ${day} ${year}`;
-        
-        // Format 2: "27 Sep 2022" (Day Month Year) - as per your requirement
         return `${day} ${monthName} ${year}`;
       }
     }
@@ -906,7 +902,7 @@ const vDate = (k, rowData) => {
 
 const drawPageHeader = (pageNumber, totalPages) => {
   // Add top margin
-  const TOP_MARGIN = 15; // Add 15pt margin from top
+  const TOP_MARGIN = 19; // Add 15pt margin from top
   
   // Set white background for header area - extend height by TOP_MARGIN
   doc.setFillColor(...C.white);
@@ -1091,11 +1087,17 @@ doc.line(M + 10, signatureLineY, M + 130, signatureLineY);
         const tableData = [];
         const rowsNeeded = Math.max(colorsPerPage, shadeBatch.length);
         
+        // Get Fabric Lot No and Rib Lot No values from the row
+        const fabricLotNo = val("Fabric Lot No") || val("Fabric Lot") || "—";
+        const ribLotNo = val("Rib Lot No") || val("Rib Lot") || "—";
+        
         for (let i = 0; i < rowsNeeded; i++) {
           const srNo = startSrNo + i;
           const rowData = { 
             sr_no: srNo.toString(),
             shade: i < shadeBatch.length ? shadeBatch[i] : "",
+            fabric_lot_no: i === 0 ? fabricLotNo : "", // Only show in first row
+            rib_lot_no: i === 0 ? ribLotNo : "", // Only show in first row
             rolls: "",
             kgs: ""
           };
@@ -1121,6 +1123,8 @@ doc.line(M + 10, signatureLineY, M + 130, signatureLineY);
           const totalRow = {
             sr_no: "TOTAL",
             shade: "",
+            fabric_lot_no: "",
+            rib_lot_no: "",
             rolls: "",
             kgs: "",
             total_pcs: "",
@@ -1143,7 +1147,9 @@ doc.line(M + 10, signatureLineY, M + 130, signatureLineY);
         const generateTableHeaders = () => {
           const headers = [
             { label: "SR", key: "sr_no", width: 0.5 },
-            { label: "SHADE", key: "shade", width: 2.0 },
+            { label: "SHADE", key: "shade", width: 1.5 },
+            { label: "FABRIC\nLOT NO", key: "fabric_lot_no", width: 0.9 }, // New column
+            { label: "RIB\nLOT NO", key: "rib_lot_no", width: 0.9 }, // New column
             { label: "ROLLS", key: "rolls", width: 0.7 },
             { label: "KGS", key: "kgs", width: 0.7 },
           ];
@@ -1157,13 +1163,13 @@ doc.line(M + 10, signatureLineY, M + 130, signatureLineY);
           });
           
           headers.push(
-            { label: "TOTAL PCS", key: "total_pcs", width: 0.7 },
-            { label: "KAPDA LAYER WT", key: "kapda_layer_weight", width: 1.0 },
-            { label: "LAYER PCS", key: "layer_piece", width: 0.8 },
-            { label: "LAYER INCH", key: "layer_inch", width: 0.8 },
-            { label: "DIA", key: "daya", width: 0.7 },
-            { label: "CUTTING WEIGHT", key: "cutting_weight", width: 0.9 },
-            { label: "KAPDA VAPSI", key: "kapda_vapsi", width: 0.8 }
+            { label: "TOTAL\nPCS", key: "total_pcs", width: 0.7 },
+            { label: "KAPDA\nLAYER WT", key: "kapda_layer_weight", width: 0.9 },
+            { label: "LAYER\nPCS", key: "layer_piece", width: 0.7 },
+            { label: "LAYER\nINCH", key: "layer_inch", width: 0.7 },
+            { label: "DIA", key: "daya", width: 0.6 },
+            { label: "CUTTING\nWEIGHT", key: "cutting_weight", width: 0.8 },
+            { label: "KAPDA\nVAPSI", key: "kapda_vapsi", width: 0.7 }
           );
           
           return headers;
@@ -1186,9 +1192,9 @@ doc.line(M + 10, signatureLineY, M + 130, signatureLineY);
             doc.setLineWidth(0.5);
             doc.rect(currentX, y, colWidth, HEADER_HEIGHT);
             
-            setFont("bold", 8);
+            setFont("bold", 7); // Slightly reduced font size to fit more columns
             
-            if (h.label.length <= 3 && /^[A-Z0-9]+$/.test(h.label)) {
+            if (h.label.length <= 3 && /^[A-Z0-9]+$/.test(h.label) && !h.label.includes('\n')) {
               doc.text(h.label, currentX + colWidth / 2, y + HEADER_HEIGHT / 2 - 4, { align: "center" });
               
               doc.setDrawColor(...C.black);
@@ -1196,8 +1202,8 @@ doc.line(M + 10, signatureLineY, M + 130, signatureLineY);
               doc.line(currentX + 2, y + HEADER_HEIGHT / 2, 
                       currentX + colWidth - 2, y + HEADER_HEIGHT / 2);
             } else {
-              const lines = doc.splitTextToSize(h.label, colWidth - 6);
-              const lineHeight = 8;
+              const lines = h.label.split('\n');
+              const lineHeight = 7;
               const startY = y + (HEADER_HEIGHT - (lines.length * lineHeight)) / 2 + 5;
               
               lines.forEach((line, lineIdx) => {
@@ -1249,16 +1255,16 @@ doc.line(M + 10, signatureLineY, M + 130, signatureLineY);
               const cellValue = rowData[h.key] || "";
               
               if (rowData.isTotalRow) {
-                setFont("bold", 9);
+                setFont("bold", 8);
               } else {
-                setFont("normal", 9);
+                setFont("normal", 8);
               }
               
-              if (h.key === "shade") {
-                const shadeText = String(cellValue);
-                const maxWidth = colWidth - 10;
-                const lines = doc.splitTextToSize(shadeText, maxWidth);
-                const lineHeight = 9;
+              if (h.key === "shade" || h.key === "fabric_lot_no" || h.key === "rib_lot_no") {
+                const textValue = String(cellValue);
+                const maxWidth = colWidth - 6;
+                const lines = doc.splitTextToSize(textValue, maxWidth);
+                const lineHeight = 7;
                 const totalTextHeight = lines.length * lineHeight;
                 const startY = rowY + (ROW_HEIGHT - totalTextHeight) / 2 + 4;
                 
@@ -2561,7 +2567,7 @@ const renderSecondPage = async () => {
       y += 85;
     };
 
-    // ====== LANDSCAPE PRODUCTION TABLE PAGE ======
+  
 // ====== LANDSCAPE PRODUCTION TABLE PAGE ======
 const renderLandscapeTablePage = async () => {
   // Switch to landscape A4
@@ -2586,7 +2592,8 @@ const renderLandscapeTablePage = async () => {
   // Parse sizes for column headers
   const sizes = parseSizes(val("Size"));
   
-  // Calculate table dimensions
+  // Calculate table dimensions - REDUCED MARGINS
+  const M = 25; // Reduced from 42 to 25 to give more space
   const tableX = M;
   const tableWidth = LANDSCAPE_W - 2 * M;
   const tableMaxHeight = LANDSCAPE_H - 100 - 90; // Reduced for header and footer
@@ -2855,11 +2862,15 @@ const renderLandscapeTablePage = async () => {
     return boxY + boxHeight;
   };
   
-  // Function to draw a table page (rest remains the same)
+  // Function to draw a table page with the two new columns
   const drawTablePage = (shadeBatch, pageIndex, totalPages, startSrNo) => {
     // Draw page header (same on every page)
     const tableStartY = drawPageHeader(pageIndex + 1, totalPages);
     let y = tableStartY;
+    
+    // Get Fabric Lot No and Rib Lot No values from the row
+    const fabricLotNo = val("Fabric Lot No") || val("Fabric Lot") || "—";
+    const ribLotNo = val("Rib Lot No") || val("Rib Lot") || "—";
     
     const tableData = [];
     const rowsNeeded = Math.max(colorsPerPage, shadeBatch.length);
@@ -2870,6 +2881,8 @@ const renderLandscapeTablePage = async () => {
       const row = { 
         sr_no: srNo.toString(),
         shade: i < shadeBatch.length ? shadeBatch[i] : "",
+        fabric_lot_no: i === 0 ? fabricLotNo : "", // Only show in first row
+        rib_lot_no: i === 0 ? ribLotNo : "", // Only show in first row
         rolls: "",
         kgs: ""
       };
@@ -2898,6 +2911,8 @@ const renderLandscapeTablePage = async () => {
       tableData.push({
         sr_no: "TOTAL",
         shade: "",
+        fabric_lot_no: "",
+        rib_lot_no: "",
         rolls: "",
         kgs: "",
         ...(sizes.reduce((acc, size) => {
@@ -2915,11 +2930,13 @@ const renderLandscapeTablePage = async () => {
       });
     }
     
-    // Generate table headers with adjusted widths for A4
+    // Generate table headers with adjusted widths for A4 - WITH NEW COLUMNS
     const generateTableHeaders = () => {
       const headers = [
         { label: "SR", key: "sr_no", width: 0.5 },
-        { label: "SHADE", key: "shade", width: 2.0 }, // Increased from 1.2 to 2.0 for better text wrapping
+        { label: "SHADE", key: "shade", width: 1.5 }, // Reduced from 2.0 to 1.5
+        { label: "FABRIC\nLOT NO", key: "fabric_lot_no", width: 0.9 }, // New column
+        { label: "RIB\nLOT NO", key: "rib_lot_no", width: 0.9 }, // New column
         { label: "ROLLS", key: "rolls", width: 0.7 },
         { label: "KGS", key: "kgs", width: 0.7 },
       ];
@@ -2937,13 +2954,13 @@ const renderLandscapeTablePage = async () => {
       
       // Add the remaining columns with English abbreviations - reduced widths
       headers.push(
-        { label: "TOTAL PCS", key: "total_pcs", width: 0.7 },
-        { label: "KAPDA LAYER WT", key: "kapda_layer_weight", width: 1.0 },
-        { label: "LAYER PCS", key: "layer_piece", width: 0.8 },
-        { label: "LAYER INCH", key: "layer_inch", width: 0.8 },
-        { label: "DIA", key: "daya", width: 0.7 },
-        { label: "CUTTING WEIGHT", key: "cutting_weight", width: 0.9 },
-        { label: "KAPDA VAPSI", key: "kapda_vapsi", width: 0.8 }
+        { label: "TOTAL\nPCS", key: "total_pcs", width: 0.7 },
+        { label: "KAPDA\nLAYER WT", key: "kapda_layer_weight", width: 0.9 },
+        { label: "LAYER\nPCS", key: "layer_piece", width: 0.7 },
+        { label: "LAYER\nINCH", key: "layer_inch", width: 0.7 },
+        { label: "DIA", key: "daya", width: 0.6 },
+        { label: "CUTTING\nWEIGHT", key: "cutting_weight", width: 0.8 },
+        { label: "KAPDA\nVAPSI", key: "kapda_vapsi", width: 0.7 }
       );
       
       return headers;
@@ -2969,9 +2986,9 @@ const renderLandscapeTablePage = async () => {
         doc.rect(currentX, y, colWidth, HEADER_HEIGHT);
         
         // Header text - smaller font for A4
-        setFont("bold", 8);
+        setFont("bold", 7); // Reduced font size to fit more columns
         
-        if (h.label.length <= 3 && /^[A-Z0-9]+$/.test(h.label)) {
+        if (h.label.length <= 3 && /^[A-Z0-9]+$/.test(h.label) && !h.label.includes('\n')) {
           // Size column
           doc.text(h.label, currentX + colWidth / 2, y + HEADER_HEIGHT / 2 - 4, { align: "center" });
           
@@ -2981,9 +2998,9 @@ const renderLandscapeTablePage = async () => {
           doc.line(currentX + 2, y + HEADER_HEIGHT / 2, 
                   currentX + colWidth - 2, y + HEADER_HEIGHT / 2);
         } else {
-          // Regular header
-          const lines = doc.splitTextToSize(h.label, colWidth - 6);
-          const lineHeight = 8;
+          // Regular header with line breaks
+          const lines = h.label.split('\n');
+          const lineHeight = 7;
           const startY = y + (HEADER_HEIGHT - (lines.length * lineHeight)) / 2 + 5;
           
           lines.forEach((line, lineIdx) => {
@@ -3041,19 +3058,19 @@ const renderLandscapeTablePage = async () => {
           
           // Style for total row
           if (row.isTotalRow) {
-            setFont("bold", 9);
+            setFont("bold", 8);
           } else {
-            setFont("normal", 9);
+            setFont("normal", 8);
           }
           
-          // Special handling for SHADE column to wrap text
-          if (h.key === "shade") {
-            const shadeText = String(cellValue);
+          // Special handling for SHADE, FABRIC_LOT_NO, and RIB_LOT_NO columns to wrap text
+          if (h.key === "shade" || h.key === "fabric_lot_no" || h.key === "rib_lot_no") {
+            const textValue = String(cellValue);
             
             // Split the text to fit within the cell width with some padding
-            const maxWidth = colWidth - 10; // Leave some padding
-            const lines = doc.splitTextToSize(shadeText, maxWidth);
-            const lineHeight = 9;
+            const maxWidth = colWidth - 6; // Leave some padding
+            const lines = doc.splitTextToSize(textValue, maxWidth);
+            const lineHeight = 7;
             const totalTextHeight = lines.length * lineHeight;
             const startY = rowY + (ROW_HEIGHT - totalTextHeight) / 2 + 4;
             
@@ -4444,6 +4461,15 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
   <span className="jox-ico">{pdfBatchBusy === "first" ? "⏳" : "⬇️"}</span>
   <span>{pdfBatchBusy === "first" ? "Building…" : "Download FP"}</span>
 </button>
+  <button
+    className="jox-btn jox-btn--light"
+    onClick={() => fetchData({ isRefresh: true })}
+    disabled={loading || refreshing}
+    title="Refresh data from Google Sheets"
+  >
+    <span className="jox-ico">{refreshing ? "⏳" : "🔄"}</span>
+    <span>{refreshing ? "Refreshing…" : "Refresh"}</span>
+  </button>
 
 {/* <button
   className="jox-btn"
@@ -4453,8 +4479,8 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
 >
   <span className="jox-ico">{pdfBatchBusy === "second" ? "⏳" : "⬇️"}</span>
   <span>{pdfBatchBusy === "second" ? "Building…" : "Download SP"}</span>
-</button>
-<button
+</button> */}
+{/* <button
   className="jox-btn"
   onClick={() => exportBatchPages("material")}
   disabled={loading || refreshing || pdfBatchBusy || rows.length === 0}
@@ -4462,8 +4488,8 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
 >
   <span className="jox-ico">{pdfBatchBusy === "material" ? "⏳" : "📋"}</span>
   <span>{pdfBatchBusy === "material" ? "Building…" : "Download MRP"}</span>
-</button>
-<button
+</button> */}
+{/* <button
   className="jox-btn"
   onClick={exportLandscapePages}
   disabled={loading || refreshing || pdfLandscapeBusy || rows.length === 0}
@@ -4472,6 +4498,7 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
   <span className="jox-ico">{pdfLandscapeBusy ? "⏳" : "📊"}</span>
   <span>{pdfLandscapeBusy ? "Building…" : "Download CT"}</span>
 </button> */}
+ 
           </div>
         </header>
 
@@ -4534,6 +4561,10 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
 <select className="jox-select" value={fZip} onChange={(e) => { setFZip(e.target.value); setPage(1); }} title="Filter by Zip">
   <option value="">🤐 All Zips</option>
   {zipOpts.map((v) => <option key={v} value={v}>{v}</option>)}
+</select>
+<select className="jox-select" value={fSticker} onChange={(e) => { setFSticker(e.target.value); setPage(1); }} title="Filter by Sticker">
+  <option value="">🏷️ All Stickers</option>
+  {stickerOpts.map((v) => <option key={v} value={v}>{v}</option>)}
 </select>
 
             <select className="jox-select" value={fDS} onChange={(e) => { setFDS(e.target.value); setPage(1); }} title="Filter by Direct Stitching">
