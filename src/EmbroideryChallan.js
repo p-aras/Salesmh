@@ -1708,6 +1708,7 @@ const showBrowserNotification = (notification) => {
 
 
 // === CLIENT-ONLY: Generate & Download PDF for a single history entry ===
+// === CLIENT-ONLY: Generate & Download PDF for a single history entry ===
 const generateChallanPdfLocal = async (row, entry) => {
   // ===== BLACK THEME (match handleCreateChallan) =====
   const BASE = {
@@ -1727,9 +1728,16 @@ const generateChallanPdfLocal = async (row, entry) => {
     }
     return fb;
   };
+  
   const fmtNum = (v) => {
     const n = Number(v);
     return Number.isFinite(n) ? n.toLocaleString('en-IN') : (v ?? '-');
+  };
+
+  const parseNum = (v) => {
+    if (v == null) return 0;
+    const n = Number(String(v).toString().replace(/,/g, '').trim());
+    return Number.isFinite(n) ? n : 0;
   };
 
   // ---------- data from row ----------
@@ -1741,22 +1749,23 @@ const generateChallanPdfLocal = async (row, entry) => {
   const embDet      = first(['Emb Details','Embroidery Details']);
   const fabric      = first(['Fabric','Fabric Type']);
   const size        = first(['Size','Sizes']);
-  const garmentType = first(['Garment Type','Garment','Gmt','Gmt Type'], '-'); // "Item Name"
+  const garmentType = first(['Garment Type','Garment','Gmt','Gmt Type'], '-');
   const brand       = first(['Brand','Brand Name'], '-');
-  const qtySheet    = first(['Quantity','Qty','Total Qty'], '0'); // used if completeLot
+  const qtySheet    = first(['Quantity','Qty','Total Qty'], '0');
   const unit        = first(['Unit','Units'], '');
   const remarks     = first(['Remarks','Note'], '');
 
   // ---------- entry ----------
   const challanNo = (entry?.number || '').toString().trim() || 'CHALLAN';
 
-  // ALWAYS today's date → "11 Sept 2025"
+  // Format date
   const monthShortT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sept','Oct','Nov','Dec'];
   const fmtDayMonYear = (d) => `${d.getDate()} ${monthShortT[d.getMonth()]} ${d.getFullYear()}`;
   const challanDate = fmtDayMonYear(new Date());
 
   const completeLotFlag = !!entry?.completeLot;
 
+  // Get all items from the entry - NO LIMIT, ALL SHADES
   const itemsFromEntry = Array.isArray(entry?.items)
     ? entry.items.map(it => ({
         shade: String(it?.shade || '').trim(),
@@ -1768,11 +1777,8 @@ const generateChallanPdfLocal = async (row, entry) => {
   const displayTotal  = completeLotFlag ? (Number(qtySheet) || 0)
                                         : (Number(entry?.totalQty) || totalItemsQty);
 
-  // Only today's items; pad to exactly 10 rows
-  const ROWS_PER_HALF = 10;
-  const itemsCleanForDoc = completeLotFlag ? [] : itemsFromEntry;
-  const rows10 = itemsCleanForDoc.slice(0, ROWS_PER_HALF).map(it => ({ shade: it.shade, qty: String(it.qty) }));
-  while (rows10.length < ROWS_PER_HALF) rows10.push({ shade: '', qty: '' });
+  // ALL ROWS - no slicing, no padding
+  const allRows = itemsFromEntry.map(it => ({ shade: it.shade, qty: String(it.qty) }));
 
   // ---------- jsPDF + autotable ----------
   const { jsPDF } = await import('jspdf');
@@ -1812,6 +1818,7 @@ const generateChallanPdfLocal = async (row, entry) => {
       doc.setFontSize(8.2 * SCALE);
       doc.text(t.toUpperCase(), x, yy);
     };
+    
     const value = (t, x, yy, align = 'left', bold=false, size=10.2) => {
       doc.setTextColor(...BASE.ink);
       doc.setFont('helvetica', bold ? 'bold' : 'normal');
@@ -1819,7 +1826,7 @@ const generateChallanPdfLocal = async (row, entry) => {
       doc.text(String(t), x, yy, { align });
     };
 
-    // ===== header (same look as handleCreateChallan) =====
+    // ===== header =====
     const HEAD_H = 54 * SCALE;
     const headY = boxY + 18 * SCALE;
     doc.setLineWidth(0.9);
@@ -1837,27 +1844,31 @@ const generateChallanPdfLocal = async (row, entry) => {
     doc.text('EMBROIDERY CHALLAN', leftX, baselineY);
 
     // challan no (center)
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.2 * SCALE);
+    doc.setFont('helvetica', 'bold'); 
+    doc.setFontSize(8.2 * SCALE);
     doc.text('Challan No', centerX, baselineY - 12 * SCALE, { align: 'center' });
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(11.2 * SCALE);
+    doc.setFont('helvetica', 'bold'); 
+    doc.setFontSize(11.2 * SCALE);
     doc.text(challanNo, centerX, baselineY, { align: 'center' });
 
     // date (right)
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.2 * SCALE);
+    doc.setFont('helvetica', 'bold'); 
+    doc.setFontSize(8.2 * SCALE);
     doc.text('Date', rightX, baselineY - 12 * SCALE, { align: 'right' });
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.2 * SCALE);
+    doc.setFont('helvetica', 'normal'); 
+    doc.setFontSize(10.2 * SCALE);
     doc.text(challanDate, rightX, baselineY, { align: 'right' });
 
     // meta row
     const fy = headY + HEAD_H - 12 * SCALE;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.2 * SCALE);
+    doc.setFont('helvetica', 'bold'); 
+    doc.setFontSize(10.2 * SCALE);
     doc.text('Party:', contentX + 16 * SCALE, fy);
-    doc.setFont('helvetica', 'normal'); doc.text(party, contentX + 56 * SCALE, fy);
-    doc.setFont('helvetica', 'bold'); doc.text('Lot:', contentX + 220 * SCALE, fy);
+    doc.setFont('helvetica', 'normal'); 
+    doc.text(party, contentX + 56 * SCALE, fy);
+    doc.setFont('helvetica', 'bold'); 
+    doc.text('Lot:', contentX + 220 * SCALE, fy);
     value(lot, contentX + 248 * SCALE, fy, 'left', true, 15.0);
-    // If you want Total Qty here, uncomment:
-    // doc.setFont('helvetica', 'bold'); doc.text('Total Qty:', contentX + 390 * SCALE, fy);
-    // doc.setFont('helvetica', 'normal'); doc.text(`${fmtNum(displayTotal)}`, contentX + 448 * SCALE, fy);
 
     // ===== info grid =====
     const GRID_H = 70 * SCALE;
@@ -1893,98 +1904,117 @@ const generateChallanPdfLocal = async (row, entry) => {
     doc.setLineWidth(0.9);
     doc.roundedRect(contentX, remarksTop, contentW, REMARKS_H, 6, 6);
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.4 * SCALE);
+    doc.setFont('helvetica', 'bold'); 
+    doc.setFontSize(9.4 * SCALE);
     doc.text('REMARKS:', contentX + 9 * SCALE, remarksTop + 15.5 * SCALE);
     const remTextX = contentX + 84 * SCALE;
     const remMaxW = contentW - (remTextX - contentX) - 9 * SCALE;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(10.4 * SCALE);
+    doc.setFont('helvetica', 'normal'); 
+    doc.setFontSize(10.4 * SCALE);
     const remLine = (doc.splitTextToSize(remarks || '-', remMaxW) || ['-'])[0];
     doc.text(remLine, remTextX, remarksTop + 15.5 * SCALE);
 
-    // ===== Shade/Quantity table (COMPACT + page-safe) =====
+    // ===== Shade/Quantity table - NOW WITH ALL ROWS =====
     const GAP_AFTER_REMARKS = 10 * SCALE;
-const tableStartY = remarksTop + REMARKS_H + GAP_AFTER_REMARKS;
+    const tableStartY = remarksTop + REMARKS_H + GAP_AFTER_REMARKS;
 
-// reserved space for signatures + footer (unchanged)
-const SIG_H = 36 * SCALE;
-const FOOTER_GAP = 14 * SCALE;
-const SIG_BOTTOM_EXTRA = 10 * SCALE;
+    // reserved space for signatures + footer
+    const SIG_H = 36 * SCALE;
+    const FOOTER_GAP = 14 * SCALE;
+    const SIG_BOTTOM_EXTRA = 10 * SCALE;
+    const usableBottom = boxBottom - SIG_H - FOOTER_GAP - SIG_BOTTOM_EXTRA;
 
-const usableBottom = boxBottom - SIG_H - FOOTER_GAP - SIG_BOTTOM_EXTRA;
-const tableMaxHeight = Math.max(36 * SCALE, usableBottom - tableStartY);
+    // Build table with ALL rows
+    const itemsBody = rowsForHalf.map((it, i) => [i + 1, it.shade || '', fmtNum(it.qty || '')]);
+    const itemsTotal = rowsForHalf.reduce((s, r) => s + (parseNum(r.qty) || 0), 0);
 
-// Bigger fonts & padding for better visibility
-const headerFont = 12.6;
-const bodyFont   = 11.2;
-const pad        = 3.2;
+    const tableLeft = contentX + 4 * SCALE;
+    const tableWidth = (contentW - 8 * SCALE);
+    const tableRight = tableLeft + tableWidth;
 
-// Make rows tall enough to consume the available height
-const ROWS_PER_HALF = 10; // keep 10 rows as required
-const headerReserve = (headerFont + pad * 2 + 4) * SCALE;
-const footerReserve = (bodyFont   + pad * 2 + 6) * SCALE;
-const availableForRows = Math.max(24 * SCALE, tableMaxHeight - headerReserve - footerReserve);
-// const rowH = Math.max(14 * SCALE, availableForRows / ROWS_PER_HALF);
+    const numColW  = 26 * SCALE;
+    const qtyColW  = 84 * SCALE;
 
-const itemsBody = rowsForHalf.map((it, i) => [i + 1, it.shade || '', fmtNum(it.qty || '')]);
-const itemsTotal = rowsForHalf.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+    // Calculate dynamic row height based on number of rows
+    const headerReserve = 25 * SCALE;
+    const footerReserve = 25 * SCALE;
+    const availableForRows = Math.max(100 * SCALE, usableBottom - tableStartY - headerReserve - footerReserve);
+    const minRowHeight = 14 * SCALE;
+    const maxRowHeight = 25 * SCALE;
+    const rowHeight = Math.min(maxRowHeight, Math.max(minRowHeight, availableForRows / Math.max(rowsForHalf.length, 1)));
 
-const tableLeft = contentX + 4 * SCALE;
-const tableWidth = (contentW - 8 * SCALE);
-const tableRight = tableLeft + tableWidth;
+    window.jspdfAutoTablePrevious = undefined;
 
-// Keep the earlier narrower number/qty columns so Shade gets more width
-const numColW  = 26 * SCALE;
-const qtyColW  = 84 * SCALE;
-
-window.jspdfAutoTablePrevious = undefined; // avoid carry-over
-
-autoTable(doc, {
-  startY: tableStartY,
-  pageBreak: 'avoid',
-  rowPageBreak: 'avoid',
-  head: [['#', 'Shade', `Quantity${unit ? ` (${unit})` : ''}`]],
-  body: itemsBody,
-  foot: [[{ content: 'Total', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold' } }, fmtNum(itemsTotal)]],
-  theme: 'grid',
-  styles: {
-    fontSize: bodyFont * SCALE,
-    cellPadding: pad * SCALE,
-    lineWidth: 1.0,
-    lineColor: [0,0,0],
-    textColor: [0,0,0],
-    minCellHeight: rowH,              // ← key: rows expand to fill the space
-  },
-  headStyles: {
-    fillColor: [255,255,255],
-    textColor: [0,0,0],
-    lineColor: [0,0,0],
-    lineWidth: 1.1,
-    fontStyle: 'bold',
-    fontSize: headerFont * SCALE,     // ← larger header text
-  },
-  bodyStyles: { fillColor: [255,255,255], textColor: [0,0,0], lineColor: [0,0,0] },
-  footStyles: { fillColor: [255,255,255], textColor: [0,0,0], lineColor: [0,0,0], fontStyle: 'bold' },
-  margin: { left: tableLeft, right: doc.internal.pageSize.getWidth() - tableRight },
-  tableWidth,
-  tableLineColor: [0,0,0],
-  tableLineWidth: 1.1,
-  columnStyles: {
-    0: { halign: 'center', cellWidth: numColW },
-    2: { halign: 'right',  cellWidth: qtyColW },
-    // Shade takes the remaining width
-  },
-});
+    autoTable(doc, {
+      startY: tableStartY,
+      pageBreak: 'auto',
+      head: [['#', 'Shade', `Quantity${unit ? ` (${unit})` : ''}`]],
+      body: itemsBody,
+      foot: [[{ content: 'Total', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold' } }, fmtNum(itemsTotal)]],
+      theme: 'grid',
+      styles: {
+        fontSize: 10 * SCALE,
+        cellPadding: 3 * SCALE,
+        lineWidth: 1.0,
+        lineColor: [0,0,0],
+        textColor: [0,0,0],
+        minCellHeight: rowHeight,
+        overflow: 'linebreak',
+        cellWidth: 'auto',
+      },
+      headStyles: {
+        fillColor: [255,255,255],
+        textColor: [0,0,0],
+        lineColor: [0,0,0],
+        lineWidth: 1.1,
+        fontStyle: 'bold',
+        fontSize: 11 * SCALE,
+        halign: 'center',
+      },
+      bodyStyles: { 
+        fillColor: [255,255,255], 
+        textColor: [0,0,0], 
+        lineColor: [0,0,0],
+      },
+      footStyles: { 
+        fillColor: [255,255,255], 
+        textColor: [0,0,0], 
+        lineColor: [0,0,0], 
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      margin: { left: tableLeft, right: doc.internal.pageSize.getWidth() - tableRight },
+      tableWidth,
+      tableLineColor: [0,0,0],
+      tableLineWidth: 1.1,
+      columnStyles: {
+        0: { halign: 'center', cellWidth: numColW },
+        1: { halign: 'left', cellWidth: tableWidth - numColW - qtyColW },
+        2: { halign: 'right', cellWidth: qtyColW },
+      },
+      didDrawPage: (data) => {
+        // Add continuation header if needed
+        if (data.pageNumber > 1) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(8 * SCALE);
+          doc.setTextColor(...BASE.muted);
+          doc.text(`(Continued from previous page)`, contentX + contentW/2, tableStartY - 10, { align: 'center' });
+        }
+      }
+    });
 
     // ===== signatures =====
-    const sigY = boxBottom - SIG_H - FOOTER_GAP - SIG_BOTTOM_EXTRA;
+    const lastTableY = doc.lastAutoTable?.finalY || tableStartY + 100 * SCALE;
+    const sigY = Math.min(boxBottom - SIG_H - FOOTER_GAP - SIG_BOTTOM_EXTRA, lastTableY + 20 * SCALE);
     const sigBoxW = (contentW - 24 * SCALE) / 3;
 
     doc.setLineWidth(0.9);
-    ['Prepared By', 'Verified By', "Receiver’s Signature"].forEach((lab, i) => {
+    ['Prepared By', 'Verified By', "Receiver's Signature"].forEach((lab, i) => {
       const x = contentX + i * (sigBoxW + 12 * SCALE);
       doc.roundedRect(x, sigY, sigBoxW, SIG_H, 6, 6);
       doc.line(x + 12 * SCALE, sigY + SIG_H - 12 * SCALE, x + sigBoxW - 12 * SCALE, sigY + SIG_H - 12 * SCALE);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8 * SCALE);
+      doc.setFont('helvetica', 'bold'); 
+      doc.setFontSize(8.8 * SCALE);
       doc.text(lab, x + sigBoxW / 2, sigY + SIG_H - 5 * SCALE, { align: 'center' });
     });
 
@@ -1993,61 +2023,64 @@ autoTable(doc, {
     doc.setLineWidth(0.9);
     doc.line(contentX, boxBottom - 5 * SCALE, contentX + contentW, boxBottom - 5 * SCALE);
     doc.setFontSize(8.6 * SCALE);
-    doc.text('Page 1 of 1', contentX + contentW, boxBottom, { align: 'right' });
+    
+    const totalPages = doc.internal.getNumberOfPages();
+    doc.text(`Page ${doc.internal.getCurrentPageInfo().pageNumber} of ${totalPages}`, contentX + contentW, boxBottom, { align: 'right' });
     doc.text(
       `Prepared on ${new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())}`,
       contentX, boxBottom - 9 * SCALE
     );
   };
 
-  // ---------- Build with a safe scale so both halves stay on ONE page ----------
-  // (You can raise the first value if you want things larger; the compact table keeps it on one page.)
+  // ---------- Build PDF with both halves ----------
   const TRY_SCALES = [0.70, 0.68, 0.66, 0.64];
   let finalDoc = null;
 
   for (const SCALE of TRY_SCALES) {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
+    try {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
 
-    // left half
-    drawOneCopy(doc, 0, SCALE, 'EMBROIDERY HEAD COPY', rows10);
+      // left half - pass ALL rows
+      drawOneCopy(doc, 0, SCALE, 'EMBROIDERY HEAD COPY', allRows);
 
-    // vertical dotted divider
-    const midX = pageW / 2;
-    doc.setDrawColor(...BASE.lineStrong);
-    if (doc.setLineDash) doc.setLineDash([3, 3], 0);
-    doc.line(midX, 24, midX, pageH - 24);
-    if (doc.setLineDash) doc.setLineDash([]);
+      // vertical dotted divider
+      const midX = pageW / 2;
+      doc.setDrawColor(...BASE.lineStrong);
+      doc.setLineDashPattern([3, 3], 0);
+      doc.line(midX, 24, midX, pageH - 24);
+      doc.setLineDashPattern([], 0);
 
-    // right half
-    drawOneCopy(doc, pageW / 2, SCALE, 'CUTTING HEAD COPY', rows10);
+      // right half - pass ALL rows
+      drawOneCopy(doc, pageW / 2, SCALE, 'CUTTING HEAD COPY', allRows);
 
-    if (doc.internal.getNumberOfPages() === 1) {
       finalDoc = doc;
       break;
+    } catch (e) {
+      console.warn(`Scale ${SCALE} failed, trying next...`, e);
     }
   }
 
   if (!finalDoc) {
-    // fallback to smallest scale
+    // Ultimate fallback - use smallest scale
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const SCALE = TRY_SCALES[TRY_SCALES.length - 1];
 
-    drawOneCopy(doc, 0, SCALE, 'EMBROIDERY HEAD COPY', rows10);
+    drawOneCopy(doc, 0, SCALE, 'EMBROIDERY HEAD COPY', allRows);
     const midX = pageW / 2;
     doc.setDrawColor(...BASE.lineStrong);
-    if (doc.setLineDash) doc.setLineDash([3, 3], 0);
+    doc.setLineDashPattern([3, 3], 0);
     doc.line(midX, 24, midX, pageH - 24);
-    if (doc.setLineDash) doc.setLineDash([]);
-    drawOneCopy(doc, pageW / 2, SCALE, 'CUTTING HEAD COPY', rows10);
+    doc.setLineDashPattern([], 0);
+    drawOneCopy(doc, pageW / 2, SCALE, 'CUTTING HEAD COPY', allRows);
 
     finalDoc = doc;
   }
 
-  // save
+  // Save the PDF
   const safeLot = (lot || 'Challan').replace(/[^\w\-]+/g, '_');
   const safeNo  = challanNo.replace(/[^\w\-]+/g, '_');
   finalDoc.save(`${safeNo}_${safeLot}.pdf`);

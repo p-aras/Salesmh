@@ -60,7 +60,7 @@ const pulse = keyframes`
   50% { opacity: 0.5; }
 `;
 
-// Pre-defined card data
+// Pre-defined card data - UPDATED with new card
 const CARDS = [
   { id: 1,  icon: 'FiFileText', title: 'Sales Order Form', description: 'Create, edit and submit new sales orders', path: '/sales-order', color: '#6366f1', category: 'Orders', stats: '24 today' },
   { id: 2,  icon: 'FiList', title: 'Order Tracking', description: 'Monitor production status and view order info', path: '/sales-data', color: '#06b6d4', category: 'Orders', stats: '12 pending' },
@@ -80,8 +80,12 @@ const CARDS = [
   { id: 17, icon: 'FiClipboard', title: 'Material Requisition Planning Form', description: 'Create and manage material requisition plans', path: '/material-requisition-form', color: '#10b981', category: 'Planning', stats: '4 new' },
   { id: 18, icon: 'FiTrendingUp', title: 'Material Requisition Dashboard', description: 'Monitor and analyze material requisition status', path: '/material-requisition-dashboard', color: '#8b5cf6', category: 'Planning', stats: 'Live' },
   { id: 19, icon: 'FiUsers', title: 'Enter Parta Details', description: 'Add and manage Parta information and details', path: '/parta-details', color: '#10b981', category: 'Production', stats: '6 entries' },
+  // NEW CARD ADDED HERE
+  { id: 20, icon: 'FiPackage', title: 'Update Packing Report', description: 'Update and manage packing reports for orders', path: '/packing-report', color: '#22c55e', category: 'Production', stats: '9 pending' },
 ];
 
+// Optional: If you want to add a new 'Packing' category, uncomment the line below and update the card's category to 'Packing'
+// const CATEGORIES = ['All', 'Orders', 'Production', 'Cutting', 'Challan', 'Planning', 'Packing'];
 const CATEGORIES = ['All', 'Orders', 'Production', 'Cutting', 'Challan', 'Planning'];
 
 const CANCEL_ROUTES = {
@@ -553,7 +557,7 @@ const Header = styled.header`
 `;
 
 const HeaderContent = styled.div`
-  max-width: 1600px;  // Increased from 1400px
+  max-width: 1600px;
   margin: 0 auto;
   position: relative;
   z-index: 2;
@@ -594,7 +598,7 @@ const Subtitle = styled(motion.p)`
 `;
 
 const ControlsSection = styled(motion.div)`
-  max-width: 1000px;  // Increased from 900px
+  max-width: 1000px;
   margin: 0 auto;
   padding: 0 1rem;
 `;
@@ -637,7 +641,7 @@ const CategoryCount = styled.span`
 
 const MainContent = styled.main`
   flex: 1;
-  max-width: 2200px;  // Increased from 1400px
+  max-width: 2200px;
   width: 100%;
   margin: 2rem auto 0;
   padding: 0 2rem 2rem;
@@ -681,7 +685,7 @@ const FavoriteHint = styled.div`
 const CardsGrid = styled(motion.div)`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2rem;  // Increased from 1.5rem
+  gap: 2rem;
   width: 100%;
   
   @media (max-width: 1400px) {
@@ -702,15 +706,15 @@ const CardsGrid = styled(motion.div)`
 
 const Card = styled.div`
   background: ${THEME.cardBackground};
-  border-radius: 28px;  // Increased from 24px
-  padding: 2rem 1.75rem;  // Increased padding
+  border-radius: 28px;
+  padding: 2rem 1.75rem;
   box-shadow: ${THEME.shadow};
   border: 1px solid ${THEME.border};
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  height: 360px;  // Increased from 260px
+  height: 360px;
   width: 100%;
   position: relative;
   overflow: hidden;
@@ -752,13 +756,13 @@ const CardHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1.75rem;  // Increased from 1.25rem
+  margin-bottom: 1.75rem;
 `;
 
 const IconWrapper = styled.div`
-  width: 70px;  // Increased from 54px
-  height: 70px;  // Increased from 54px
-  border-radius: 20px;  // Increased from 16px
+  width: 70px;
+  height: 70px;
+  border-radius: 20px;
   background: ${props => `${props.$color}15`};
   display: flex;
   align-items: center;
@@ -766,7 +770,7 @@ const IconWrapper = styled.div`
   color: ${props => props.$color};
   
   svg {
-    width: 34px;  // Increased icon size
+    width: 34px;
     height: 34px;
   }
 `;
@@ -774,7 +778,7 @@ const IconWrapper = styled.div`
 const CardActions = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;  // Increased from 0.75rem
+  gap: 1rem;
 `;
 
 const FavoriteButton = styled.button`
@@ -795,16 +799,16 @@ const FavoriteButton = styled.button`
   }
   
   svg {
-    width: 24px;  // Increased from 20px
+    width: 24px;
     height: 24px;
   }
 `;
 
 const CategoryBadge = styled.span`
-  font-size: 0.9rem;  // Increased from 0.8rem
+  font-size: 0.9rem;
   font-weight: 600;
-  padding: 0.5rem 1rem;  // Increased from 0.4rem 0.8rem
-  border-radius: 24px;  // Increased from 20px
+  padding: 0.5rem 1rem;
+  border-radius: 24px;
   background: ${props => `${props.$color}15`};
   color: ${props => props.$color};
   border: 1px solid ${props => `${props.$color}30`};
@@ -812,14 +816,14 @@ const CategoryBadge = styled.span`
 
 const CardBody = styled.div`
   flex: 1;
-  margin-bottom: 1.5rem;  // Increased from 1.25rem
+  margin-bottom: 1.5rem;
 `;
 
 const CardTitle = styled.h3`
-  font-size: 1.4rem;  // Increased from 1.25rem
+  font-size: 1.4rem;
   font-weight: 700;
   color: ${THEME.textPrimary};
-  margin-bottom: 0.75rem;  // Increased from 0.5rem
+  margin-bottom: 0.75rem;
   line-height: 1.3;
   
   @media (max-width: 700px) {
@@ -828,12 +832,12 @@ const CardTitle = styled.h3`
 `;
 
 const CardDescription = styled.p`
-  font-size: 1rem;  // Increased from 0.9rem
+  font-size: 1rem;
   color: ${THEME.textLight};
   line-height: 1.5;
   margin: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 3;  // Increased from 2
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   
@@ -845,7 +849,7 @@ const CardDescription = styled.p`
 
 const CardFooter = styled.div`
   border-top: 1px solid ${THEME.border};
-  padding-top: 1.25rem;  // Increased from 1rem
+  padding-top: 1.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -855,15 +859,15 @@ const StatsBadge = styled.span`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;  // Increased from 0.4rem 0.8rem
+  padding: 0.5rem 1rem;
   background: ${THEME.background};
-  border-radius: 24px;  // Increased from 20px
-  font-size: 0.9rem;  // Increased from 0.8rem
+  border-radius: 24px;
+  font-size: 0.9rem;
   color: ${THEME.textLight};
   border: 1px solid ${THEME.border};
   
   svg {
-    width: 18px;  // Increased from 14px
+    width: 18px;
     height: 18px;
   }
 `;
@@ -874,7 +878,7 @@ const ActionLink = styled.span`
   gap: 0.5rem;
   color: ${THEME.primary};
   font-weight: 600;
-  font-size: 1rem;  // Increased from 0.9rem
+  font-size: 1rem;
   transition: all 0.2s ease;
   
   ${Card}:hover & {
@@ -882,37 +886,37 @@ const ActionLink = styled.span`
   }
   
   svg {
-    width: 22px;  // Increased from 18px
+    width: 22px;
     height: 22px;
   }
 `;
 
 const EmptyState = styled(motion.div)`
   text-align: center;
-  padding: 5rem 1rem;  // Increased from 4rem
+  padding: 5rem 1rem;
   background: ${THEME.cardBackground};
-  border-radius: 28px;  // Increased from 24px
+  border-radius: 28px;
   border: 1px solid ${THEME.border};
 `;
 
 const EmptyIcon = styled.div`
-  width: 80px;  // Increased from 64px
-  height: 80px;  // Increased from 64px
-  margin: 0 auto 2rem;  // Increased from 1.5rem
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 2rem;
   background: ${THEME.border};
   border-radius: 50%;
   opacity: 0.5;
 `;
 
 const EmptyTitle = styled.h4`
-  font-size: 1.5rem;  // Increased from 1.25rem
+  font-size: 1.5rem;
   font-weight: 600;
   color: ${THEME.textPrimary};
-  margin-bottom: 0.75rem;  // Increased from 0.5rem
+  margin-bottom: 0.75rem;
 `;
 
 const EmptyMessage = styled.p`
-  font-size: 1rem;  // Increased from 0.95rem
+  font-size: 1rem;
   color: ${THEME.textLight};
   margin: 0;
 `;
@@ -920,12 +924,12 @@ const EmptyMessage = styled.p`
 const Footer = styled.footer`
   background: ${THEME.cardBackground};
   border-top: 1px solid ${THEME.border};
-  padding: 2.5rem 1rem;  // Increased from 2rem
-  margin-top: 3rem;  // Increased from 2rem
+  padding: 2.5rem 1rem;
+  margin-top: 3rem;
 `;
 
 const FooterContent = styled.div`
-  max-width: 1600px;  // Increased from 1400px
+  max-width: 1600px;
   margin: 0 auto;
   text-align: center;
 `;
@@ -933,12 +937,12 @@ const FooterContent = styled.div`
 const FooterText = styled.div`
   font-weight: 600;
   color: ${THEME.textPrimary};
-  margin-bottom: 0.5rem;  // Increased from 0.25rem
-  font-size: 1.1rem;  // Added
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
 `;
 
 const FooterSubtext = styled.div`
-  font-size: 0.95rem;  // Increased from 0.875rem
+  font-size: 0.95rem;
   color: ${THEME.textLight};
 `;
 
@@ -960,9 +964,9 @@ const ModalOverlay = styled(motion.div)`
 
 const ModalContent = styled(motion.div)`
   background: ${THEME.cardBackground};
-  border-radius: 28px;  // Increased from 24px
+  border-radius: 28px;
   width: 100%;
-  max-width: 450px;  // Increased from 400px
+  max-width: 450px;
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 `;
@@ -971,12 +975,12 @@ const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.75rem;  // Increased from 1.5rem
+  padding: 1.75rem;
   border-bottom: 1px solid ${THEME.border};
 `;
 
 const ModalTitle = styled.h3`
-  font-size: 1.4rem;  // Increased from 1.25rem
+  font-size: 1.4rem;
   font-weight: 700;
   color: ${THEME.textPrimary};
   margin: 0;
@@ -998,28 +1002,28 @@ const CloseModal = styled.button`
 `;
 
 const ModalBody = styled.div`
-  padding: 1.75rem;  // Increased from 1.5rem
+  padding: 1.75rem;
 `;
 
 const ModalDescription = styled.p`
   color: ${THEME.textLight};
-  margin-bottom: 2rem;  // Increased from 1.5rem
-  font-size: 1rem;  // Increased from 0.95rem
+  margin-bottom: 2rem;
+  font-size: 1rem;
 `;
 
 const ChoiceGrid = styled.div`
   display: grid;
-  gap: 1.25rem;  // Increased from 1rem
+  gap: 1.25rem;
 `;
 
 const ChoiceButton = styled(motion.button)`
   display: flex;
   align-items: center;
-  gap: 1.25rem;  // Increased from 1rem
-  padding: 1.25rem;  // Increased from 1rem
+  gap: 1.25rem;
+  padding: 1.25rem;
   background: ${THEME.cardBackground};
   border: 1px solid ${THEME.border};
-  border-radius: 16px;  // Increased from 12px
+  border-radius: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -1031,9 +1035,9 @@ const ChoiceButton = styled(motion.button)`
 `;
 
 const ChoiceIcon = styled.div`
-  width: 56px;  // Increased from 48px
-  height: 56px;  // Increased from 48px
-  border-radius: 16px;  // Increased from 12px
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
   background: ${props => `${props.$color}15`};
   color: ${props => props.$color};
   display: flex;
@@ -1041,7 +1045,7 @@ const ChoiceIcon = styled.div`
   justify-content: center;
   
   svg {
-    width: 28px;  // Added
+    width: 28px;
     height: 28px;
   }
 `;
@@ -1053,22 +1057,22 @@ const ChoiceContent = styled.div`
 const ChoiceTitle = styled.div`
   font-weight: 700;
   color: ${THEME.textPrimary};
-  margin-bottom: 0.35rem;  // Increased from 0.25rem
-  font-size: 1.1rem;  // Added
+  margin-bottom: 0.35rem;
+  font-size: 1.1rem;
 `;
 
 const ChoiceDesc = styled.div`
-  font-size: 0.95rem;  // Increased from 0.875rem
+  font-size: 0.95rem;
   color: ${THEME.textLight};
 `;
 
 // Loading Skeleton
 const CardSkeleton = styled.div`
   background: ${THEME.cardBackground};
-  border-radius: 28px;  // Increased from 24px
-  padding: 2rem 1.75rem;  // Updated to match card
+  border-radius: 28px;
+  padding: 2rem 1.75rem;
   border: 1px solid ${THEME.border};
-  height: 360px;  // Updated to match card
+  height: 360px;
   width: 100%;
   animation: ${pulse} 1.5s ease-in-out infinite;
 `;

@@ -42,6 +42,10 @@ import IssuePacking from "./KarigarOrder";
 import MaterialRequisitionForm from "./MaterialRequisitionform";
 import Parta from "./Parta";
 
+// 👇 IMPORT YOUR NEW COMPONENT HERE
+
+import UpdatePackingReport from "./UpdatePackingReport";
+
 function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
   const navigate = useNavigate();
@@ -308,6 +312,16 @@ function AppContent() {
           element={
             <RequireRole roles={["admin", "production", "sales"]}>
               <CuttingStatsReport />
+            </RequireRole>
+          }
+        />
+
+        {/* 👇 ADD YOUR NEW ROUTE HERE - choose an appropriate path and roles */}
+        <Route
+          path="/packing-report" // Replace with your desired URL path
+          element={
+            <RequireRole roles={["admin", "production", "sales"]}> {/* Adjust roles as needed */}
+              <UpdatePackingReport />
             </RequireRole>
           }
         />
