@@ -368,7 +368,7 @@ const VISIBLE_HEADERS = [
       setLastRow(last);
       const upto = Math.min(last, rowLimit);
 
-const range = `${encodeURIComponent(TAB_NAME)}!A1:AO${upto}`;
+const range = `${encodeURIComponent(TAB_NAME)}!A1:AQ${upto}`;
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
       const res = await fetch(url, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1982,16 +1982,18 @@ const renderFirstPage = async () => {
 
   await drawGridRow([
     { label: "Shade", value: val("Shade") }
-  ], { cols: 1, rowGap: 20 });
+  ], { cols: 1, rowGap: 20 });await sectionHeader("Special Processes");
 
-  await sectionHeader("Special Processes");
-  
-  await drawGridRow([
-    { label: "Embroidery", value: val("Emb") },
-    { label: "Printing", value: val("Printing") },
-    { label: "Direct Stitching", value: dsEnabled ? "Yes" : asText(row?.["Direct Stitching"]) },
-    { label: "Component", value: val("Component") },
-  ], { cols: 4, rowGap: 16 });
+// Get the sticker value directly from the row
+const stickerValue = row?.["Sticker"] ? String(row["Sticker"]).trim() : "—";
+
+await drawGridRow([
+  { label: "Embroidery", value: val("Emb") },
+  { label: "Printing", value: val("Printing") },
+  { label: "Direct Stitching", value: dsEnabled ? "Yes" : asText(row?.["Direct Stitching"]) },
+  { label: "Component", value: val("Component") },
+  { label: "Sticker", value: stickerValue }, // Use the direct value
+], { cols: 5, rowGap: 16 });
 
   await drawGridRow([
     { label: "Embroidery Details", value: val("Emb Details") },
@@ -3582,12 +3584,15 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
       await contentRow([{ label: "Shade", value: val("Shade", row) }], 1);
 
       await sectionHeader("Special Processes");
+      const stickerValue = row?.["Sticker"] ? String(row["Sticker"]).trim() : "—";
       await contentRow([
         { label: "Embroidery", value: val("Emb", row) },
         { label: "Printing", value: val("Printing", row) },
         { label: "Direct Stitching", value: asBool(row?.["Direct Stitching"]) ? "Yes" : asText(row?.["Direct Stitching"]) },
         { label: "Component", value: val("Component", row) },
-      ], 4);
+          // { label: "Sticker", value: val("Sticker") },
+          { label: "Sticker", value: stickerValue },
+      ], 5);
       await contentRow([
         { label: "Embroidery Details", value: val("Emb Details", row) },
         { label: "Printing Details", value: val("Printing Details", row) },

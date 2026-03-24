@@ -512,6 +512,7 @@ const SalesOrderForm = () => {
                   <option value="SETS">SETS</option>
                   <option value="DOZ">DOZ</option>
                   <option value="CARTONS">CARTONS</option>
+                  <option value="ROLLS">ROLLS</option>
                 </select>
               </div>
               {errors.quantity && <p style={styles.errorText}>❌ {errors.quantity}</p>}
