@@ -9,7 +9,7 @@ const SHEET_ID1 = "1fKSwGBIpzWEFk566WRQ4bzQ0anJlmasoY8TwrTLQHXI";
 
 const MAX_ROWS = 10000;
 const GAS_WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbwEI5pTBwZpYEGAkbaOR89SYYV4UFMdn1oX8qgjEVfacqCw_8uzM2hSNKHYQ6G1TTd5AA/exec";
+  "https://script.google.com/macros/s/AKfycbwBaVyQEPy2HpK8fErI1BVy8sjLnkN7uI9PzNOYQjcmmxpQCyWMka09Z3oHBBl60eN0vg/exec";
 
 const HEADER_MAP = {
   partyName: "Party Name",
@@ -24,6 +24,8 @@ const HEADER_MAP = {
 
 const UNIT_OPTIONS = ["SETS", "ROLLS", "PCS"];
 const ZIP_OPTIONS = ["YES", "NO", "NOT DECIDED"];
+const BONE_OPTIONS = ["YES", "NO"];
+const COLLAR_OPTIONS = ["YES", "NO"];
 const BOTTOM_TYPE_OPTIONS = ["Elastic and Stopper", "Normal Fold", "1 Inch Elastic"];
 const SUBMITTERS = ["Mohit Goyal", "EA", "Chandan", "Ravinder Singh"];
 const OTHER_SUBMITTER_TOKEN = "__ANY_OTHER__";
@@ -31,7 +33,7 @@ const REFERRERS = ["Mohit Goyal", "EA", "Varun Goyal"];
 const TAPE_LACE_OPTIONS = ["YES", "NO", "NOT DECIDED"];
 const OTHER_REFERRER_TOKEN = "__ANY_OTHER__";
 const PRIORITY_OPTIONS = ["HIGH", "MEDIUM", "LOW", "REPEATED_LOT"];
-const STICKER_OPTIONS = ["YES", "NO","Silicon","Fusing", "NOT DECIDED"];
+const STICKER_OPTIONS = ["YES", "NO", "Silicon", "Fusing", "NOT DECIDED"];
 
 const JobOrderForm = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -63,6 +65,8 @@ const JobOrderForm = () => {
     orderNo: "",
     priority: "MEDIUM",
     sticker: "",
+    bone: "",
+    collar: "",
   });
 
   const [lists, setLists] = useState(
@@ -127,6 +131,8 @@ const JobOrderForm = () => {
     "Remarks",
     "Direct Stitching",
     "Sticker",
+    "Bone",
+    "Collar",
     "Submitted By",
     "Image URL",
     "Priority",
@@ -276,6 +282,8 @@ const JobOrderForm = () => {
       "Emb Details": pick(src, "Emb Details", "Embroidery Details"),
       "Printing Details": pick(src, "Printing Details", "Print Details"),
       "Sticker": pick(src, "Sticker", "Sticker Option"),
+      "Bone": pick(src, "Bone", "Bone Option"),
+      "Collar": pick(src, "Collar", "Collar Option"),
     };
   }
 
@@ -310,6 +318,8 @@ const JobOrderForm = () => {
       orderNo: currentOrderNo,
       priority: "MEDIUM",
       sticker: "",
+      bone: "",
+      collar: "",
     };
   }
 
@@ -884,6 +894,8 @@ const JobOrderForm = () => {
       directStitching: isDirect ? "yes" : "no",
       priority: priority,
       sticker: String(row["Sticker"] || ""),
+      bone: String(row["Bone"] || ""),
+      collar: String(row["Collar"] || ""),
     }));
     setEmbPositions(nextEmbPos);
     setPrintPositions(nextPrintPos);
@@ -971,6 +983,8 @@ const JobOrderForm = () => {
       orderNo: "",
       priority: "MEDIUM",
       sticker: "",
+      bone: "",
+      collar: "",
     }));
     setImageFile(null);
     setEmbPositions({
@@ -1159,6 +1173,10 @@ const JobOrderForm = () => {
       if (!formData.garmentType?.trim()) throw new Error("Garment Type is required");
       if (!formData.section?.trim()) throw new Error("Gender/Section is required");
       if (!formData.season?.trim()) throw new Error("Season is required");
+      if (!formData.zip?.trim()) throw new Error("Zip is required");
+      if (!formData.sticker?.trim()) throw new Error("Sticker is required");
+      if (!formData.bone?.trim()) throw new Error("Bone is required");
+      if (!formData.collar?.trim()) throw new Error("Collar is required");
 
       const isDirect = formData.directStitching === "yes";
 
@@ -1194,6 +1212,8 @@ const JobOrderForm = () => {
         bottomType: formData.bottomType || "",
         tapeLace: formData.tapeLace || "",
         sticker: formData.sticker || "",
+        bone: formData.bone || "",
+        collar: formData.collar || "",
         embDetails: isDirect
           ? ""
           : (() => {
@@ -1371,6 +1391,17 @@ const JobOrderForm = () => {
                   placeholder="e.g., Alpha Fashion Co."
                 />
               </Field>
+              <Select
+                label="Style"
+                emoji="👔"
+                name="style"
+                value={formData.style}
+                options={styleOptionsWithOther}
+                onChange={handleChange}
+                loading={loading}
+              />
+
+
 
               <div style={styles.rowGroup}>
                 <Field label="Shades" emoji="🎨">
@@ -1541,20 +1572,6 @@ const JobOrderForm = () => {
                 </div>
               </div>
 
-              <Field label="Sticker" emoji="🏷️" required={false}>
-                <select
-                  name="sticker"
-                  value={formData.sticker}
-                  onChange={handleChange}
-                  style={styles.select}
-                >
-                  <option value="">Select Sticker Option</option>
-                  {STICKER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </Field>
-
               <Select
                 label="Pattern"
                 emoji="📐"
@@ -1574,22 +1591,13 @@ const JobOrderForm = () => {
             <div style={styles.sectionHeader}>
               <div style={styles.sectionIcon}>📝</div>
               <div>
-                <h3 style={styles.sectionTitle}>Additional Information</h3>
+                <h3 style={styles.sectionTitle}>Accessory Information</h3>
                 <p style={styles.sectionSubtitle}>Style, finishing options, and attachments</p>
               </div>
             </div>
 
             <div style={styles.sectionContent}>
-              <Select
-                label="Style"
-                emoji="👔"
-                name="style"
-                value={formData.style}
-                options={styleOptionsWithOther}
-                onChange={handleChange}
-                loading={loading}
-              />
-
+              
               <Field label="Priority" emoji="⚡">
                 <select
                   name="priority"
@@ -1619,15 +1627,61 @@ const JobOrderForm = () => {
                 )}
               </Field>
 
-              <Field label="Zip" emoji="🤐" required={false}>
+              <Field label="Zip" emoji="🤐" required={true}>
                 <select
                   name="zip"
                   value={formData.zip}
                   onChange={handleChange}
                   style={styles.select}
+                  required
                 >
                   <option value="">Select Zip Option</option>
                   {ZIP_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Sticker" emoji="🏷️" required={true}>
+                <select
+                  name="sticker"
+                  value={formData.sticker}
+                  onChange={handleChange}
+                  style={styles.select}
+                  required
+                >
+                  <option value="">Select Sticker Option</option>
+                  {STICKER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Bone" emoji="🦴" required={true}>
+                <select
+                  name="bone"
+                  value={formData.bone}
+                  onChange={handleChange}
+                  style={styles.select}
+                  required
+                >
+                  <option value="">Select Bone Option</option>
+                  {BONE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="Collar" emoji="👔" required={true}>
+                <select
+                  name="collar"
+                  value={formData.collar}
+                  onChange={handleChange}
+                  style={styles.select}
+                  required
+                >
+                  <option value="">Select Collar Option</option>
+                  {COLLAR_OPTIONS.map((option) => (
                     <option key={option} value={option}>{option}</option>
                   ))}
                 </select>
@@ -1760,70 +1814,6 @@ const JobOrderForm = () => {
           )}
         </button>
       </div>
-
-      {/* Modals - Keeping existing modal code but with enhanced styles */}
-      {showRepeatedLotDialog && (
-        <div style={styles.modalOverlay} onClick={() => setShowRepeatedLotDialog(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>Repeated Lot Details</h3>
-            <p style={styles.modalDescription}>
-              Enter the repeated lot number for tracking:
-            </p>
-            
-            <input
-              autoFocus
-              type="text"
-              value={repeatedLotNumber}
-              onChange={(e) => setRepeatedLotNumber(e.target.value.toUpperCase())}
-              placeholder="e.g., LOT-001, JO-123"
-              style={styles.modalInput}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  if (repeatedLotNumber.trim()) {
-                    setFormData((prev) => ({
-                      ...prev,
-                      priority: `REPEATED_LOT#${repeatedLotNumber.trim()}`
-                    }));
-                    setShowRepeatedLotDialog(false);
-                    setRepeatedLotNumber("");
-                  }
-                }
-              }}
-            />
-            
-            <div style={styles.modalFooter}>
-              <button
-                type="button"
-                style={styles.modalSaveButton}
-                onClick={() => {
-                  if (repeatedLotNumber.trim()) {
-                    setFormData((prev) => ({
-                      ...prev,
-                      priority: `REPEATED_LOT#${repeatedLotNumber.trim()}`
-                    }));
-                    setShowRepeatedLotDialog(false);
-                    setRepeatedLotNumber("");
-                  }
-                }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                style={styles.modalCancelButton}
-                onClick={() => {
-                  setShowRepeatedLotDialog(false);
-                  setRepeatedLotNumber("");
-                  setFormData((prev) => ({ ...prev, priority: "MEDIUM" }));
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Repeat Order Modal */}
       {showRepeatDialog && (
@@ -2405,6 +2395,8 @@ const JobOrderForm = () => {
                       directStitching: "no",
                       priority: "MEDIUM",
                       sticker: "",
+                      bone: "",
+                      collar: "",
                     });
                     setEmbPositions({
                       FRONT: false,
@@ -2460,6 +2452,70 @@ const JobOrderForm = () => {
                   if (modalSubmitting || isSubmitting) return;
                   setShowSubmitterDialog(false);
                   setPendingPayload(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Repeated Lot Dialog */}
+      {showRepeatedLotDialog && (
+        <div style={styles.modalOverlay} onClick={() => setShowRepeatedLotDialog(false)}>
+          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Repeated Lot Details</h3>
+            <p style={styles.modalDescription}>
+              Enter the repeated lot number for tracking:
+            </p>
+            
+            <input
+              autoFocus
+              type="text"
+              value={repeatedLotNumber}
+              onChange={(e) => setRepeatedLotNumber(e.target.value.toUpperCase())}
+              placeholder="e.g., LOT-001, JO-123"
+              style={styles.modalInput}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (repeatedLotNumber.trim()) {
+                    setFormData((prev) => ({
+                      ...prev,
+                      priority: `REPEATED_LOT#${repeatedLotNumber.trim()}`
+                    }));
+                    setShowRepeatedLotDialog(false);
+                    setRepeatedLotNumber("");
+                  }
+                }
+              }}
+            />
+            
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                style={styles.modalSaveButton}
+                onClick={() => {
+                  if (repeatedLotNumber.trim()) {
+                    setFormData((prev) => ({
+                      ...prev,
+                      priority: `REPEATED_LOT#${repeatedLotNumber.trim()}`
+                    }));
+                    setShowRepeatedLotDialog(false);
+                    setRepeatedLotNumber("");
+                  }
+                }}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                style={styles.modalCancelButton}
+                onClick={() => {
+                  setShowRepeatedLotDialog(false);
+                  setRepeatedLotNumber("");
+                  setFormData((prev) => ({ ...prev, priority: "MEDIUM" }));
                 }}
               >
                 Cancel
@@ -2785,11 +2841,6 @@ const styles = {
     color: "#1e293b",
     background: "#ffffff",
     transition: "all 0.2s",
-    "&:focus": {
-      borderColor: "#6366f1",
-      boxShadow: "0 0 0 3px rgba(99, 102, 241, 0.1)",
-      outline: "none",
-    },
   },
   select: {
     width: "100%",
@@ -2825,9 +2876,6 @@ const styles = {
     color: "#1e293b",
     background: "#ffffff",
     cursor: "pointer",
-    "&:hover": {
-      borderColor: "#6366f1",
-    },
   },
   textarea: {
     width: "100%",
@@ -2989,10 +3037,6 @@ const styles = {
     gap: "10px",
     boxShadow: "0 4px 20px rgba(99, 102, 241, 0.4)",
     transition: "all 0.2s",
-    "&:hover": {
-      transform: "translateY(-2px)",
-      boxShadow: "0 6px 25px rgba(99, 102, 241, 0.5)",
-    },
   },
   submitIcon: {
     fontSize: "18px",
@@ -3132,12 +3176,6 @@ const styles = {
     background: "#ffffff",
     cursor: "pointer",
     transition: "background 0.2s",
-    "&:hover": {
-      background: "#f8fafc",
-    },
-    "&:last-child": {
-      borderBottom: "none",
-    },
   },
   orderItemHeader: {
     display: "flex",

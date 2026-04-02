@@ -17,12 +17,14 @@ const LOAD_MORE_CHUNK = 1000; // "Load more" chunk size
 /** ====== sheet columns ====== */
 /** ====== sheet columns ====== */
 /** ====== sheet columns ====== */
+// Update this section around line 20
 const HEADERS = [
   "Job Order No","Date","Fabric","Brand","Shade","Size","Quantity","Unit",
   "Party Name","Garment Type","Section","Season","Emb","Emb Details",
   "Printing","Printing Details","Pattern","Style","Remarks","Direct Stitching",
   "Submitted By","Image URL","Lot Number","Component","Priority",
-  "Tape/Lace", "Bottom Type", "Zip", "Sticker"  // <-- ADDED STICKER
+  "Tape/Lace", "Bottom Type", "Zip", "Sticker",
+  "Collar", "Bone"  // <-- ADDED Collar and Bone
 ];
 // Function to log PDF generation to Google Sheets
 const logPdfGeneration = async (row, pdfType, status = "Generated", notes = "") => {
@@ -332,17 +334,18 @@ const [fTapeLace, setFTapeLace] = useState("");
 const [fBottomType, setFBottomType] = useState("");
 const [fZip, setFZip] = useState("");
 const [fSticker, setFSticker] = useState(""); // Add this line
+const [fCollar, setFCollar] = useState("");
+const [fBone, setFBone] = useState("");
 
 const [generatedLots, setGeneratedLots] = useState(new Set()); // Track which lots have PDFs generated
 const [loadingGeneratedLots, setLoadingGeneratedLots] = useState(false);
 
 
   const [preview, setPreview] = useState({ open: false, src: "", alt: "" });
+// Update around line 105
 const VISIBLE_HEADERS = [
   "Job Order No","Date","Party Name","Fabric","Shade","Quantity","Unit","Lot Number",
-  "Priority", "Sticker"  // <-- ADDED STICKER (if you want it visible in main table)
-  // You can add the new headers here if you want them visible in the main table
-  // "Tape/Lace","Bottom Type","Zip"
+  "Priority", "Sticker", "Collar", "Bone"  // <-- ADDED Collar and Bone
 ];
 
   const DETAIL_HEADERS = HEADERS.filter((h) => !VISIBLE_HEADERS.includes(h));
@@ -368,7 +371,7 @@ const VISIBLE_HEADERS = [
       setLastRow(last);
       const upto = Math.min(last, rowLimit);
 
-const range = `${encodeURIComponent(TAB_NAME)}!A1:AQ${upto}`;
+const range = `${encodeURIComponent(TAB_NAME)}!A1:AT${upto}`;
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
       const res = await fetch(url, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -598,9 +601,12 @@ const tapeLaceOpts = useMemo(() => uniqueOptions("Tape/Lace"), [rows]);
 const bottomTypeOpts = useMemo(() => uniqueOptions("Bottom Type"), [rows]);
 const zipOpts = useMemo(() => uniqueOptions("Zip"), [rows]);
 const stickerOpts = useMemo(() => uniqueOptions("Sticker"), [rows]); // Add this line
+// Add these near other uniqueOptions calls
+const collarOpts = useMemo(() => uniqueOptions("Collar"), [rows]);
+const boneOpts = useMemo(() => uniqueOptions("Bone"), [rows]);
 
   /* --------- Filter + search --------- */
-  const filtered = useMemo(() => {
+ const filtered = useMemo(() => {
   const needle = q.trim().toLowerCase();
 
   return rows.filter((row) => {
@@ -622,46 +628,49 @@ const stickerOpts = useMemo(() => uniqueOptions("Sticker"), [rows]); // Add this
     const matchesPattern     = !fPattern     || (row["Pattern"] ?? "") === fPattern;
     const matchesSubmittedBy = !fSubmittedBy || (row["Submitted By"] ?? "") === fSubmittedBy;
     const matchesPriority = !fPriority || (row["Priority"] ?? "") === fPriority;
-   const matchesTapeLace = !fTapeLace || (row["Tape/Lace"] ?? "") === fTapeLace;
-const matchesBottomType = !fBottomType || (row["Bottom Type"] ?? "") === fBottomType;
-const matchesZip = !fZip || (row["Zip"] ?? "") === fZip;
-const matchesSticker = !fSticker || (row["Sticker"] ?? "") === fSticker; // Add this line
-
+    const matchesTapeLace = !fTapeLace || (row["Tape/Lace"] ?? "") === fTapeLace;
+    const matchesBottomType = !fBottomType || (row["Bottom Type"] ?? "") === fBottomType;
+    const matchesZip = !fZip || (row["Zip"] ?? "") === fZip;
+    const matchesSticker = !fSticker || (row["Sticker"] ?? "") === fSticker;
+    const matchesCollar = !fCollar || (row["Collar"] ?? "") === fCollar;  // <-- ADDED
+    const matchesBone = !fBone || (row["Bone"] ?? "") === fBone;          // <-- ADDED
 
     // NEW: inclusive range filters for JO No and Lot Number
     const matchesJoRange  = inRange(row["Job Order No"], joStart, joEnd);
     const matchesLotRange = inRange(row["Lot Number"], lotStart, lotEnd);
 
     return (
-  matchesText &&
-  matchesFabric &&
-  matchesBrand &&
-  matchesShade &&
-  matchesParty &&
-  matchesSeason &&
-  matchesSection &&
-  matchesUnit &&
-  matchesDS &&
-  matchesLotSelect &&
-  matchesPattern &&
-  matchesSubmittedBy &&
-  matchesJoRange &&
-  matchesLotRange &&
-  matchesTapeLace &&
-  matchesBottomType &&
-  matchesZip &&
-  matchesSticker && // Add this line
-  matchesPriority
-);
+      matchesText &&
+      matchesFabric &&
+      matchesBrand &&
+      matchesShade &&
+      matchesParty &&
+      matchesSeason &&
+      matchesSection &&
+      matchesUnit &&
+      matchesDS &&
+      matchesLotSelect &&
+      matchesPattern &&
+      matchesSubmittedBy &&
+      matchesJoRange &&
+      matchesLotRange &&
+      matchesTapeLace &&
+      matchesBottomType &&
+      matchesZip &&
+      matchesSticker &&
+      matchesCollar &&      // <-- ADDED
+      matchesBone &&        // <-- ADDED
+      matchesPriority
+    );
   });
 }, [
-rows, q,
+  rows, q,
   fFabric, fBrand, fShade, fParty, fSeason, fSection, fUnit, fDS, fLot,
   fPattern, fSubmittedBy, fPriority,
-  fTapeLace, fBottomType, fZip, fSticker,  // Add fSticker here
+  fTapeLace, fBottomType, fZip, fSticker,
+  fCollar, fBone,          // <-- ADDED
   joStart, joEnd, lotStart, lotEnd
 ]);
-
   /* --------- Sorting --------- */
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -719,7 +728,9 @@ const clearFilters = () => {
   setFFabric(""); setFBrand(""); setFShade(""); setFParty(""); setFSeason(""); setFSection("");
   setFPattern(""); setFSubmittedBy(""); setFUnit(""); setFDS(""); setFLot("");
   setFPriority(""); 
-  setFTapeLace(""); setFBottomType(""); setFZip(""); setFSticker(""); // Add setFSticker here
+  setFTapeLace(""); setFBottomType(""); setFZip(""); setFSticker("");
+  setFCollar("");      // <-- ADDED
+  setFBone("");        // <-- ADDED
   setQ(""); setPage(1);
   setJoStart(""); setJoEnd("");
   setLotStart(""); setLotEnd("");
@@ -1386,7 +1397,7 @@ const generatePdf = async (row) => {
 
   const joNum = (row?.["Job Order No"] ?? "").toString().trim() || "Unknown";
   
-  // ADD THIS CHECK - Prevent generation if lot already has successful PDF
+  // Check if lot already has successful PDF
   if (generatedLots.has(lot)) {
     alert(`PDF has already been successfully generated for Lot Number: ${lot}. Further generation is blocked.`);
     return;
@@ -1410,17 +1421,16 @@ const generatePdf = async (row) => {
     });
 
     // ====== DESIGN TOKENS ======
-    const M = 42; // Margin
+    const M = 42;
     const FOOTER_H = 44;
     const GRID_ROW_GAP = 18;
     const GRID_COL_GAP = 20;
     const IMG_MAX = 900;
     const IMG_TIMEOUT_MS = 4000;
 
-    // ====== COLORS: PURE BLACK & WHITE ONLY ======
     const C = {
-      black: [0, 0, 0],       // ALL text in black
-      white: [255, 255, 255], // ALL backgrounds white
+      black: [0, 0, 0],
+      white: [255, 255, 255],
     };
 
     const F = { 
@@ -1434,39 +1444,37 @@ const generatePdf = async (row) => {
       xsmall: 8.5 
     };
 
-    // Helper functions
     const setFont = (weight, size) => {
       doc.setFont("Arial", weight);
       doc.setFontSize(size);
-      doc.setTextColor(...C.black); // Always black
+      doc.setTextColor(...C.black);
     };
 
     const asText = (v) => (v == null || String(v).trim() === "" ? "—" : String(v).trim());
     const asBool = (v) => /^(true|yes|y|1)$/i.test(String(v || "").trim());
-   // Update your existing vDate function to the new format:
-const vDate = (k) => {
-  const value = row?.[k];
-  if (!value) return "—";
-  const iso = tryParseDateToISO(value);
-  if (!iso) return value;
-  
-  const d = new Date(iso);
-  const day = d.getDate();
-  const month = d.toLocaleDateString('en-US', { month: 'short' });
-  const year = d.getFullYear();
-  
-  return `${day} ${month} ${year}`;
-};
+    
+    const vDate = (k) => {
+      const value = row?.[k];
+      if (!value) return "—";
+      const iso = tryParseDateToISO(value);
+      if (!iso) return value;
+      
+      const d = new Date(iso);
+      const day = d.getDate();
+      const month = d.toLocaleDateString('en-US', { month: 'short' });
+      const year = d.getFullYear();
+      
+      return `${day} ${month} ${year}`;
+    };
+    
     const val = (k) => asText(row?.[k]);
     
-    // Parse sizes from the Size column
     const parseSizes = (sizeText) => {
       if (!sizeText || sizeText === "—") return [];
       const sizes = String(sizeText).split(/[,;|/]+/).map(s => s.trim()).filter(Boolean);
       return sizes;
     };
     
-    // Parse shades from comma/separated string
     const parseShades = (shadeText) => {
       if (!shadeText || shadeText === "—") return [];
       const shades = String(shadeText).split(/[,;|/]+/).map(s => s.trim()).filter(Boolean);
@@ -1549,9 +1557,9 @@ const vDate = (k) => {
 
       await ensurePageRoom(h);
 
-      doc.setDrawColor(...C.black); 
+      doc.setDrawColor(...C.black);
       doc.setLineWidth(1);
-      doc.setFillColor(...C.white); 
+      doc.setFillColor(...C.white);
       doc.rect(x, y, w, h, "FD");
 
       setFont("bold", F.label);
@@ -1586,11 +1594,10 @@ const vDate = (k) => {
       let maxBottom = yTop;
 
       for (let i = 0; i < items.length; i++) {
-        const item = items[i];
         const cardX = M + i * (cardW + GRID_COL_GAP);
         const oldY = y;
         y = yTop;
-        const bottom = await drawCard({ ...item, x: cardX, w: cardW });
+        const bottom = await drawCard({ ...items[i], x: cardX, w: cardW });
         maxBottom = Math.max(maxBottom, bottom);
         y = oldY;
       }
@@ -1615,14 +1622,13 @@ const vDate = (k) => {
       const drawHeader = async () => {
         await ensurePageRoom(headerH);
         
-        // White background for header
         doc.setFillColor(...C.white);
         doc.rect(x, y, tableW, headerH, "F");
 
         let cx = x;
         headers.forEach((h, i) => {
           const wCol = colW[i];
-          doc.setDrawColor(...C.black); 
+          doc.setDrawColor(...C.black);
           doc.setLineWidth(1);
           doc.rect(cx, y, wCol, headerH);
 
@@ -1644,7 +1650,6 @@ const vDate = (k) => {
       for (let idx = 0; idx < data.length; idx++) {
         await ensurePageRoom(rowH);
         
-        // White background for all rows
         doc.setFillColor(...C.white);
         doc.rect(x, y, tableW, rowH, "F");
 
@@ -1676,9 +1681,9 @@ const vDate = (k) => {
 
       await ensurePageRoom(cardH);
 
-      doc.setDrawColor(...C.black); 
+      doc.setDrawColor(...C.black);
       doc.setLineWidth(1);
-      doc.setFillColor(...C.white); 
+      doc.setFillColor(...C.white);
       doc.rect(x, y, w, cardH, "FD");
       
       setFont("bold", F.label);
@@ -1714,11 +1719,10 @@ const vDate = (k) => {
       await pause(0);
     };
 
-    // ---------- RENDERERS ----------
-const renderFirstPage = async () => {
+    // ---------- RENDER FIRST PAGE WITH CUSTOM HEADING ----------
+const renderFirstPageWithHeading = async (customHeading) => {
   PAGE = firstPageScaffold();
   
-  // Check if Priority contains any "repeated" pattern (case-insensitive)
   const priorityText = val("Priority")?.toString() || "";
   const priorityLower = priorityText.toLowerCase();
   const isLotRepeated = priorityLower.includes("lot_repeated") || 
@@ -1726,96 +1730,82 @@ const renderFirstPage = async () => {
                        priorityLower.includes("repeated") ||
                        priorityLower.includes("repeat");
   
-  // Adjust y starting position - more dynamic calculation
-  let y = isLotRepeated ? 140 : 120; // Start lower to accommodate all elements
+  let y = isLotRepeated ? 130 : 115;
 
-  // Header with better spacing
-  setFont("bold", 30); // Slightly larger for better hierarchy
-  doc.text("JOB ORDER", PAGE.w / 2, 50, { align: "center" });
+  setFont("bold", 26);
+  doc.text(customHeading, PAGE.w / 2, 50, { align: "center" });
   
-  // Add 5-star rating below "JOB ORDER" if Priority contains any repeated pattern
   if (isLotRepeated) {
-    // Draw 5 gold stars with better spacing
-    const starSize = 12;
-    const starSpacing = 24;
+    const starSize = 11;
+    const starSpacing = 22;
     const totalWidth = 5 * starSpacing - starSpacing/2;
     const startX = PAGE.w / 2 - totalWidth / 2;
     
-    // Draw 5 stars
     for (let i = 0; i < 5; i++) {
-      drawStar(doc, startX + (i * starSpacing), 75, starSize);
+      drawStar(doc, startX + (i * starSpacing), 72, starSize);
     }
     
-    // Add "LOT REPEATED" text below stars
-    setFont("bold", 16);
-    doc.text("LOT REPEATED", PAGE.w / 2, 100, { align: "center" });
-    
-    // "Order #" positioned below LOT REPEATED text
     setFont("bold", 14);
-    doc.text(`Job Order #${joNum}`, PAGE.w / 2, 120, { align: "center" });
+    doc.text("LOT REPEATED", PAGE.w / 2, 95, { align: "center" });
+    
+    setFont("bold", 12);
+    doc.text(`Job Order #${joNum}`, PAGE.w / 2, 115, { align: "center" });
     
   } else {
-    // Normal position when not "repeated"
-    setFont("bold", 14);
-    doc.text(`Job Order #${joNum}`, PAGE.w / 2, 85, { align: "center" });
+    setFont("bold", 12);
+    doc.text(`Job Order #${joNum}`, PAGE.w / 2, 82, { align: "center" });
   }
 
-  // JO badge - better positioned
   doc.setFillColor(...C.white);
   doc.setDrawColor(...C.black);
   doc.setLineWidth(1);
-  doc.circle(M + 25, 50, 22, "FD");
-  setFont("bold", 16);
-  doc.text("JO", M + 25, 57, { align: "center" });
+  doc.circle(M + 25, 48, 20, "FD");
+  setFont("bold", 14);
+  doc.text("JO", M + 25, 55, { align: "center" });
 
-  // Generation info - better aligned
   const genDate = new Date().toLocaleDateString("en-US", {
     year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
-  setFont("normal", F.meta);
-  doc.text(`Generated: ${genDate}`, PAGE.w - M, 45, { align: "right" });
-  doc.text(`Submitted by: ${submittedBy}`, PAGE.w - M, 60, { align: "right" });
+  setFont("normal", F.meta - 1);
+  doc.text(`Generated: ${genDate}`, PAGE.w - M, 43, { align: "right" });
+  doc.text(`Submitted by: ${submittedBy}`, PAGE.w - M, 58, { align: "right" });
 
-  // Direct Stitching chip - positioned relative to y start
   const dsEnabled = asBool(row?.["Direct Stitching"]);
   if (dsEnabled) {
-    const padX = 12, hChip = 26, r = 12;
-    setFont("bold", 11);
+    const padX = 10, hChip = 24, r = 10;
+    setFont("bold", 10);
     const label = "DIRECT STITCHING";
-    const wChip = doc.getTextWidth(label) + padX * 2 + 12;
-    const xChip = PAGE.w - M - wChip;
-    const yChip = isLotRepeated ? 135 : 115; // Position below the main header area
+    const wChip = doc.getTextWidth(label) + padX * 2 + 10;
+    const xChip = M;
+    const yChip = isLotRepeated ? 125 : 110;
     doc.setFillColor(...C.white);
     doc.setDrawColor(...C.black);
     doc.setLineWidth(1);
     doc.roundedRect(xChip, yChip - hChip + 2, wChip, hChip, r, r, "FD");
-    doc.text(label, xChip + padX + 10, yChip - 8);
+    doc.text(label, xChip + padX + 8, yChip - 6);
   }
 
-  // Draw content card function with consistent spacing - FIXED CENTERING
-  const drawCard = async ({ label, value, x, w, isLastInRow = false }) => {
-    const padX = 14, padY = 12, labelH = F.label * 1.3;
+  // INCREASED PADDING FOR CARDS
+  const drawCardForPage = async ({ label, value, x, w, isLastInRow = false }) => {
+    const padX = 15, padY = 10; // Increased from 10 and 8
+    const labelH = F.label * 1.2; // Slightly increased
     const maxWidth = w - padX * 2;
     const txt = value && String(value).trim() ? String(value) : "—";
     
-    // Check if this is the Priority card
     const isPriorityCard = label.toLowerCase() === "priority";
-    
-    // Use smaller font size for Priority card to prevent overflow
-    const bodyFontSize = isPriorityCard ? F.body - 2 : F.body; // Reduce by 2 for Priority
-    const lineH = (bodyFontSize - 1) * 1.2;
+    const bodyFontSize = isPriorityCard ? F.body - 2 : F.body;
+    const lineH = (bodyFontSize - 1) * 1.3; // Increased line height
     
     const lines = doc.splitTextToSize(txt, maxWidth);
     const contentH = Math.max(lineH, lines.length * lineH);
-    const h = padY + labelH + 6 + Math.max(lineH, contentH) + padY;
+    const h = padY + labelH + 6 + Math.max(lineH, contentH) + padY; // Increased padding
 
     await ensurePageRoom(h);
 
-    // Draw curved box
     doc.setDrawColor(...C.black);
     doc.setLineWidth(1);
     doc.setFillColor(...C.white);
-    doc.roundedRect(x, y, w, h, 6, 6, "FD");
+    doc.roundedRect(x, y, w, h, 8, 8, "FD"); // Increased corner radius
 
     const priorityValue = isPriorityCard ? txt.toLowerCase() : "";
     const isRepeatedPriority = isPriorityCard && (
@@ -1825,36 +1815,27 @@ const renderFirstPage = async () => {
       priorityValue.includes("repeat")
     );
 
-    // Label - CENTERED
-    setFont("bold", F.label);
+    setFont("bold", F.label - 1); // Slightly larger label
     doc.text(label.toUpperCase(), x + w / 2, y + padY + labelH/2 - 2, { align: "center" });
 
-    // Draw value with stars if needed
     if (isRepeatedPriority) {
-      // Draw stars above the priority text
-      const starSize = 8;
-      const starSpacing = 14;
+      const starSize = 7;
+      const starSpacing = 12;
       const totalStarWidth = 5 * starSpacing - starSpacing/2;
       const startX = x + w / 2 - totalStarWidth / 2;
       const starY = y + padY + labelH + 6;
       
-      // Draw 5 gold stars
       for (let i = 0; i < 5; i++) {
         drawStar(doc, startX + (i * starSpacing), starY, starSize);
       }
       
-      // Draw the priority text below stars - CENTERED with automatic line breaks
-      // Use smaller font for Priority
       setFont("bold", bodyFontSize);
       const textY = starY + starSize + 6;
       
-      // Handle multi-line text for priority
       lines.forEach((line, i) => {
         doc.text(line, x + w / 2, textY + i * lineH, { align: "center" });
       });
     } else {
-      // Normal text rendering - CENTERED with automatic line breaks
-      // Use smaller font for Priority card, normal for others
       setFont(isPriorityCard ? "bold" : "normal", bodyFontSize);
       const textY = y + padY + labelH + 6 + (h - (padY + labelH + 6 + lines.length * lineH)) / 2;
       
@@ -1869,22 +1850,19 @@ const renderFirstPage = async () => {
     return bottom;
   };
 
-  // Grid row function with better spacing
-  const drawGridRow = async (items, { cols = items.length, rowGap = 16 } = {}) => {
+  const drawGridRowForPage = async (items, { cols = items.length, rowGap = 12 } = {}) => { // Increased row gap
     const totalW = contentW();
     const gapW = GRID_COL_GAP * (cols - 1);
     const cardW = (totalW - gapW) / cols;
 
-    // Calculate heights with proper estimation
-    const padX = 14, padY = 12, labelH = F.label * 1.3;
+    const padX = 15, padY = 10, labelH = F.label * 1.2;
     const heights = items.map(({ value, label }) => {
       const maxWidth = cardW - padX * 2;
       const txt = (value || "—").toString();
       
-      // Check if this is the Priority card for font size adjustment
       const isPriorityCard = label?.toLowerCase() === "priority";
       const bodyFontSize = isPriorityCard ? F.body - 2 : F.body;
-      const lineH = (bodyFontSize - 1) * 1.2;
+      const lineH = (bodyFontSize - 1) * 1.3;
       
       const lines = doc.splitTextToSize(txt, maxWidth);
       
@@ -1911,7 +1889,7 @@ const renderFirstPage = async () => {
       const cardX = M + i * (cardW + GRID_COL_GAP);
       const oldY = y;
       y = yTop;
-      const bottom = await drawCard({ 
+      const bottom = await drawCardForPage({ 
         ...items[i], 
         x: cardX, 
         w: cardW,
@@ -1924,375 +1902,351 @@ const renderFirstPage = async () => {
     y = maxBottom + rowGap;
   };
 
-  // Section header with better spacing
-  const sectionHeader = async (text, opts = {}) => {
-    await ensurePageRoom(40);
+  const sectionHeaderForPage = async (text, opts = {}) => {
+    await ensurePageRoom(40); // Increased from 35
     
-    const yMid = y + 8; // Add some vertical padding
+    const yMid = y + 6;
 
-    setFont("bold", F.h3);
+    setFont("bold", F.h3 - 2);
     doc.text(text, PAGE.w / 2, yMid, { align: "center" });
 
     if (opts.rightBigText) {
-      setFont("bold", 26);
+      setFont("bold", 22);
       const padRight = 6;
-      const yOffset = 14;
+      const yOffset = 12;
       doc.text(String(opts.rightBigText), PAGE.w - M - padRight, yMid - yOffset, { align: "right" });
     }
 
     doc.setDrawColor(...C.black);
-    doc.setLineWidth(1.5);
-    doc.line(PAGE.w / 2 - 80, yMid + 12, PAGE.w / 2 + 80, yMid + 12);
+    doc.setLineWidth(1.2);
+    doc.line(PAGE.w / 2 - 70, yMid + 10, PAGE.w / 2 + 70, yMid + 10);
 
-    y += 28; // Consistent spacing after section header
+    y += 26; // Increased from 22
     await pause(0);
   };
 
-  // ====== MAIN CONTENT ======
+  y += 10; // Increased from 8
   
-  // Add some spacing before first section
-  y += 10;
+  await sectionHeaderForPage("Order Details", { rightBigText: ` ${val("Lot Number")}` });
   
-  await sectionHeader("Order Details", { rightBigText: ` ${val("Lot Number")}` });
-  
-  // Order Details - 5 columns
-  await drawGridRow([
+  await drawGridRowForPage([
     { label: "Job Order No", value: joNum },
     { label: "Date", value: vDate("Date") },
     { label: "Lot Number", value: val("Lot Number") },
     { label: "Party Name", value: val("Party Name") },
     { label: "Brand", value: val("Brand") },
-  ], { cols: 5, rowGap: 16 });
+  ], { cols: 5, rowGap: 12 });
 
-  await drawGridRow([
+  await drawGridRowForPage([
     { label: "Fabric", value: val("Fabric") },
     { label: "Garment Type", value: val("Garment Type") },
     { label: "Section", value: val("Section") },
     { label: "Quantity", value: val("Quantity") },
     { label: "Unit", value: val("Unit") },
-  ], { cols: 5, rowGap: 16 });
+  ], { cols: 5, rowGap: 12 });
 
-  await drawGridRow([
+  await drawGridRowForPage([
     { label: "Season", value: val("Season") },
     { label: "Style", value: val("Style") },
     { label: "Pattern", value: val("Pattern") },
     { label: "Size", value: val("Size") },
     { label: "Priority", value: val("Priority") },
-  ], { cols: 5, rowGap: 16 });
+  ], { cols: 5, rowGap: 12 });
 
-  await drawGridRow([
+  // Keep shade as comma-separated value - it will auto-wrap using splitTextToSize
+  await drawGridRowForPage([
     { label: "Shade", value: val("Shade") }
-  ], { cols: 1, rowGap: 20 });await sectionHeader("Special Processes");
+  ], { cols: 1, rowGap: 12 });
 
-// Get the sticker value directly from the row
-const stickerValue = row?.["Sticker"] ? String(row["Sticker"]).trim() : "—";
+  await sectionHeaderForPage("Accessories");
+  
+  const collar = val("Collar") !== "—" ? val("Collar") : "—";
+  const bone = val("Bone") !== "—" ? val("Bone") : "—";
+  const tapeLace = val("Tape/Lace") !== "—" ? val("Tape/Lace") : "—";
+  const bottomType = val("Bottom Type") !== "—" ? val("Bottom Type") : "—";
+  const zip = val("Zip") !== "—" ? val("Zip") : "—";
+  
+  await drawGridRowForPage([
+    { label: "Collar", value: collar },
+    { label: "Bone", value: bone },
+    { label: "Tape/Lace", value: tapeLace },
+    { label: "Bottom Type", value: bottomType },
+    { label: "Zip", value: zip },
+  ], { cols: 5, rowGap: 12 });
 
-await drawGridRow([
-  { label: "Embroidery", value: val("Emb") },
-  { label: "Printing", value: val("Printing") },
-  { label: "Direct Stitching", value: dsEnabled ? "Yes" : asText(row?.["Direct Stitching"]) },
-  { label: "Component", value: val("Component") },
-  { label: "Sticker", value: stickerValue }, // Use the direct value
-], { cols: 5, rowGap: 16 });
+  await sectionHeaderForPage("Special Processes");
 
-  await drawGridRow([
+  const stickerValue = row?.["Sticker"] ? String(row["Sticker"]).trim() : "—";
+
+  await drawGridRowForPage([
+    { label: "Embroidery", value: val("Emb") },
+    { label: "Printing", value: val("Printing") },
+    { label: "Direct Stitching", value: dsEnabled ? "Yes" : asText(row?.["Direct Stitching"]) },
+    { label: "Component", value: val("Component") },
+    { label: "Sticker", value: stickerValue },
+  ], { cols: 5, rowGap: 12 });
+
+  await drawGridRowForPage([
     { label: "Embroidery Details", value: val("Emb Details") },
     { label: "Printing Details", value: val("Printing Details") },
-  ], { cols: 2, rowGap: 20 });
+  ], { cols: 2, rowGap: 12 });
 
-  await sectionHeader("Remarks & Visual Reference");
+  await sectionHeaderForPage("Remarks & Visual Reference");
   
-  // Two-column layout for Remarks and Image
   const twoColW = (contentW() - GRID_COL_GAP) / 2;
-  const imageHeight = 220; // Increased for better image display
-
-  // Draw image function
-  const tryDrawImage = async ({ url, x, w, h }) => {
-    const padX = 14, padY = 12, labelH = F.label * 1.3;
-    const cardH = h;
-
-    await ensurePageRoom(cardH);
-
-    // Draw curved image box
-    doc.setDrawColor(...C.black);
-    doc.setLineWidth(1);
-    doc.setFillColor(...C.white);
-    doc.roundedRect(x, y, w, cardH, 6, 6, "FD");
-    
-    setFont("bold", F.label);
-    doc.text("VISUAL REFERENCE", x + w / 2, y + padY + labelH/2 - 2, { align: "center" });
-
-    let drew = false;
-    try {
-      const cleanUrl = asText(url) === "—" ? "" : url;
-      if (cleanUrl) {
-        const dataUrl = await withTimeout(
-          loadImageAsBase64ForPdf(cleanUrl, { maxWidth: IMG_MAX, maxHeight: IMG_MAX }),
-          IMG_TIMEOUT_MS
-        );
-        if (dataUrl) {
-          const p = doc.getImageProperties(dataUrl);
-          const fitW = w - 30, fitH = cardH - (padY + labelH + 6) - 20;
-          const ratio = Math.min(fitW / p.width, fitH / p.height);
-          const iw = Math.max(1, p.width * ratio);
-          const ih = Math.max(1, p.height * ratio);
-          const ix = x + (w - iw) / 2;
-          const iy = y + padY + labelH + 10 + (fitH - ih) / 2;
-          doc.addImage(dataUrl, "JPEG", ix, iy, iw, ih);
-          drew = true;
-        }
-      }
-    } catch (_) { }
-    if (!drew) {
-      setFont("normal", F.meta);
-      doc.text("No image provided / failed to load", x + w / 2, y + cardH / 2, { align: "center" });
-    }
-
-    y = y + cardH + 20;
-    await pause(0);
-  };
-
-  // Draw Remarks card - CENTERED
-  {
-    const oldY = y;
-    const remarksText = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
-    const padX = 14, padY = 12, labelH = F.label * 1.3;
-    const maxWidth = twoColW - padX * 2;
-    const txt = remarksText;
-    const lines = doc.splitTextToSize(txt, maxWidth);
-    const lineH = (F.body - 1) * 1.2;
-    const contentH = Math.max(lineH, lines.length * lineH);
-    const h = padY + labelH + 6 + Math.max(lineH, contentH) + padY;
-
-    await ensurePageRoom(h);
-
-    // Draw curved box
-    doc.setDrawColor(...C.black);
-    doc.setLineWidth(1);
-    doc.setFillColor(...C.white);
-    doc.roundedRect(M, y, twoColW, h, 6, 6, "FD");
-
-    // Label - CENTERED
-    setFont("bold", F.label);
-    doc.text("REMARKS", M + twoColW / 2, y + padY + labelH/2 - 2, { align: "center" });
-
-    // Value - CENTERED
-    setFont("normal", F.body);
-    const textY = y + padY + labelH + 6 + (h - (padY + labelH + 6 + lines.length * lineH)) / 2;
-    
-    lines.forEach((line, i) => {
-      doc.text(line, M + twoColW / 2, textY + i * lineH, { align: "center" });
-    });
-
-    y = oldY;
-  }
-
-  // Draw Image card aligned with Remarks
-  await tryDrawImage({
-    url: row?.["Image URL"],
-    x: M + twoColW + GRID_COL_GAP, 
-    w: twoColW, 
-    h: imageHeight
-  });
-
-  // Final page check - add footer space if needed
-  const PAGE_BOTTOM_MARGIN = 30;
-  if (y < PAGE.h - PAGE_BOTTOM_MARGIN) {
-    // Add some empty space at bottom
-    y = PAGE.h - PAGE_BOTTOM_MARGIN;
-  }
-};
-
-const renderSecondPage = async () => {
-  PAGE = innerPageScaffold();
+  const imageHeight = 220; // Increased from 200
   
-  // Check if we should show stars (same logic as first page)
-  const priorityText = val("Priority")?.toString() || "";
-  const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
-                     priorityText.toLowerCase().includes("repeated_lot") || 
-                     priorityText.toLowerCase().includes("repeated") ||
-                     priorityText.toLowerCase().includes("repeat");
+  const startY = y;
   
-  // Adjust y position based on stars
-  let startY = 50;
-  if (shouldStars) {
-    startY = 80; // Make room for stars
-  }
-
-  setFont("bold", 24);
-  const lotNum = asText(row?.["Lot Number"]);
-  doc.text(
-    `JOB ORDER SUMMARY ${lotNum !== "—" ? `(${lotNum})` : ""}`,
-    doc.internal.pageSize.getWidth() / 2,
-    startY,
-    { align: "center" }
-  );
-
-  // Add stars if lot is repeated
-  if (shouldStars) {
-    // Draw 5 gold stars below the title
-    const starSize = 12;
-    const starSpacing = 24;
-    const totalWidth = 5 * starSpacing - starSpacing/2;
-    const startX = PAGE.w / 2 - totalWidth / 2;
-    const starY = startY + 25; // Position below the title
-    
-    // Draw 5 stars
-    for (let i = 0; i < 5; i++) {
-      drawStar(doc, startX + (i * starSpacing), starY, starSize);
-    }
-    
-    // Add "LOT REPEATED" text below stars with MORE SPACING
-    setFont("bold", 16);
-    doc.text("LOT REPEATED", PAGE.w / 2, starY + 30, { align: "center" }); // Increased from 20 to 30
-    
-    // Update y position for the rest of the content - with more spacing
-    y = starY + 55; // Increased from 45 to 55 for more spacing
-  } else {
-    y = startY + 35;
-  }
-
-  // Order Summary Box
-  {
-    const short = (s, n) => {
-      s = asText(s);
-      return s === "—" || s.length <= n ? s : s.slice(0, n - 1) + "…";
-    };
-
-    const pairs = [
-      { label: "Job Order No", value: joNum },
-      { label: "Date", value: vDate("Date") },
-      { label: "Lot Number", value: val("Lot Number") },
-      { label: "Party Name", value: short(val("Party Name"), 28) },
-      { label: "Fabric", value: short(val("Fabric"), 40) },
-      { label: "Brand", value: short(val("Brand"), 40) },
-      { label: "Garment Type", value: short(val("Garment Type"), 40) },
-      { label: "Section", value: short(val("Section"), 40) },
-      { label: "Season", value: short(val("Season"), 40) },
-      { label: "Shade", value: short(val("Shade"), 40) },
-      { label: "Quantity", value: val("Quantity") },
-      { label: "Unit", value: val("Unit") },
-      { label: "Style", value: short(val("Style"), 40) },
-      { label: "Priority", value: val("Priority") },
-      { label: "Pattern", value: short(val("Pattern"), 40) },
-      { label: "Size", value: short(val("Size"), 40) },
-      { label: "Embroidery", value: short(val("Emb"), 40) },
-      { label: "Printing", value: short(val("Printing"), 40) },
-      { label: "Direct Stitching", value: asBool(row?.["Direct Stitching"]) ? "Yes" : asText(row?.["Direct Stitching"]) },
-      { label: "Embroidery Details", value: short(val("Emb Details"), 50) },
-      { label: "Printing Details", value: short(val("Printing Details"), 50) },
-      { label: "Component", value: short(val("Component"), 40) },
-      { label: "Remarks", value: short(row?.["Remarks"] ?? "No remarks provided", 80) }
-    ];
-
-    const cols = 4;
-    const rowHeight = 24;
-    const rowGap = 10;
-    const pad = 18;
-    const titleH = 26;
-    const titleGap = 10;
-
-    const rows = Math.ceil(pairs.length / cols);
-    const gridH = rows * (rowHeight + rowGap) - rowGap;
-    const boxW = contentW();
-    const boxH = pad + titleH + titleGap + gridH + pad;
-
-    await ensurePageRoom(boxH);
-
-    const boxX = M;
-    const boxY = y;
-
-    // Outer box only - use C.black for border
-    doc.setDrawColor(...C.black);
-    doc.setFillColor(...C.white);
-    doc.setLineWidth(1);
-    doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8, "FD");
-
-    // Title
-    setFont("bold", F.h3);
-    doc.text("Order Summary", boxX + pad, boxY + pad + titleH - 6);
-
-    // Content (NO inner borders)
-    const innerX = boxX + pad;
-    const innerYStart = boxY + pad + titleH + titleGap;
-    const colW = (boxW - pad * 2 - GRID_COL_GAP * (cols - 1)) / cols;
-
-    let drawY = innerYStart;
-    for (let i = 0; i < pairs.length; i += cols) {
-      const rowSlice = pairs.slice(i, i + cols);
-
-      rowSlice.forEach((p, idx) => {
-        const x = innerX + idx * (colW + GRID_COL_GAP);
-
-        // Label: bold
-        setFont("bold", F.small);
-        doc.text((p.label || "").toUpperCase(), x, drawY);
-
-        // Value: bold
-        setFont("bold", F.small);
-
-        const line = doc.splitTextToSize(asText(p.value), colW)[0] || "—";
-        doc.text(line, x, drawY + 12);
-      });
-
-      drawY += rowHeight + rowGap;
-    }
-
-    // Advance after box
-    y = boxY + boxH + GRID_ROW_GAP;
-  }
-
-  await sectionHeader("Full Remarks & Visual");
-  const colGap = GRID_COL_GAP;
-  const colW = (contentW() - colGap) / 2;
-  const leftX = M;
-  const rightX = M + colW + colGap;
-  const yTop = y;
-
-  const remarksTextFull = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
-  await drawCard({ label: "Complete Remarks", value: remarksTextFull, x: leftX, w: colW });
-  const bottomLeft = y;
-
-  y = yTop;
-  const estRightH = Math.max(220, bottomLeft - yTop);
-  await tryDrawImage({
-    url: row?.["Image URL"],
-    x: rightX, w: colW, h: estRightH
-  });
-  const bottomRight = yTop + estRightH;
-
-  // Use C.black for the vertical line
+  const remarksText = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
+  const padX = 15, padY = 10, labelH = F.label * 1.2;
+  const maxWidth = twoColW - padX * 2;
+  const txt = remarksText;
+  const lines = doc.splitTextToSize(txt, maxWidth);
+  const lineH = (F.body - 1) * 1.3;
+  const contentH = Math.max(lineH, lines.length * lineH);
+  const remarksCardHeight = padY + labelH + 6 + Math.max(lineH, contentH) + padY;
+  
+  const finalHeight = Math.max(remarksCardHeight, imageHeight);
+  
+  await ensurePageRoom(finalHeight);
+  
   doc.setDrawColor(...C.black);
   doc.setLineWidth(1);
-  doc.line(M + colW + colGap / 2, yTop + 6, M + colW + colGap / 2, Math.max(bottomLeft, bottomRight) - 6);
-
-  y = Math.max(bottomLeft, bottomRight) + GRID_ROW_GAP;
-
-  await sectionHeader("Cutting Schedule");
-  const shades = parseShades(val("Shade"));
-  const minRows = Math.max(6, shades.length);
-  const rowCount = Math.min(10, Math.max(minRows, shades.length));
-
-  const tableHeaders = [
-    { label: "Table", key: "table", width: 1 },
-    { label: "Shade", key: "shade", width: 2 },
-    { label: "Quantity", key: "qty", width: 1 },
-    { label: "Kharcha", key: "kharcha", width: 1 },
-    { label: "Date of Cutting", key: "cut", width: 1.5 },
-  ];
-
-  const tableData = Array.from({ length: rowCount }, (_, i) => ({
-    table: "",
-    shade: i < shades.length ? String(shades[i]) : "",
-    qty: "",
-    kharcha: "Yes / No",
-    cut: "",
-  }));
-
-  await drawTable(tableHeaders, tableData, { rowH: 26, headerH: 32, fontScale: 0.95 });
-  y += 40;
+  doc.setFillColor(...C.white);
+  doc.roundedRect(M, startY, twoColW, finalHeight, 8, 8, "FD");
+  
+  setFont("bold", F.label - 1);
+  doc.text("REMARKS", M + twoColW / 2, startY + padY + labelH/2 - 2, { align: "center" });
+  
+  const textTotalHeight = lines.length * lineH;
+  const textStartY = startY + padY + labelH + 6 + (finalHeight - (padY + labelH + 6) - textTotalHeight) / 2;
+  
+  setFont("normal", F.body);
+  lines.forEach((line, i) => {
+    doc.text(line, M + twoColW / 2, textStartY + i * lineH, { align: "center" });
+  });
+  
+  const imageX = M + twoColW + GRID_COL_GAP;
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1);
+  doc.setFillColor(...C.white);
+  doc.roundedRect(imageX, startY, twoColW, finalHeight, 8, 8, "FD");
+  
+  setFont("bold", F.label - 1);
+  doc.text("IMAGE", imageX + twoColW / 2, startY + padY + labelH/2 - 2, { align: "center" });
+  
+  let drewImage = false;
+  try {
+    const cleanUrl = asText(row?.["Image URL"]) === "—" ? "" : row?.["Image URL"];
+    if (cleanUrl) {
+      const dataUrl = await withTimeout(
+        loadImageAsBase64ForPdf(cleanUrl, { maxWidth: IMG_MAX, maxHeight: IMG_MAX }),
+        IMG_TIMEOUT_MS
+      );
+      if (dataUrl) {
+        const p = doc.getImageProperties(dataUrl);
+        const fitW = twoColW - 40;
+        const fitH = finalHeight - (padY + labelH + 6) - 20;
+        const ratio = Math.min(fitW / p.width, fitH / p.height);
+        const iw = Math.max(1, p.width * ratio);
+        const ih = Math.max(1, p.height * ratio);
+        const ix = imageX + (twoColW - iw) / 2;
+        const iy = startY + padY + labelH + 8 + (fitH - ih) / 2;
+        doc.addImage(dataUrl, "JPEG", ix, iy, iw, ih);
+        drewImage = true;
+      }
+    }
+  } catch (_) { }
+  
+  if (!drewImage) {
+    setFont("normal", F.meta);
+    doc.text("No image provided / failed to load", imageX + twoColW / 2, startY + finalHeight / 2, { align: "center" });
+  }
+  
+  // REDUCED BOTTOM MARGIN
+  y = startY + finalHeight + 8;
+  
+  await pause(0);
 };
+    
+    const renderSecondPage = async () => {
+      PAGE = innerPageScaffold();
+      
+      const priorityText = val("Priority")?.toString() || "";
+      const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
+                         priorityText.toLowerCase().includes("repeated_lot") || 
+                         priorityText.toLowerCase().includes("repeated") ||
+                         priorityText.toLowerCase().includes("repeat");
+      
+      let startY = 50;
+      if (shouldStars) {
+        startY = 80;
+      }
 
+      setFont("bold", 24);
+      const lotNum = asText(row?.["Lot Number"]);
+      doc.text(
+        `JOB ORDER SUMMARY ${lotNum !== "—" ? `(${lotNum})` : ""}`,
+        doc.internal.pageSize.getWidth() / 2,
+        startY,
+        { align: "center" }
+      );
+
+      if (shouldStars) {
+        const starSize = 12;
+        const starSpacing = 24;
+        const totalWidth = 5 * starSpacing - starSpacing/2;
+        const startX = PAGE.w / 2 - totalWidth / 2;
+        const starY = startY + 25;
+        
+        for (let i = 0; i < 5; i++) {
+          drawStar(doc, startX + (i * starSpacing), starY, starSize);
+        }
+        
+        setFont("bold", 16);
+        doc.text("LOT REPEATED", PAGE.w / 2, starY + 30, { align: "center" });
+        
+        y = starY + 55;
+      } else {
+        y = startY + 35;
+      }
+
+      {
+        const short = (s, n) => {
+          s = asText(s);
+          return s === "—" || s.length <= n ? s : s.slice(0, n - 1) + "…";
+        };
+
+        const pairs = [
+          { label: "Job Order No", value: joNum },
+          { label: "Date", value: vDate("Date") },
+          { label: "Lot Number", value: val("Lot Number") },
+          { label: "Party Name", value: short(val("Party Name"), 28) },
+          { label: "Fabric", value: short(val("Fabric"), 40) },
+          { label: "Brand", value: short(val("Brand"), 40) },
+          { label: "Garment Type", value: short(val("Garment Type"), 40) },
+          { label: "Section", value: short(val("Section"), 40) },
+          { label: "Season", value: short(val("Season"), 40) },
+          { label: "Shade", value: short(val("Shade"), 40) },
+          { label: "Quantity", value: val("Quantity") },
+          { label: "Unit", value: val("Unit") },
+          { label: "Style", value: short(val("Style"), 40) },
+          { label: "Priority", value: val("Priority") },
+          { label: "Pattern", value: short(val("Pattern"), 40) },
+          { label: "Size", value: short(val("Size"), 40) },
+          { label: "Embroidery", value: short(val("Emb"), 40) },
+          { label: "Printing", value: short(val("Printing"), 40) },
+          { label: "Direct Stitching", value: asBool(row?.["Direct Stitching"]) ? "Yes" : asText(row?.["Direct Stitching"]) },
+          { label: "Embroidery Details", value: short(val("Emb Details"), 50) },
+          { label: "Printing Details", value: short(val("Printing Details"), 50) },
+          { label: "Component", value: short(val("Component"), 40) },
+          { label: "Collar", value: short(val("Collar"), 40) },
+          { label: "Bone", value: short(val("Bone"), 40) },
+          { label: "Remarks", value: short(row?.["Remarks"] ?? "No remarks provided", 80) }
+        ];
+
+        const cols = 4;
+        const rowHeight = 24;
+        const rowGap = 10;
+        const pad = 18;
+        const titleH = 26;
+        const titleGap = 10;
+
+        const rows = Math.ceil(pairs.length / cols);
+        const gridH = rows * (rowHeight + rowGap) - rowGap;
+        const boxW = contentW();
+        const boxH = pad + titleH + titleGap + gridH + pad;
+
+        await ensurePageRoom(boxH);
+
+        const boxX = M;
+        const boxY = y;
+
+        doc.setDrawColor(...C.black);
+        doc.setFillColor(...C.white);
+        doc.setLineWidth(1);
+        doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8, "FD");
+
+        setFont("bold", F.h3);
+        doc.text("Order Summary", boxX + pad, boxY + pad + titleH - 6);
+
+        const innerX = boxX + pad;
+        const innerYStart = boxY + pad + titleH + titleGap;
+        const colW = (boxW - pad * 2 - GRID_COL_GAP * (cols - 1)) / cols;
+
+        let drawY = innerYStart;
+        for (let i = 0; i < pairs.length; i += cols) {
+          const rowSlice = pairs.slice(i, i + cols);
+
+          rowSlice.forEach((p, idx) => {
+            const x = innerX + idx * (colW + GRID_COL_GAP);
+
+            setFont("bold", F.small);
+            doc.text((p.label || "").toUpperCase(), x, drawY);
+
+            setFont("bold", F.small);
+
+            const line = doc.splitTextToSize(asText(p.value), colW)[0] || "—";
+            doc.text(line, x, drawY + 12);
+          });
+
+          drawY += rowHeight + rowGap;
+        }
+
+        y = boxY + boxH + GRID_ROW_GAP;
+      }
+
+      await sectionHeader("Full Remarks & Visual");
+      const colGap = GRID_COL_GAP;
+      const colW = (contentW() - colGap) / 2;
+      const leftX = M;
+      const rightX = M + colW + colGap;
+      const yTop = y;
+
+      const remarksTextFull = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
+      await drawCard({ label: "Complete Remarks", value: remarksTextFull, x: leftX, w: colW });
+      const bottomLeft = y;
+
+      y = yTop;
+      const estRightH = Math.max(220, bottomLeft - yTop);
+      await tryDrawImage({
+        url: row?.["Image URL"],
+        x: rightX, w: colW, h: estRightH
+      });
+      const bottomRight = yTop + estRightH;
+
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1);
+      doc.line(M + colW + colGap / 2, yTop + 6, M + colW + colGap / 2, Math.max(bottomLeft, bottomRight) - 6);
+
+      y = Math.max(bottomLeft, bottomRight) + GRID_ROW_GAP;
+
+      await sectionHeader("Cutting Schedule");
+      const shades = parseShades(val("Shade"));
+      const minRows = Math.max(6, shades.length);
+      const rowCount = Math.min(10, Math.max(minRows, shades.length));
+
+      const tableHeaders = [
+        { label: "Table", key: "table", width: 1 },
+        { label: "Shade", key: "shade", width: 2 },
+        { label: "Quantity", key: "qty", width: 1 },
+        { label: "Kharcha", key: "kharcha", width: 1 },
+        { label: "Date of Cutting", key: "cut", width: 1.5 },
+      ];
+
+      const tableData = Array.from({ length: rowCount }, (_, i) => ({
+        table: "",
+        shade: i < shades.length ? String(shades[i]) : "",
+        qty: "",
+        kharcha: "Yes / No",
+        cut: "",
+      }));
+
+      await drawTable(tableHeaders, tableData, { rowH: 26, headerH: 32, fontScale: 0.95 });
+      y += 40;
+    };
+    
     const renderThirdPage = async () => {
       PAGE = innerPageScaffold();
       y = 75;
@@ -2303,7 +2257,6 @@ const renderSecondPage = async () => {
         return text.substring(0, maxLength - 3) + "...";
       };
 
-      // Header
       setFont("bold", 28);
       doc.text("MATERIAL REQUISITION PLANNING", PAGE.w / 2, 55, { align: "center" });
       
@@ -2313,7 +2266,6 @@ const renderSecondPage = async () => {
       
       y += 25;
       
-      // Job info - WHITE BACKGROUND ONLY
       doc.setFillColor(...C.white);
       doc.setDrawColor(...C.black);
       doc.setLineWidth(1);
@@ -2333,12 +2285,10 @@ const renderSecondPage = async () => {
 
       y += 50;
 
-      // Two column layout
       const colGap = 25;
       const leftColW = (contentW() - colGap) * 0.55;
       const rightColW = (contentW() - colGap) * 0.45;
 
-      // LEFT COLUMN
       const leftX = M;
       const leftStartY = y;
       
@@ -2363,6 +2313,8 @@ const renderSecondPage = async () => {
         { label: "TAPE/LACE", value: val("Tape/Lace") },
         { label: "BOTTOM TYPE", value: val("Bottom Type") },
         { label: "ZIP", value: val("Zip") },
+        { label: "COLLAR", value: val("Collar") },
+        { label: "BONE", value: val("Bone") },
         { label: "OTHER COMPONENTS", value: val("Component") },
         { label: "SECTION", value: val("Section") },
         { label: "SEASON", value: val("Season") },
@@ -2409,12 +2361,10 @@ const renderSecondPage = async () => {
       
       const leftColumnBottom = y;
 
-      // RIGHT COLUMN
       const rightX = M + leftColW + colGap;
       const rightStartY = leftStartY;
       let rightY = rightStartY;
       
-      // Image section
       doc.setFillColor(...C.white);
       doc.setDrawColor(...C.black);
       doc.setLineWidth(1);
@@ -2463,7 +2413,6 @@ const renderSecondPage = async () => {
       
       rightY += 205;
       
-      // Planning status
       doc.setFillColor(...C.white);
       doc.setDrawColor(...C.black);
       doc.setLineWidth(1);
@@ -2503,7 +2452,6 @@ const renderSecondPage = async () => {
       y = Math.max(leftColumnBottom, rightColumnBottom);
       y += 30;
 
-      // Material requirements table
       await ensurePageRoom(50);
       
       doc.setFillColor(...C.white);
@@ -2526,6 +2474,8 @@ const renderSecondPage = async () => {
 
       const requirementsData = [
         { item: "MAIN FABRIC", description: val("Fabric"), ordered: "", received: "", status: "" },
+        { item: "COLLAR", description: val("Collar") || "As per design", ordered: "", received: "", status: "" },
+        { item: "BONE", description: val("Bone") || "As per design", ordered: "", received: "", status: "" },
         { item: "ZIPPERS", description: val("Zip") || "As per design", ordered: "", received: "", status: "" },
         { item: "TAPE/LACE", description: val("Tape/Lace") || "As required", ordered: "", received: "", status: "" },
         { item: "BOTTOM MATERIAL", description: val("Bottom Type") || "As per style", ordered: "", received: "", status: "" },
@@ -2543,360 +2493,298 @@ const renderSecondPage = async () => {
         fontScale: 0.9
       });
 
-      // Signature section
-      await ensurePageRoom(70);
-      y += 25;
-
-      doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1.5);
-      doc.rect(M, y, contentW(), 70, "FD");
-
-      setFont("bold", 13);
-      doc.text("PREPARED BY MATERIAL PLANNING:", M + 25, y + 22);
-      
-      setFont("normal", 12);
-      doc.text("Signature: _______________________", M + 280, y + 22);
-      doc.text("Date: ______ / ______ / ______", M + 500, y + 22);
-
-      setFont("bold", 13);
-      doc.text("APPROVED BY:", M + 25, y + 48);
-      
-      setFont("normal", 12);
-      doc.text("Signature: _______________________", M + 280, y + 48);
-      doc.text("Date: ______ / ______ / ______", M + 500, y + 48);
-
-      y += 85;
+      // Minimal spacing - no extra content to prevent blank page
+      y += 15;
     };
 
-  
-// ====== LANDSCAPE PRODUCTION TABLE PAGE ======
 const renderLandscapeTablePage = async () => {
-  // Switch to landscape A4
   doc.addPage("a4", "landscape");
   
-  const LANDSCAPE_W = doc.internal.pageSize.getWidth();  // ~297mm
-  const LANDSCAPE_H = doc.internal.pageSize.getHeight(); // ~210mm
+  const LANDSCAPE_W = doc.internal.pageSize.getWidth();
+  const LANDSCAPE_H = doc.internal.pageSize.getHeight();
   
-  // Check if we should show stars
   const priorityText = val("Priority")?.toString() || "";
   const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
                      priorityText.toLowerCase().includes("repeated_lot") || 
                      priorityText.toLowerCase().includes("repeated") ||
                      priorityText.toLowerCase().includes("repeat");
   
-  // Check Direct Stitching status
   const dsEnabled = asBool(row?.["Direct Stitching"]);
   
-  // ====== SHADES INFORMATION ======
   const shades = parseShades(val("Shade"));
-  
-  // Parse sizes for column headers
   const sizes = parseSizes(val("Size"));
   
-  // Calculate table dimensions - REDUCED MARGINS
-  const M = 25; // Reduced from 42 to 25 to give more space
+  // Get component information for cutting table
+  const component = val("Component") !== "—" ? val("Component") : "";
+  const collar = val("Collar") !== "—" ? val("Collar") : "";
+  const bone = val("Bone") !== "—" ? val("Bone") : "";
+  const zip = val("Zip") !== "—" ? val("Zip") : "";
+  
+  const M = 15; // Reduced margin from 25 to 15 for more space
   const tableX = M;
   const tableWidth = LANDSCAPE_W - 2 * M;
-  const tableMaxHeight = LANDSCAPE_H - 100 - 90; // Reduced for header and footer
   
-  // Reduced row height for A4
-  const ROW_HEIGHT = 36;
-  const HEADER_HEIGHT = ROW_HEIGHT * 1.1;
+  const ROW_HEIGHT = 32; // Reduced from 36 to 32
+  const HEADER_HEIGHT = ROW_HEIGHT * 1.0; // Reduced from 1.1 to 1.0
   
-  // Fewer colors per page for A4
-  const maxRowsPerPage = Math.floor(tableMaxHeight / ROW_HEIGHT) - 1;
-  const colorsPerPage = Math.min(7, maxRowsPerPage - 1);
+  const maxRowsPerPage = Math.floor((LANDSCAPE_H - 140) / ROW_HEIGHT) - 1; // Reduced from 100-90
+  const colorsPerPage = Math.min(8, maxRowsPerPage - 1); // Increased from 7 to 8
   
-  // Split shades into batches
   const shadeBatches = [];
   for (let i = 0; i < shades.length; i += colorsPerPage) {
     shadeBatches.push(shades.slice(i, i + colorsPerPage));
   }
   
-  // If no shades, still create one page with empty rows
   if (shadeBatches.length === 0) {
     shadeBatches.push([]);
   }
   
-  // Helper function to shorten text
   const shortenText = (text, maxLength) => {
     if (!text || text === "—") return "—";
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength - 3) + "...";
   };
   
-  // Function to draw page header (updated with stars and Direct Stitching)
   const drawPageHeader = (pageNumber, totalPages) => {
-    // Add top margin
-    const TOP_MARGIN = 15; // Add 15pt margin from top
+    const TOP_MARGIN = 8; // Reduced from 15 to 8
+    const starAdjustment = shouldStars ? 35 : 0; // Reduced from 45 to 35
     
-    // Calculate star height adjustment
-    const starAdjustment = shouldStars ? 45 : 0;
-    
-    // Set white background for header area - extend height by TOP_MARGIN + starAdjustment
     doc.setFillColor(...C.white);
-    doc.rect(0, 0, LANDSCAPE_W, 85 + TOP_MARGIN + starAdjustment, "F");
+    doc.rect(0, 0, LANDSCAPE_W, 65 + TOP_MARGIN + starAdjustment, "F");
     
-    // Get quantity and unit from job order
     const quantity = val("Quantity") || "";
     const unit = val("Unit") || "sets";
     
-    // LEFT SIDE: Basic Info + Style - Add TOP_MARGIN to all Y positions
-    let leftY = 22 + TOP_MARGIN;
+    // LEFT COLUMN - Job Details (more compact)
+    let leftY = 12 + TOP_MARGIN; // Reduced from 22 to 12
     
-    setFont("bold", 10);
+    setFont("bold", 9); // Reduced from 10 to 9
     doc.text(`JOB: ${joNum} | ${vDate("Date")}`, M, leftY);
-    leftY += 14;
+    leftY += 12; // Reduced from 14 to 12
     
-    // STYLE on left side
     const style = val("Style") || "—";
-    setFont("normal", 10);
+    setFont("normal", 9);
     doc.text(`STYLE: ${style}`, M, leftY);
-    leftY += 14;
+    leftY += 12;
     
     if (quantity) {
-      setFont("bold", 10);
+      setFont("bold", 9);
       const quantityText = `QTY: ${quantity} ${unit}`;
       doc.text(quantityText, M, leftY);
-      leftY += 14;
+      leftY += 12;
     }
     
-    // SEASON field on left side
     const season = val("Season") || "—";
     if (season && season !== "—") {
-      setFont("normal", 9);
+      setFont("normal", 8);
       doc.text(`SEASON: ${season}`, M, leftY);
-      leftY += 12;
+      leftY += 10; // Reduced from 12 to 10
     }
     
-    // SECTION field on left side
     const section = val("Section") || "—";
     if (section && section !== "—") {
-      setFont("normal", 9);
+      setFont("normal", 8);
       doc.text(`SECTION: ${section}`, M, leftY);
-      leftY += 12;
+      leftY += 10;
     }
     
-    // RIGHT SIDE: Brand + NEW FIELDS (Direct Stitching, Tape/Lace, Zip, Bottom Type)
-    let rightY = 22 + TOP_MARGIN;
+    // RIGHT COLUMN - Brand and Stitching Details (more compact)
+    let rightY = 12 + TOP_MARGIN;
     
-    setFont("bold", 10);
+    setFont("bold", 9);
     const brand = val("Brand") || "—";
     doc.text(`BRAND: ${brand}`, LANDSCAPE_W - M, rightY, { align: "right" });
-    rightY += 14;
+    rightY += 12;
     
-    // ADD DIRECT STITCHING INFO HERE
     if (dsEnabled) {
-      setFont("bold", 10);
+      setFont("bold", 9);
       doc.text(`DIRECT STITCHING: YES`, LANDSCAPE_W - M, rightY, { align: "right" });
-      rightY += 14;
+      rightY += 12;
     } else {
       const dsValue = asText(row?.["Direct Stitching"]);
       if (dsValue && dsValue !== "—" && dsValue.toLowerCase() !== "no") {
-        setFont("bold", 10);
+        setFont("bold", 9);
         doc.text(`Direct Stitching: ${dsValue}`, LANDSCAPE_W - M, rightY, { align: "right" });
-        rightY += 14;
+        rightY += 12;
       }
     }
     
-    // NEW FIELDS: Tape/Lace, Zip, Bottom Type
-    const tapeLace = val("Tape/Lace") || val("Tape Lace") || val("Tape") || val("Lace") || "—";
-    const zip = val("Zip") || val("Zipper") || "—";
-    const bottomType = val("Bottom Type") || val("Bottom") || "—";
-    
-    // Add Tape/Lace if available
-    if (tapeLace && tapeLace !== "—") {
-      setFont("normal", 9);
-      doc.text(`Tape/Lace: ${shortenText(tapeLace, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
-      rightY += 12;
+    // Add collar and bone information on right side
+    if (collar && collar !== "") {
+      setFont("normal", 8);
+      doc.text(`COLLAR: ${shortenText(collar, 18)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+      rightY += 10;
     }
     
-    // Add Zip if available
-    if (zip && zip !== "—") {
-      setFont("normal", 9);
-      doc.text(`Zip: ${shortenText(zip, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
-      rightY += 12;
+    if (bone && bone !== "") {
+      setFont("normal", 8);
+      doc.text(`BONE: ${shortenText(bone, 18)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+      rightY += 10;
     }
     
-    // Add Bottom Type if available
-    if (bottomType && bottomType !== "—") {
-      setFont("normal", 9);
-      doc.text(`Bottom: ${shortenText(bottomType, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
-      rightY += 12;
+    if (zip && zip !== "") {
+      setFont("normal", 8);
+      doc.text(`ZIP: ${shortenText(zip, 18)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+      rightY += 10;
     }
     
-    // Pattern | Garment Type on right side
-    setFont("normal", 9);
+    setFont("normal", 8);
     const pattern = val("Pattern") || "—";
     const garmentType = val("Garment Type") || "—";
     const patternGarment = `${pattern} | ${garmentType}`;
     if (patternGarment !== "— | —") {
       doc.text(patternGarment, LANDSCAPE_W - M, rightY, { align: "right" });
+      rightY += 10;
     }
     
-    // CENTER: Main Heading with LOT NUMBER
-    let centerY = 22 + TOP_MARGIN;
+    // COMPONENT - Now on right side just below garment type
+    if (component && component !== "") {
+      setFont("normal", 7);
+      const componentText = `COMP: ${shortenText(component, 35)}`;
+      doc.text(componentText, LANDSCAPE_W - M, rightY, { align: "right" });
+      rightY += 9;
+    }
     
-    setFont("bold", 16);
-    doc.text("CUTTING TABLE ______", LANDSCAPE_W / 2, centerY, { align: "center" });
-    centerY += 16;
+    // CENTER - Title and Lot Info (more compact)
+    let centerY = 12 + TOP_MARGIN;
     
-    // Add stars if lot is repeated
+    setFont("bold", 15); // Reduced from 16 to 14
+    doc.text("CUTTING TABLE______", LANDSCAPE_W / 2, centerY, { align: "center" });
+    centerY += 14; // Reduced from 16 to 14
+    
     if (shouldStars) {
-      // Draw 5 gold stars below the CUTTING TABLE heading
-      const starSize = 10;
-      const starSpacing = 20;
+      const starSize = 8; // Reduced from 10 to 8
+      const starSpacing = 16; // Reduced from 20 to 16
       const totalWidth = 5 * starSpacing - starSpacing/2;
       const startX = LANDSCAPE_W / 2 - totalWidth / 2;
       const starY = centerY;
       
-      // Draw 5 stars
       for (let i = 0; i < 5; i++) {
         drawStar(doc, startX + (i * starSpacing), starY, starSize);
       }
       
-      // Add "LOT REPEATED" text below stars
-      setFont("bold", 14);
-      doc.text("LOT REPEATED", LANDSCAPE_W / 2, starY + 25, { align: "center" });
-      centerY = starY + 40;
+      setFont("bold", 12); // Reduced from 14 to 12
+      doc.text("LOT REPEATED", LANDSCAPE_W / 2, starY + 20, { align: "center" });
+      centerY = starY + 32; // Reduced from 40 to 32
     }
     
-    // LOT NUMBER in center (below stars if they exist)
     const lotNumber = val("Lot Number") || "—";
-    setFont("bold", 14);
-    doc.text(`LOT NUMBER: ${lotNumber}`, LANDSCAPE_W / 2, centerY, { align: "center" });
-    centerY += 16;
+    setFont("bold", 12); // Reduced from 14 to 12
+    doc.text(`LOT: ${lotNumber}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+    centerY += 13; // Reduced from 16 to 13
     
-    // Fabric information
-    setFont("bold", 10);
+    setFont("bold", 9); // Reduced from 10 to 9
     const fabric = val("Fabric") || "—";
-    doc.text(`Fabric: ${fabric}`, LANDSCAPE_W / 2, centerY, { align: "center" });
-    centerY += 14;
+    const fabricShort = shortenText(fabric, 40);
+    doc.text(`Fabric: ${fabricShort}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+    centerY += 11; // Reduced from 14 to 11
     
-    // REMARKS
-    setFont("normal", 9);
+    setFont("normal", 8);
     const remarksText = row?.["Remarks"] ? String(row["Remarks"]).trim() : "";
     if (remarksText && remarksText !== "") {
-      const maxRemarksLength = 80;
+      const maxRemarksLength = 70;
       const displayRemarks = remarksText.length > maxRemarksLength 
         ? remarksText.substring(0, maxRemarksLength - 3) + "..." 
         : remarksText;
       
       doc.text(`Remarks: ${displayRemarks}`, LANDSCAPE_W / 2, centerY, { align: "center" });
-      centerY += 14;
+      centerY += 11;
     }
     
-    // Calculate header height
-    let headerHeight = 75 + TOP_MARGIN + starAdjustment;
+    // Calculate header height for separator line
+    let headerHeight = 55 + TOP_MARGIN + starAdjustment; // Reduced from 75 to 55
     
-    // Adjust header height for content
-    if (remarksText && remarksText !== "") headerHeight += 14;
+    if (remarksText && remarksText !== "") headerHeight += 11;
+    if (collar && collar !== "") headerHeight += 10;
+    if (bone && bone !== "") headerHeight += 10;
+    if (zip && zip !== "") headerHeight += 10;
+    if (component && component !== "") headerHeight += 9; // Added component to height calculation
     
-    // Separator line under header
-    const separatorY = headerHeight + 5;
+    const separatorY = headerHeight + 3; // Reduced from 5 to 3
     doc.setDrawColor(...C.black);
     doc.setLineWidth(0.5);
     doc.line(M, separatorY, LANDSCAPE_W - M, separatorY);
     
-    return separatorY + 10; // Good space between header and table
+    return separatorY + 5; // Reduced from 10 to 5
   };
   
-  // Function to draw the sticker box
   const drawStickerBox = (startY, pageNumber) => {
-    // Box dimensions
-    const boxWidth = 140; // Slightly reduced width for right side
-    const boxHeight = 80; // Reduced height
-    const boxX = LANDSCAPE_W - boxWidth - M; // Right side position
+    const boxWidth = 130; // Reduced from 140 to 130
+    const boxHeight = 70; // Reduced from 80 to 70
+    const boxX = LANDSCAPE_W - boxWidth - M;
     const boxY = startY;
     
-    // Draw box border with thicker lines
     doc.setDrawColor(...C.black);
     doc.setLineWidth(1.5);
     doc.rect(boxX, boxY, boxWidth, boxHeight);
     
-    // Box background (white color)
     doc.setFillColor(255, 255, 255);
     doc.rect(boxX, boxY, boxWidth, boxHeight, "F");
     
-    // Box content with proper spacing
-    let contentY = boxY + 12;
+    let contentY = boxY + 10; // Reduced from 12 to 10
     
-    // Heading: PARTA CHECKED (centered, bold and larger)
-    setFont("bold", 12);
+    setFont("bold", 11); // Reduced from 12 to 11
     doc.text("PARTA CHECKED", boxX + boxWidth / 2, contentY, { align: "center" });
-    contentY += 18;
+    contentY += 15; // Reduced from 18 to 15
     
-    // Separator line
     doc.setDrawColor(...C.black);
     doc.setLineWidth(0.8);
     doc.line(boxX + 10, contentY, boxX + boxWidth - 10, contentY);
-    contentY += 12;
+    contentY += 10; // Reduced from 12 to 10
     
-    // DATE section only
-    setFont("bold", 10);
-    doc.text("DATE :", boxX + 15, contentY);
+    setFont("bold", 9); // Reduced from 10 to 9
+    doc.text("DATE :", boxX + 12, contentY); // Reduced from 15 to 12
     
-    // Blank line for manual date entry
-    const dateLineStartX = boxX + 50;
-    const dateLineEndX = boxX + boxWidth - 15;
+    const dateLineStartX = boxX + 45; // Reduced from 50 to 45
+    const dateLineEndX = boxX + boxWidth - 12; // Reduced from 15 to 12
     
-    // Draw a blank line for date
     doc.setDrawColor(...C.black);
     doc.setLineWidth(0.8);
-    const dateLineY = contentY + 4;
+    const dateLineY = contentY + 3; // Reduced from 4 to 3
     doc.line(dateLineStartX, dateLineY, dateLineEndX, dateLineY);
-    contentY += 16;
+    contentY += 14; // Reduced from 16 to 14
     
-    // Cutting Head Sign with more spacing
-    setFont("bold", 11);
+    setFont("bold", 10); // Reduced from 11 to 10
     doc.text("Cutting Head Sign", boxX + boxWidth / 2, contentY, { align: "center" });
-    contentY += 8;
+    contentY += 7; // Reduced from 8 to 7
     
-    // Line for signature
     doc.setDrawColor(...C.black);
     doc.setLineWidth(0.8);
-    const signLineY = contentY + 2;
-    const signLineStartX = boxX + 20;
-    const signLineEndX = boxX + boxWidth - 20;
+    const signLineY = contentY + 1; // Reduced from 2 to 1
+    const signLineStartX = boxX + 15; // Reduced from 20 to 15
+    const signLineEndX = boxX + boxWidth - 15;
     doc.line(signLineStartX, signLineY, signLineEndX, signLineY);
     
-    return boxY + boxHeight;
+    return boxY + boxHeight + 8; // Reduced spacing after box
   };
   
-  // Function to draw a table page with the two new columns
   const drawTablePage = (shadeBatch, pageIndex, totalPages, startSrNo) => {
-    // Draw page header (same on every page)
     const tableStartY = drawPageHeader(pageIndex + 1, totalPages);
     let y = tableStartY;
     
-    // Get Fabric Lot No and Rib Lot No values from the row
     const fabricLotNo = val("Fabric Lot No") || val("Fabric Lot") || "—";
     const ribLotNo = val("Rib Lot No") || val("Rib Lot") || "—";
     
     const tableData = [];
     const rowsNeeded = Math.max(colorsPerPage, shadeBatch.length);
     
-    // Add color rows with continuous serial numbers
     for (let i = 0; i < rowsNeeded; i++) {
       const srNo = startSrNo + i;
       const row = { 
         sr_no: srNo.toString(),
         shade: i < shadeBatch.length ? shadeBatch[i] : "",
-        fabric_lot_no: i === 0 ? fabricLotNo : "", // Only show in first row
-        rib_lot_no: i === 0 ? ribLotNo : "", // Only show in first row
+        fabric_lot_no: i === 0 ? fabricLotNo : "",
+        rib_lot_no: i === 0 ? ribLotNo : "",
         rolls: "",
         kgs: ""
       };
       
-      // Add size columns
       if (sizes.length > 0) {
         sizes.forEach(size => {
           row[`size_${size}`] = "";
         });
       }
       
-      // Add the rest of the columns
       row.total_pcs = "";
       row.kapda_layer_weight = "";
       row.layer_piece = "";
@@ -2908,7 +2796,6 @@ const renderLandscapeTablePage = async () => {
       tableData.push(row);
     }
     
-    // Add total row (only on last page)
     if (pageIndex === totalPages - 1) {
       tableData.push({
         sr_no: "TOTAL",
@@ -2932,37 +2819,34 @@ const renderLandscapeTablePage = async () => {
       });
     }
     
-    // Generate table headers with adjusted widths for A4 - WITH NEW COLUMNS
     const generateTableHeaders = () => {
       const headers = [
-        { label: "SR", key: "sr_no", width: 0.5 },
-        { label: "SHADE", key: "shade", width: 1.5 }, // Reduced from 2.0 to 1.5
-        { label: "FABRIC\nLOT NO", key: "fabric_lot_no", width: 0.9 }, // New column
-        { label: "RIB\nLOT NO", key: "rib_lot_no", width: 0.9 }, // New column
-        { label: "ROLLS", key: "rolls", width: 0.7 },
-        { label: "KGS", key: "kgs", width: 0.7 },
+        { label: "SR", key: "sr_no", width: 0.4 }, // Reduced from 0.5
+        { label: "SHADE", key: "shade", width: 1.3 }, // Reduced from 1.5
+        { label: "FABRIC\nLOT", key: "fabric_lot_no", width: 0.8 }, // Reduced from 0.9
+        { label: "RIB\nLOT", key: "rib_lot_no", width: 0.8 }, // Reduced from 0.9
+        { label: "ROLLS", key: "rolls", width: 0.6 }, // Reduced from 0.7
+        { label: "KGS", key: "kgs", width: 0.6 }, // Reduced from 0.7
       ];
       
-      // Add size columns with reduced width
       if (sizes.length > 0) {
         sizes.forEach(size => {
           headers.push({ 
             label: size, 
             key: `size_${size}`, 
-            width: 0.6
+            width: 0.55 // Reduced from 0.6
           });
         });
       }
       
-      // Add the remaining columns with English abbreviations - reduced widths
       headers.push(
-        { label: "TOTAL\nPCS", key: "total_pcs", width: 0.7 },
-        { label: "KAPDA\nLAYER WT", key: "kapda_layer_weight", width: 0.9 },
-        { label: "LAYER\nPCS", key: "layer_piece", width: 0.7 },
-        { label: "LAYER\nINCH", key: "layer_inch", width: 0.7 },
-        { label: "DIA", key: "daya", width: 0.6 },
-        { label: "CUTTING\nWEIGHT", key: "cutting_weight", width: 0.8 },
-        { label: "KAPDA\nVAPSI", key: "kapda_vapsi", width: 0.7 }
+        { label: "TOTAL\nPCS", key: "total_pcs", width: 0.65 }, // Reduced from 0.7
+        { label: "KAPDA\nLAYER", key: "kapda_layer_weight", width: 0.8 }, // Reduced from 0.9
+        { label: "LAYER\nPCS", key: "layer_piece", width: 0.65 }, // Reduced from 0.7
+        { label: "LAYER\nINCH", key: "layer_inch", width: 0.65 }, // Reduced from 0.7
+        { label: "DIA", key: "daya", width: 0.55 }, // Reduced from 0.6
+        { label: "CUTTING\nWT", key: "cutting_weight", width: 0.75 }, // Reduced from 0.8
+        { label: "KAPDA\nVAPSI", key: "kapda_vapsi", width: 0.65 } // Reduced from 0.7
       );
       
       return headers;
@@ -2970,9 +2854,7 @@ const renderLandscapeTablePage = async () => {
     
     const tableHeaders = generateTableHeaders();
     
-    // Draw table header
     const drawTableHeader = () => {
-      // Header with WHITE background
       doc.setFillColor(...C.white);
       doc.rect(tableX, y, tableWidth, HEADER_HEIGHT, "F");
       
@@ -2982,28 +2864,23 @@ const renderLandscapeTablePage = async () => {
       tableHeaders.forEach((h, i) => {
         const colWidth = (h.width / totalRatio) * tableWidth;
         
-        // Draw column border
         doc.setDrawColor(...C.black);
         doc.setLineWidth(0.5);
         doc.rect(currentX, y, colWidth, HEADER_HEIGHT);
         
-        // Header text - smaller font for A4
-        setFont("bold", 7); // Reduced font size to fit more columns
+        setFont("bold", 6.5); // Reduced from 7 to 6.5
         
         if (h.label.length <= 3 && /^[A-Z0-9]+$/.test(h.label) && !h.label.includes('\n')) {
-          // Size column
-          doc.text(h.label, currentX + colWidth / 2, y + HEADER_HEIGHT / 2 - 4, { align: "center" });
+          doc.text(h.label, currentX + colWidth / 2, y + HEADER_HEIGHT / 2 - 2, { align: "center" });
           
-          // Draw separator line
           doc.setDrawColor(...C.black);
           doc.setLineWidth(0.3);
           doc.line(currentX + 2, y + HEADER_HEIGHT / 2, 
                   currentX + colWidth - 2, y + HEADER_HEIGHT / 2);
         } else {
-          // Regular header with line breaks
           const lines = h.label.split('\n');
-          const lineHeight = 7;
-          const startY = y + (HEADER_HEIGHT - (lines.length * lineHeight)) / 2 + 5;
+          const lineHeight = 6; // Reduced from 7 to 6
+          const startY = y + (HEADER_HEIGHT - (lines.length * lineHeight)) / 2 + 3; // Reduced from 5 to 3
           
           lines.forEach((line, lineIdx) => {
             doc.text(line, currentX + colWidth / 2, startY + (lineIdx * lineHeight), { align: "center" });
@@ -3013,15 +2890,13 @@ const renderLandscapeTablePage = async () => {
         currentX += colWidth;
       });
       
-      // Header bottom border
       doc.setDrawColor(...C.black);
-      doc.setLineWidth(1.5);
+      doc.setLineWidth(1);
       doc.line(tableX, y + HEADER_HEIGHT, tableX + tableWidth, y + HEADER_HEIGHT);
       
       return HEADER_HEIGHT;
     };
     
-    // Draw table rows
     const drawTableRows = (headerHeight) => {
       const totalRatio = tableHeaders.reduce((sum, h) => sum + (h.width || 1), 0);
       const tableStartRowY = y + headerHeight;
@@ -3030,18 +2905,16 @@ const renderLandscapeTablePage = async () => {
         const row = tableData[rowIndex];
         const rowY = tableStartRowY + (rowIndex * ROW_HEIGHT);
         
-        // Alternating row colors for better readability (pattern)
         if (rowIndex % 2 === 0) {
           doc.setFillColor(...C.white);
         } else {
-          doc.setFillColor(245, 245, 245); // Light gray for alternating rows
+          doc.setFillColor(245, 245, 245);
         }
         doc.rect(tableX, rowY, tableWidth, ROW_HEIGHT, "F");
         
-        // Draw thicker line for total row
         if (row.isTotalRow) {
           doc.setDrawColor(...C.black);
-          doc.setLineWidth(1.5);
+          doc.setLineWidth(1);
           doc.line(tableX, rowY, tableX + tableWidth, rowY);
         }
         
@@ -3050,39 +2923,31 @@ const renderLandscapeTablePage = async () => {
         tableHeaders.forEach((h, i) => {
           const colWidth = (h.width / totalRatio) * tableWidth;
           
-          // Draw cell border
           doc.setDrawColor(...C.black);
           doc.setLineWidth(0.3);
           doc.rect(currentX, rowY, colWidth, ROW_HEIGHT);
           
-          // Cell content
           const cellValue = row[h.key] || "";
           
-          // Style for total row
           if (row.isTotalRow) {
-            setFont("bold", 8);
+            setFont("bold", 7); // Reduced from 8 to 7
           } else {
-            setFont("normal", 8);
+            setFont("normal", 7); // Reduced from 8 to 7
           }
           
-          // Special handling for SHADE, FABRIC_LOT_NO, and RIB_LOT_NO columns to wrap text
           if (h.key === "shade" || h.key === "fabric_lot_no" || h.key === "rib_lot_no") {
             const textValue = String(cellValue);
-            
-            // Split the text to fit within the cell width with some padding
-            const maxWidth = colWidth - 6; // Leave some padding
+            const maxWidth = colWidth - 4; // Reduced from 6 to 4
             const lines = doc.splitTextToSize(textValue, maxWidth);
-            const lineHeight = 7;
+            const lineHeight = 6; // Reduced from 7 to 6
             const totalTextHeight = lines.length * lineHeight;
-            const startY = rowY + (ROW_HEIGHT - totalTextHeight) / 2 + 4;
+            const startY = rowY + (ROW_HEIGHT - totalTextHeight) / 2 + 3; // Reduced from 4 to 3
             
-            // Draw each line
             lines.forEach((line, lineIdx) => {
               doc.text(line, currentX + colWidth / 2, startY + (lineIdx * lineHeight), { align: "center" });
             });
           } else {
-            // Center text in cell for other columns
-            doc.text(String(cellValue), currentX + colWidth / 2, rowY + ROW_HEIGHT / 2 + 2, { align: "center" });
+            doc.text(String(cellValue), currentX + colWidth / 2, rowY + ROW_HEIGHT / 2 + 1, { align: "center" });
           }
           
           currentX += colWidth;
@@ -3092,41 +2957,30 @@ const renderLandscapeTablePage = async () => {
       return tableStartRowY + (tableData.length * ROW_HEIGHT);
     };
     
-    // Draw the complete table
     const headerHeight = drawTableHeader();
     const tableBottom = drawTableRows(headerHeight);
     
-    // Draw table border
     const totalTableHeight = headerHeight + (tableData.length * ROW_HEIGHT);
     doc.setDrawColor(...C.black);
-    doc.setLineWidth(1);
+    doc.setLineWidth(0.8); // Reduced from 1 to 0.8
     doc.rect(tableX, y, tableWidth, totalTableHeight, "S");
     
-    y = tableBottom + 20; // Increased spacing below table
+    y = tableBottom + 12; // Reduced from 20 to 12
     
-    // ====== SIGNATURE/STICKER BOX ======
-    // Show on EVERY page
     const stickerBottom = drawStickerBox(y, pageIndex + 1);
+    y = stickerBottom + 12; // Reduced from 20 to 12
     
-    // Update y position to be after sticker box
-    y = stickerBottom + 20;
-    
-    // ====== BOTTOM SECTION ======
-          
-    // Page footer
-    setFont("normal", 8);
+    setFont("normal", 7); // Reduced from 8 to 7
     const now = new Date().toLocaleDateString("en-IN", {
       day: "2-digit", month: "short", year: "numeric"
     });
-    doc.text(`Printed: ${now}`, LANDSCAPE_W / 2, LANDSCAPE_H - 10, { align: "center" });
+    doc.text(`Printed: ${now}`, LANDSCAPE_W / 2, LANDSCAPE_H - 8, { align: "center" }); // Reduced from -10 to -8
     
-    doc.text(`JOB: ${joNum}`, LANDSCAPE_W - M, LANDSCAPE_H - 10, { align: "right" });
+    doc.text(`JOB: ${joNum}`, LANDSCAPE_W - M, LANDSCAPE_H - 8, { align: "right" });
     
-    // Return next serial number for next page
     return startSrNo + rowsNeeded;
   };
   
-  // Draw all pages with continuous serial numbers
   let currentSrNo = 1;
   shadeBatches.forEach((batch, index) => {
     if (index > 0) {
@@ -3136,60 +2990,80 @@ const renderLandscapeTablePage = async () => {
   });
 };
     // ---------- BUILD ALL PAGES ----------
-    await renderFirstPage();                 // Page 1
-    doc.addPage(); await pause(0);
-    await renderFirstPage();                 // Page 2 (duplicate)
-    doc.addPage(); await pause(0);
-    await renderSecondPage();                // Page 3
-    doc.addPage(); await pause(0);
-    await renderThirdPage();                 // Page 4
-    await renderLandscapeTablePage();        // Page 5+ (Landscape with 7 colors per page)
+    
+    // Page 1: Job Order for EA
+    await renderFirstPageWithHeading("JOB ORDER FOR EA");
+    doc.addPage();
+    await pause(0);
+    
+    // Page 2: Job Order for HOD
+    await renderFirstPageWithHeading("JOB ORDER FOR HOD");
+    doc.addPage();
+    await pause(0);
+    
+    // Page 3: Job Order for Cutting Head
+    await renderFirstPageWithHeading("JOB ORDER FOR CUTTING HEAD");
+    doc.addPage();
+    await pause(0);
+    
+    // Page 4: Second Page (Summary)
+    await renderSecondPage();
+    doc.addPage();
+    await pause(0);
+    
+    // Page 5: Third Page (Material Requisition Planning)
+    await renderThirdPage();
+    // REMOVED: doc.addPage(); - This was causing the blank page!
+    await pause(0);
+    
+    // Page 6+: Landscape Table Pages
+    await renderLandscapeTablePage();
 
     // ====== FOOTERS FOR ALL PAGES ======
-   const totalPages = doc.internal.getNumberOfPages();
-for (let i = 1; i <= totalPages; i++) {
-  doc.setPage(i);
-  const w = doc.internal.pageSize.getWidth();
-  const h = doc.internal.pageSize.getHeight();
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      const w = doc.internal.pageSize.getWidth();
+      const h = doc.internal.pageSize.getHeight();
 
-  doc.setDrawColor(...C.black);
-  doc.setLineWidth(1.5);
-  doc.line(M, h - FOOTER_H - 10, M + 100, h - FOOTER_H - 10);
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(1.5);
+      doc.line(M, h - FOOTER_H - 10, M + 100, h - FOOTER_H - 10);
 
-  setFont("normal", F.meta);
-  doc.text(`Page ${i} of ${totalPages} • ${joNum}`, w - M, h - FOOTER_H, { align: "right" });
+      setFont("normal", F.meta);
+      doc.text(`Page ${i} of ${totalPages} • ${joNum}`, w - M, h - FOOTER_H, { align: "right" });
 
-  if (i === totalPages) {
-    setFont("normal", F.meta);
-    doc.text(`Signature __________`, M, h - FOOTER_H);
-  } else if (i === totalPages - 1) {
-    setFont("normal", F.meta);
-    doc.text(`Signature __________`, M, h - FOOTER_H);
-  } else if (i === totalPages - 2) {
-    setFont("normal", F.meta);
-    doc.text(`Checked by: Production Manager`, M, h - FOOTER_H);
+      if (i === totalPages) {
+        setFont("normal", F.meta);
+        doc.text(`Signature __________`, M, h - FOOTER_H);
+      } else if (i === totalPages - 1) {
+        setFont("normal", F.meta);
+        doc.text(`Signature __________`, M, h - FOOTER_H);
+      } else if (i === totalPages - 2) {
+        setFont("normal", F.meta);
+        doc.text(`Checked by: Production Manager`, M, h - FOOTER_H);
+      }
+    }
+
+    // Log successful generation
+    await logPdfGeneration(row, "single", "Generated", "PDF generated successfully");
+
+    // Refresh the generated lots list after successful generation
+    await fetchGeneratedLots();
+
+    const safe = (s) => String(s || "").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 80);
+    try {
+      await doc.save(`JobOrder_${safe(joNum)}.pdf`, { returnPromise: true });
+    } catch {
+      doc.save(`JobOrder_${safe(joNum)}.pdf`);
+    }
+  } catch (e) {
+    // Log error
+    await logPdfGeneration(row, "single", "Failed", `Error: ${e.message}`);
+    alert(`Could not create PDF: ${e.message}`);
+  } finally {
+    setPdfBusyId(null);
   }
-}
-
-// Log successful generation
-await logPdfGeneration(row, "single", "Generated", "PDF generated successfully");
-
-// Refresh the generated lots list after successful generation
-await fetchGeneratedLots();
-
-const safe = (s) => String(s || "").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 80);
-try {
-  await doc.save(`JobOrder_${safe(joNum)}.pdf`, { returnPromise: true });
-} catch {
-  doc.save(`JobOrder_${safe(joNum)}.pdf`);
-}
- } catch (e) {
-  // Log error
-  await logPdfGeneration(row, "single", "Failed", `Error: ${e.message}`);
-  alert(`Could not create PDF: ${e.message}`);
-} finally {
-  setPdfBusyId(null);
-}
 };
 const exportBatchPages = async (which /* "first" | "second" | "material" */) => {
   if (pdfBatchBusy) return;
@@ -4570,6 +4444,15 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
 <select className="jox-select" value={fSticker} onChange={(e) => { setFSticker(e.target.value); setPage(1); }} title="Filter by Sticker">
   <option value="">🏷️ All Stickers</option>
   {stickerOpts.map((v) => <option key={v} value={v}>{v}</option>)}
+</select>
+<select className="jox-select" value={fCollar} onChange={(e) => { setFCollar(e.target.value); setPage(1); }} title="Filter by Collar">
+  <option value="">👕 All Collars</option>
+  {collarOpts.map((v) => <option key={v} value={v}>{v}</option>)}
+</select>
+
+<select className="jox-select" value={fBone} onChange={(e) => { setFBone(e.target.value); setPage(1); }} title="Filter by Bone">
+  <option value="">🦴 All Bones</option>
+  {boneOpts.map((v) => <option key={v} value={v}>{v}</option>)}
 </select>
 
             <select className="jox-select" value={fDS} onChange={(e) => { setFDS(e.target.value); setPage(1); }} title="Filter by Direct Stitching">

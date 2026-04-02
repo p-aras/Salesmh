@@ -23,7 +23,7 @@ const API_KEY = 'AIzaSyAomDFBkOySlIxKWSKGHe6ATv9gvaBr7uk';
 const SPREADSHEET_ID = '1Frg7kHPiiGeydB02LsGKJ-0UeO8N45-19skJRRvU_Qg';
 const PARTY_RANGE = 'Parties!A2:A';
 const ORDER_RANGE = 'Orders!B2:B';
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwh24O_HFs9ihShK5ArOOvJOXfPkveX9Tx6VFyaKSNhK0WMT_-TSZoo5p5q_k8ZlDbR/exec';
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxe5EN_nrAtTr1P0z-ytbe1uMDkU15ttlT5s4EseYBAmKHYW9vviLzIeSCElJ6zWc6Z/exec';
 
 const SalesOrderForm = () => {
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
