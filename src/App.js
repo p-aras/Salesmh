@@ -97,7 +97,7 @@ function AppContent() {
         <Route
           path="/sales-order"
           element={
-            <RequireRole roles={["admin", "sales"]}>
+            <RequireRole roles={["admin", "sales", "production"]}>
               <SalesOrderForm />
             </RequireRole>
           }
@@ -106,7 +106,7 @@ function AppContent() {
         <Route
           path="/sales-orders/:partyName"
           element={
-            <RequireRole roles={["admin", "sales"]}>
+            <RequireRole roles={["admin", "sales", "production"]}>
               <SalesOrderDetail />
             </RequireRole>
           }
@@ -115,7 +115,7 @@ function AppContent() {
         <Route
           path="/sales-data"
           element={
-            <RequireRole roles={["admin", "sales", "viewer"]}>
+            <RequireRole roles={["admin", "sales", "viewer", "production"]}>
               <SalesOrderData />
             </RequireRole>
           }
@@ -123,7 +123,7 @@ function AppContent() {
          <Route
           path="/checking-packing"
           element={
-            <RequireRole roles={["admin", "sales", "viewer"]}>
+            <RequireRole roles={["admin", "sales", "viewer", "production"]}>
               <IssuePacking />
             </RequireRole>
           }
@@ -131,7 +131,7 @@ function AppContent() {
          <Route
           path="/Karigar-details"
           element={
-            <RequireRole roles={["admin", "sales", "viewer"]}>
+            <RequireRole roles={["admin", "sales", "viewer", "production"]}>
               <KarigarAssignment />
             </RequireRole>
           }
@@ -158,7 +158,7 @@ function AppContent() {
         <Route
           path="/sample-design-form"
           element={
-            <RequireRole roles={["admin", "sales"]}>
+            <RequireRole roles={["admin", "sales", "production"]}>
               <SampleDesignUpload />
             </RequireRole>
           }
@@ -176,7 +176,7 @@ function AppContent() {
         <Route
           path="/pending-fabric-issues"
           element={
-            <RequireRole roles={["admin", "production"]}>
+            <RequireRole roles={["admin", "production", "production"]}>
               <FabricIssues />
             </RequireRole>
           }
@@ -256,7 +256,7 @@ function AppContent() {
         <Route
           path="/cutting-budget"
           element={
-            <RequireRole roles={["admin", "production"]}>
+            <RequireRole roles={["admin"]}>
               <GoogleSheetTable />
             </RequireRole>
           }

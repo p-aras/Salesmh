@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 const DEMO_USERS = [
   { username: "admin", password: "Password", role: "admin" },
   { username: "design", password: "design123", role: "design" },
-  { username: "production", password: "prod12356", role: "production" },
+  { username: "production", password: "123456", role: "production" },
   { username: "hod", password: "hod1234", role: "viewer" },
    { username: "sales", password: "sales1234", role: "sales" },
 ];

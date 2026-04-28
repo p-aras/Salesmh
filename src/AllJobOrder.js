@@ -24,7 +24,7 @@ const HEADERS = [
   "Printing","Printing Details","Pattern","Style","Remarks","Direct Stitching",
   "Submitted By","Image URL","Lot Number","Component","Priority",
   "Tape/Lace", "Bottom Type", "Zip", "Sticker",
-  "Collar", "Bone"  // <-- ADDED Collar and Bone
+  "Collar", "Bone", "FULL BAJU"  // Changed to match exact sheet column name
 ];
 // Function to log PDF generation to Google Sheets
 const logPdfGeneration = async (row, pdfType, status = "Generated", notes = "") => {
@@ -161,9 +161,17 @@ function pickDateISO(row) {
 }
 function normalizePriority(v) {
   const s = String(v || "").trim().toUpperCase();
+  
+  // Check for LOT REPEATED or REPEATED (with anything after it)
+  if (s.includes("REPEATED") || s.includes("LOT_REPEATED")) {
+    return ""; // Return empty string - will show as "—" in the UI
+  }
+  
+  // Check for regular priorities
   if (s.startsWith("H")) return "HIGH";
   if (s.startsWith("M")) return "MEDIUM";
   if (s.startsWith("L")) return "LOW";
+  
   return "";
 }
 function priorityClass(level) {
@@ -336,6 +344,7 @@ const [fZip, setFZip] = useState("");
 const [fSticker, setFSticker] = useState(""); // Add this line
 const [fCollar, setFCollar] = useState("");
 const [fBone, setFBone] = useState("");
+const [fFullBaju, setFFullBaju] = useState("");
 
 const [generatedLots, setGeneratedLots] = useState(new Set()); // Track which lots have PDFs generated
 const [loadingGeneratedLots, setLoadingGeneratedLots] = useState(false);
@@ -345,9 +354,8 @@ const [loadingGeneratedLots, setLoadingGeneratedLots] = useState(false);
 // Update around line 105
 const VISIBLE_HEADERS = [
   "Job Order No","Date","Party Name","Fabric","Shade","Quantity","Unit","Lot Number",
-  "Priority", "Sticker", "Collar", "Bone"  // <-- ADDED Collar and Bone
+  "Priority", "Sticker", "Collar", "Bone", "FULL BAJU"  // Changed to match exact name
 ];
-
   const DETAIL_HEADERS = HEADERS.filter((h) => !VISIBLE_HEADERS.includes(h));
   const [expanded, setExpanded] = useState(() => new Set());
 
@@ -362,56 +370,81 @@ const VISIBLE_HEADERS = [
     return j.values?.length || 1;
   }
 
-  const fetchData = async ({ isRefresh = false, signal } = {}) => {
-    try {
-      if (isRefresh) setRefreshing(true); else setLoading(true);
-      setError("");
+const fetchData = async ({ isRefresh = false, signal } = {}) => {
+  try {
+    if (isRefresh) setRefreshing(true); else setLoading(true);
+    setError("");
 
-      const last = await getLastPopulatedRow(signal);
-      setLastRow(last);
-      const upto = Math.min(last, rowLimit);
+    const last = await getLastPopulatedRow(signal);
+    setLastRow(last);
+    const upto = Math.min(last, rowLimit);
 
-const range = `${encodeURIComponent(TAB_NAME)}!A1:AT${upto}`;
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
-      const res = await fetch(url, { signal });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // IMPORTANT: Make sure the range includes enough columns
+    // AG = column 33 (for 33 columns including Full Baju)
+    // Using AU (column 47) gives plenty of room for future columns
+    const range = `${encodeURIComponent(TAB_NAME)}!A1:AU${upto}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
+    const res = await fetch(url, { signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      const data = await res.json();
-      const values = data.values || [];
-      if (values.length === 0) throw new Error("No data found.");
-      const headerRow = values[0].map((h) => (h || "").trim());
-      const body = values.slice(1);
+    const data = await res.json();
+    const values = data.values || [];
+    if (values.length === 0) throw new Error("No data found.");
+    
+    const headerRow = values[0].map((h) => (h || "").trim());
+    console.log("Sheet headers found:", headerRow); // Debug: see what columns exist
+    
+    const body = values.slice(1);
 
-      const norm = (s) => s.replace(/\s+/g, " ").trim().toLowerCase();
-      const hIndex = {};
-      headerRow.forEach((h, i) => {
-        const exact = h.trim();
-        const normalized = norm(h);
-        if (!(exact in hIndex)) hIndex[exact] = i;
-        if (!(normalized in hIndex)) hIndex[normalized] = i;
+    const norm = (s) => s.replace(/\s+/g, " ").trim().toLowerCase();
+    const hIndex = {};
+    headerRow.forEach((h, i) => {
+      const exact = h.trim();
+      const normalized = norm(h);
+      if (!(exact in hIndex)) hIndex[exact] = i;
+      if (!(normalized in hIndex)) hIndex[normalized] = i;
+    });
+
+    console.log("Column index for 'Full Baju':", hIndex["Full Baju"]); // Debug: check if column found
+
+    const parsed = body
+      .filter((r) => r.some((cell) => (cell ?? "").toString().trim() !== ""))
+      .map((r, i) => {
+        const obj = {};
+        HEADERS.forEach((H) => {
+          obj[H] = getCell(r, hIndex[H]);
+        });
+        
+        if (obj["Quantity"] !== "") {
+          const n = Number(obj["Quantity"]);
+          if (Number.isFinite(n)) obj["Quantity"] = n;
+        }
+        
+        obj.__dateISO = pickDateISO(obj);
+        obj.__sheetRow = i + 2; // header = 1
+        
+        // Debug: log first row's Full Baju value
+        if (i === 0) {
+          console.log("First row - Full Baju value:", obj["Full Baju"]);
+          console.log("First row - All values:", obj);
+        }
+        
+        return obj;
       });
 
-      const parsed = body
-        .filter((r) => r.some((cell) => (cell ?? "").toString().trim() !== ""))
-        .map((r, i) => {
-          const obj = {};
-          HEADERS.forEach((H) => (obj[H] = getCell(r, hIndex[H])));
-          if (obj["Quantity"] !== "") {
-            const n = Number(obj["Quantity"]);
-            if (Number.isFinite(n)) obj["Quantity"] = n;
-          }
-          obj.__dateISO = pickDateISO(obj);
-          obj.__sheetRow = i + 2; // header = 1
-          return obj;
-        });
-
-      setRows(parsed);
-    } catch (e) {
-      if (e?.name !== "AbortError") setError(`Failed to load: ${e.message}`);
-    } finally {
-      if (isRefresh) setRefreshing(false); else setLoading(false);
+    console.log("Total rows parsed:", parsed.length);
+    console.log("Sample Full Baju values:", parsed.slice(0, 5).map(r => r["Full Baju"]));
+    
+    setRows(parsed);
+  } catch (e) {
+    if (e?.name !== "AbortError") {
+      setError(`Failed to load: ${e.message}`);
+      console.error("Fetch error:", e);
     }
-  };
+  } finally {
+    if (isRefresh) setRefreshing(false); else setLoading(false);
+  }
+};
 
   useEffect(() => {
     const c = new AbortController();
@@ -604,6 +637,7 @@ const stickerOpts = useMemo(() => uniqueOptions("Sticker"), [rows]); // Add this
 // Add these near other uniqueOptions calls
 const collarOpts = useMemo(() => uniqueOptions("Collar"), [rows]);
 const boneOpts = useMemo(() => uniqueOptions("Bone"), [rows]);
+const fullBajuOpts = useMemo(() => uniqueOptions("FULL BAJU"), [rows]);  // Changed to "FULL BAJU"
 
   /* --------- Filter + search --------- */
  const filtered = useMemo(() => {
@@ -634,6 +668,7 @@ const boneOpts = useMemo(() => uniqueOptions("Bone"), [rows]);
     const matchesSticker = !fSticker || (row["Sticker"] ?? "") === fSticker;
     const matchesCollar = !fCollar || (row["Collar"] ?? "") === fCollar;  // <-- ADDED
     const matchesBone = !fBone || (row["Bone"] ?? "") === fBone;          // <-- ADDED
+   const matchesFullBaju = !fFullBaju || (row["FULL BAJU"] ?? "") === fFullBaju;  // Changed to "FULL BAJU"
 
     // NEW: inclusive range filters for JO No and Lot Number
     const matchesJoRange  = inRange(row["Job Order No"], joStart, joEnd);
@@ -659,7 +694,8 @@ const boneOpts = useMemo(() => uniqueOptions("Bone"), [rows]);
       matchesZip &&
       matchesSticker &&
       matchesCollar &&      // <-- ADDED
-      matchesBone &&        // <-- ADDED
+      matchesBone &&  
+        matchesFullBaju &&      // <-- ADDED
       matchesPriority
     );
   });
@@ -729,8 +765,9 @@ const clearFilters = () => {
   setFPattern(""); setFSubmittedBy(""); setFUnit(""); setFDS(""); setFLot("");
   setFPriority(""); 
   setFTapeLace(""); setFBottomType(""); setFZip(""); setFSticker("");
-  setFCollar("");      // <-- ADDED
-  setFBone("");        // <-- ADDED
+  setFCollar("");      
+  setFBone("");        
+  setFFullBaju("");    // <-- ADDED
   setQ(""); setPage(1);
   setJoStart(""); setJoEnd("");
   setLotStart(""); setLotEnd("");
@@ -1959,20 +1996,22 @@ const renderFirstPageWithHeading = async (customHeading) => {
   ], { cols: 1, rowGap: 12 });
 
   await sectionHeaderForPage("Accessories");
-  
-  const collar = val("Collar") !== "—" ? val("Collar") : "—";
-  const bone = val("Bone") !== "—" ? val("Bone") : "—";
-  const tapeLace = val("Tape/Lace") !== "—" ? val("Tape/Lace") : "—";
-  const bottomType = val("Bottom Type") !== "—" ? val("Bottom Type") : "—";
-  const zip = val("Zip") !== "—" ? val("Zip") : "—";
-  
-  await drawGridRowForPage([
-    { label: "Collar", value: collar },
-    { label: "Bone", value: bone },
-    { label: "Tape/Lace", value: tapeLace },
-    { label: "Bottom Type", value: bottomType },
-    { label: "Zip", value: zip },
-  ], { cols: 5, rowGap: 12 });
+
+const collar = val("Collar") !== "—" ? val("Collar") : "—";
+const bone = val("Bone") !== "—" ? val("Bone") : "—";
+const tapeLace = val("Tape/Lace") !== "—" ? val("Tape/Lace") : "—";
+const bottomType = val("Bottom Type") !== "—" ? val("Bottom Type") : "—";
+const zip = val("Zip") !== "—" ? val("Zip") : "—";
+const fullBaju = val("FULL BAJU") !== "—" ? val("FULL BAJU") : "—";  // Changed to "FULL BAJU"
+
+await drawGridRowForPage([
+  { label: "Collar", value: collar },
+  { label: "Bone", value: bone },
+  { label: "Tape/Lace", value: tapeLace },
+  { label: "Bottom Type", value: bottomType },
+  { label: "Zip", value: zip },
+  { label: "FULL BAJU", value: fullBaju },  // Added FULL BAJU
+], { cols: 6, rowGap: 12 });  // Changed cols to 6
 
   await sectionHeaderForPage("Special Processes");
 
@@ -4454,6 +4493,10 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
   <option value="">🦴 All Bones</option>
   {boneOpts.map((v) => <option key={v} value={v}>{v}</option>)}
 </select>
+ <select className="jox-select" value={fFullBaju} onChange={(e) => { setFFullBaju(e.target.value); setPage(1); }} title="Filter by Full Baju">
+    <option value="">👗 All Full Baju</option>
+    {fullBajuOpts.map((v) => <option key={v} value={v}>{v}</option>)}
+  </select>
 
             <select className="jox-select" value={fDS} onChange={(e) => { setFDS(e.target.value); setPage(1); }} title="Filter by Direct Stitching">
               <option value="">🧵 DS: Any</option>
@@ -4601,19 +4644,50 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
                             </td>
 
                             {/* Visible cells only */}
-                           {VISIBLE_HEADERS.map((H) => (
-  <td key={H} className={"jox-td " + (H === "Quantity" ? "is-num" : "")}>
-{/* -   {formatCell(H, r[H])} */}
-   {H === "Priority"
-     ? (() => {
-         const lvl = normalizePriority(r["Priority"]);
-         return <span className={priorityClass(lvl)}>{lvl || "—"}</span>;
-       })()
-     : formatCell(H, r[H])}
-  </td>
-))}
 
-                            {/* Actions */}
+{VISIBLE_HEADERS.map((H) => (
+  <td key={H} className={"jox-td " + (H === "Quantity" ? "is-num" : "")}>
+    {H === "Priority"
+      ? (() => {
+          const priorityValue = r["Priority"] || "";
+          const priorityStr = priorityValue.toString();
+          const priorityUpper = priorityStr.toUpperCase();
+          
+          // Check if it's a repeated lot (contains REPEATED or LOT_REPEATED)
+          const isRepeatedLot = priorityUpper.includes("REPEATED") || 
+                                priorityUpper.includes("LOT_REPEATED");
+          
+          // If it's a repeated lot, show empty/dash
+          if (isRepeatedLot) {
+            return <span className="jox-prio" style={{background: "transparent", border: "none"}}>—</span>;
+          }
+          
+          // For regular priorities, show the badge
+          // First, normalize to get HIGH/MEDIUM/LOW
+          let lvl = "";
+          if (priorityUpper.startsWith("H")) lvl = "HIGH";
+          else if (priorityUpper.startsWith("M")) lvl = "MEDIUM";
+          else if (priorityUpper.startsWith("L")) lvl = "LOW";
+          else lvl = "";
+          
+          if (lvl) {
+            return <span className={priorityClass(lvl)}>{lvl}</span>;
+          }
+          return <span className="jox-prio">—</span>;
+        })()
+      : H === "FULL BAJU"
+      ? (() => {
+          const value = r["FULL BAJU"] || "—";
+          if (value === "YES" || value === "Yes" || value === "yes") {
+            return <span style={{color: "green", fontWeight: "bold"}}>✓ YES</span>;
+          } else if (value === "NO" || value === "No" || value === "no") {
+            return <span style={{color: "red", fontWeight: "bold"}}>✗ NO</span>;
+          }
+          return value;
+        })()
+      : formatCell(H, r[H])}
+  </td>
+))}                            {/* Actions */}
 <td className="jox-td jox-td--actions">
   {(() => {
     const hasLot = Boolean((r["Lot Number"] ?? "").toString().trim());
@@ -4650,7 +4724,7 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
           {isBusyThis ? "⏳" : (hasExistingSuccessfulPdf ? "✅" : "📝")}
         </span>
         <span>
-          {isBusyThis ? "Working…" : (hasExistingSuccessfulPdf ? "Already Generated" : "Create PDF")}
+          {isBusyThis ? "Working…" : (hasExistingSuccessfulPdf ? "Already Generated" : "Create JobOrder Pdf")}
         </span>
       </button>
     );
@@ -4691,17 +4765,37 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
                                         </div>
                                       );
                                     }
-                                     if (H === "Priority") {
-   const lvl = normalizePriority(r["Priority"]);
-   return (
-     <div key={H} className="jox-detail__item">
-       <div className="jox-detail__label">{H}</div>
-       <div className="jox-detail__value">
-         <span className={priorityClass(lvl)}>{lvl || "—"}</span>
-       </div>
-     </div>
-   );
- }
+if (H === "Priority") {
+  const priorityValue = r["Priority"] || "";
+  const priorityUpper = priorityValue.toString().toUpperCase();
+  const isRepeatedLot = priorityUpper.includes("REPEATED") || 
+                        priorityUpper.includes("LOT_REPEATED");
+  
+  if (isRepeatedLot) {
+    return (
+      <div key={H} className="jox-detail__item">
+        <div className="jox-detail__label">{H}</div>
+        <div className="jox-detail__value">—</div>
+      </div>
+    );
+  }
+  
+  // For regular priorities
+  let lvl = "";
+  if (priorityUpper.startsWith("H")) lvl = "HIGH";
+  else if (priorityUpper.startsWith("M")) lvl = "MEDIUM";
+  else if (priorityUpper.startsWith("L")) lvl = "LOW";
+  else lvl = "";
+  
+  return (
+    <div key={H} className="jox-detail__item">
+      <div className="jox-detail__label">{H}</div>
+      <div className="jox-detail__value">
+        {lvl ? <span className={priorityClass(lvl)}>{lvl}</span> : <span className="jox-prio">—</span>}
+      </div>
+    </div>
+  );
+}
                                     if (H === "Lot Number") return null; // already visible
                                     return (
                                       <div key={H} className="jox-detail__item">

@@ -8,7 +8,7 @@ const API_KEY = 'AIzaSyAomDFBkOySlIxKWSKGHe6ATv9gvaBr7uk';
 const PACKING_REPORT_RANGE = 'Issues!A:P';
 
 // Google Apps Script URL (for writing/updates only)
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxmQfCAyFpFhf_UtElaLXWIcbPC9IyIHxlgC-PI7Lvy1cM-QUsitCxGyGMmVljLKnPRDA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwGV2z5dKhs3QDi495wMDEcvCGpir8eGASnLqmV6m0t7Xc-qg2mJFOfg7EUNL2_GFjxGQ/exec';
 
 // Helper functions
 const formatDate = (dateString) => {
@@ -205,107 +205,113 @@ const UpdatePackingReport = ({ user, onNavigate }) => {
   };
 
   // Handle complete lot submission
-  const handleCompleteLot = async () => {
-    if (!selectedRow) return;
+ // Handle complete lot submission
+// Handle complete lot submission
+const handleCompleteLot = async () => {
+  if (!selectedRow) return;
 
+  try {
+    setIsUpdating(true);
+
+    const supervisorName = user?.name || user?.username || 'Dashboard User';
+    
+    // Create URL with parameters - REMOVED packingDate parameter
+    const params = new URLSearchParams({
+      action: 'completeLot',
+      lotNumber: selectedRow.lotNumber,
+      completionDate: completeDate,  // This goes to Packing Complete column only
+      wipPacking: '0',               // Clear WIP Packing
+      remarks: remarks,
+      supervisor: supervisorName,
+      timestamp: new Date().toISOString()
+      // ❌ DO NOT include packingDate parameter
+    });
+
+    // Use GET request with cache busting
+    const response = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}&_=${Date.now()}`, {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      }
+    });
+
+    let result;
     try {
-      setIsUpdating(true);
-
-      const supervisorName = user?.name || user?.username || 'Dashboard User';
-      
-      // Create URL with parameters for GET request (more reliable with Apps Script)
-      const params = new URLSearchParams({
-        action: 'completeLot',
-        lotNumber: selectedRow.lotNumber,
-        completionDate: completeDate,
-        remarks: remarks,
-        supervisor: supervisorName,
-        timestamp: new Date().toISOString()
-      });
-
-      // Use GET request with cache busting
-      const response = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}&_=${Date.now()}`, {
-        method: 'GET',
-        mode: 'cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        }
-      });
-
-      let result;
-      try {
-        result = await response.json();
-      } catch (e) {
-        console.log('Response not JSON, but request may have succeeded');
-        result = { ok: true };
-      }
-
-      if (result && result.ok === false) {
-        throw new Error(result.error || 'Unknown error');
-      }
-
-      // Update local state optimistically
-      setData(prevData => 
-        prevData.map(row => 
-          row.id === selectedRow.id 
-            ? { 
-                ...row, 
-                packingComplete: row.totalPcs,
-                packingCompletionDate: completeDate,
-                wipPacking: '0',
-                packingDate: completeDate,
-                progress: 100,
-                isComplete: true,
-                hasWIP: false
-              } 
-            : row
-        )
-      );
-
-      // Close dialog
-      setIsCompleteDialogOpen(false);
-      setSelectedRow(null);
-      setCompleteDate(new Date().toISOString().split('T')[0]);
-      setRemarks('');
-      
-      alert(`✅ Lot #${selectedRow.lotNumber} marked as completed successfully!`);
-      
-      // Refresh data after 2 seconds to ensure sync
-      setTimeout(() => {
-        fetchData();
-      }, 2000);
-      
-    } catch (err) {
-      console.error('Error completing lot:', err);
-      
-      // Still update UI optimistically even if API fails
-      setData(prevData => 
-        prevData.map(row => 
-          row.id === selectedRow.id 
-            ? { 
-                ...row, 
-                packingComplete: row.totalPcs,
-                packingCompletionDate: completeDate,
-                wipPacking: '0',
-                packingDate: completeDate,
-                progress: 100,
-                isComplete: true,
-                hasWIP: false
-              } 
-            : row
-        )
-      );
-
-      setIsCompleteDialogOpen(false);
-      setSelectedRow(null);
-      setCompleteDate(new Date().toISOString().split('T')[0]);
-      setRemarks('');
-      
-      alert(`⚠️ Lot #${selectedRow.lotNumber} marked as completed in UI. Please refresh to confirm server sync.`);
-    } finally {
-      setIsUpdating(false);
+      result = await response.json();
+    } catch (e) {
+      console.log('Response not JSON, but request may have succeeded');
+      result = { ok: true };
     }
-  };
+
+    if (result && result.ok === false) {
+      throw new Error(result.error || 'Unknown error');
+    }
+
+    // Update local state optimistically
+    setData(prevData => 
+      prevData.map(row => 
+        row.id === selectedRow.id 
+          ? { 
+              ...row, 
+              packingComplete: completeDate,  // Store date in Packing Complete
+              packingCompletionDate: completeDate,
+              wipPacking: '0',
+              // ❌ DO NOT update packingDate - keep original value
+              // packingDate: completeDate,  // REMOVE THIS LINE
+              progress: 100,
+              isComplete: true,
+              hasWIP: false
+            } 
+          : row
+      )
+    );
+
+    // Close dialog
+    setIsCompleteDialogOpen(false);
+    setSelectedRow(null);
+    setCompleteDate(new Date().toISOString().split('T')[0]);
+    setRemarks('');
+    
+    alert(`✅ Lot #${selectedRow.lotNumber} marked as completed successfully!`);
+    
+    // Refresh data after 2 seconds to ensure sync
+    setTimeout(() => {
+      fetchData();
+    }, 2000);
+    
+  } catch (err) {
+    console.error('Error completing lot:', err);
+    
+    // Still update UI optimistically even if API fails
+    setData(prevData => 
+      prevData.map(row => 
+        row.id === selectedRow.id 
+          ? { 
+              ...row, 
+              packingComplete: completeDate,  // Store date in Packing Complete
+              packingCompletionDate: completeDate,
+              wipPacking: '0',
+              // ❌ DO NOT update packingDate - keep original value
+              // packingDate: completeDate,  // REMOVE THIS LINE
+              progress: 100,
+              isComplete: true,
+              hasWIP: false
+            } 
+          : row
+      )
+    );
+
+    setIsCompleteDialogOpen(false);
+    setSelectedRow(null);
+    setCompleteDate(new Date().toISOString().split('T')[0]);
+    setRemarks('');
+    
+    alert(`⚠️ Lot #${selectedRow.lotNumber} marked as completed in UI. Please refresh to confirm server sync.`);
+  } finally {
+    setIsUpdating(false);
+  }
+};
 
   // Handle cancel complete
   const handleCancelComplete = () => {

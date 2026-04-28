@@ -7,9 +7,10 @@ const DROPDOWNS_TAB = "Parties";
 const JOBS_TAB = "JobOrder";
 const SHEET_ID1 = "1fKSwGBIpzWEFk566WRQ4bzQ0anJlmasoY8TwrTLQHXI";
 
+
 const MAX_ROWS = 10000;
 const GAS_WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbwBaVyQEPy2HpK8fErI1BVy8sjLnkN7uI9PzNOYQjcmmxpQCyWMka09Z3oHBBl60eN0vg/exec";
+  "https://script.google.com/macros/s/AKfycbzmfWypKJuAzaS5HD5OOyK3DU-N_PrGeRnFR0RNn_Jm_tMCWJnOnE77HfgEdcL4JYNbBQ/exec";
 
 const HEADER_MAP = {
   partyName: "Party Name",
@@ -34,6 +35,8 @@ const TAPE_LACE_OPTIONS = ["YES", "NO", "NOT DECIDED"];
 const OTHER_REFERRER_TOKEN = "__ANY_OTHER__";
 const PRIORITY_OPTIONS = ["HIGH", "MEDIUM", "LOW", "REPEATED_LOT"];
 const STICKER_OPTIONS = ["YES", "NO", "Silicon", "Fusing", "NOT DECIDED"];
+const FULL_BAJU_OPTIONS = ["YES", "NO"];
+
 
 const JobOrderForm = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -41,33 +44,34 @@ const JobOrderForm = () => {
   const [params] = useSearchParams();
 
   const [formData, setFormData] = useState({
-    jobOrderNo: "",
-    date: today,
-    fabric: "",
-    brand: "",
-    shade: "",
-    quantity: "",
-    unit: "",
-    size: "",
-    partyName: "",
-    garmentType: "",
-    section: "",
-    season: "",
-    emb: "",
-    printing: "",
-    pattern: "",
-    style: "",
-    zip: "",
-    bottomType: "",
-    tapeLace: "",
-    remarks: "",
-    directStitching: "no",
-    orderNo: "",
-    priority: "MEDIUM",
-    sticker: "",
-    bone: "",
-    collar: "",
-  });
+  jobOrderNo: "",
+  date: today,
+  fabric: "",
+  brand: "",
+  shade: "",
+  quantity: "",
+  unit: "",
+  size: "",
+  partyName: "",
+  garmentType: "",
+  section: "",
+  season: "",
+  emb: "",
+  printing: "",
+  pattern: "",
+  style: "",
+  zip: "",
+  bottomType: "",
+  tapeLace: "",
+  remarks: "",
+  directStitching: "no",
+  orderNo: "",
+  priority: "MEDIUM",
+  sticker: "",
+  bone: "",
+  collar: "",
+  fullBaju: "", // ADD THIS LINE
+});
 
   const [lists, setLists] = useState(
     Object.keys(HEADER_MAP).reduce((a, k) => ({ ...a, [k]: [] }), {})
@@ -82,7 +86,8 @@ const JobOrderForm = () => {
   const [customSubmitter, setCustomSubmitter] = useState("");
   const [pendingPayload, setPendingPayload] = useState(null);
   const [showShadeDialog, setShowShadeDialog] = useState(false);
-  const [shadeRows, setShadeRows] = useState([{ shade: "", combos: "" }]);
+  const [shadeRows, setShadeRows] = useState([{ shade: "", combos: "", rolls: "" }]);
+
   const [showSizeDialog, setShowSizeDialog] = useState(false);
   const [sizeRows, setSizeRows] = useState([{ value: "" }]);
   const [progressOpen, setProgressOpen] = useState(false);
@@ -106,37 +111,38 @@ const JobOrderForm = () => {
   const [showRepeatedLotDialog, setShowRepeatedLotDialog] = useState(false);
 
   const JOB_HEADERS = [
-    "Job Order No",
-    "Order No.",
-    "Date",
-    "Fabric",
-    "Brand",
-    "Shade",
-    "Size",
-    "Quantity",
-    "Unit",
-    "Party Name",
-    "Garment Type",
-    "Section",
-    "Season",
-    "Emb",
-    "Printing",
-    "Emb Details",
-    "Printing Details",
-    "Pattern",
-    "Style",
-    "Zip",
-    "Bottom Type",
-    "Tape/Lace",
-    "Remarks",
-    "Direct Stitching",
-    "Sticker",
-    "Bone",
-    "Collar",
-    "Submitted By",
-    "Image URL",
-    "Priority",
-  ];
+  "Job Order No",
+  "Order No.",
+  "Date",
+  "Fabric",
+  "Brand",
+  "Shade",
+  "Size",
+  "Quantity",
+  "Unit",
+  "Party Name",
+  "Garment Type",
+  "Section",
+  "Season",
+  "Emb",
+  "Printing",
+  "Emb Details",
+  "Printing Details",
+  "Pattern",
+  "Style",
+  "Zip",
+  "Bottom Type",
+  "Tape/Lace",
+  "Remarks",
+  "Direct Stitching",
+  "Sticker",
+  "Bone",
+  "Collar",
+  "Full Baju", // ADD THIS LINE
+  "Submitted By",
+  "Image URL",
+  "Priority",
+];
 
   const [embPositions, setEmbPositions] = useState({
     FRONT: false,
@@ -170,15 +176,19 @@ const JobOrderForm = () => {
   const [showPatternDialog, setShowPatternDialog] = useState(false);
   const [patternOtherText, setPatternOtherText] = useState("");
 
-  function parseShadeString(s) {
-    const src = String(s || "").trim();
-    if (!src) return [{ shade: "", combos: "" }];
-    return src.split(/\s*,\s*/).map((part) => {
-      const m = part.match(/^(.+?)\s*\((.+)\)$/);
-      if (m) return { shade: m[1].trim(), combos: m[2].trim() };
-      return { shade: part.trim(), combos: "" };
-    });
-  }
+function parseShadeString(s) {
+  const src = String(s || "").trim();
+  if (!src) return [{ shade: "", combos: "", rolls: "" }];
+  return src.split(/\s*,\s*/).map((part) => {
+    const m = part.match(/^(.+?)\s*\((.+)\)\s*\[(\d+)\]$/);
+    if (m) return { shade: m[1].trim(), combos: m[2].trim(), rolls: m[3].trim() };
+    const m2 = part.match(/^(.+?)\s*\((.+)\)$/);
+    if (m2) return { shade: m2[1].trim(), combos: m2[2].trim(), rolls: "" };
+    const m3 = part.match(/^(.+?)\s*\[(\d+)\]$/);
+    if (m3) return { shade: m3[1].trim(), combos: "", rolls: m3[2].trim() };
+    return { shade: part.trim(), combos: "", rolls: "" };
+  });
+}
 
   const incomingOrderNo =
     location.state?.orderNo ||
@@ -251,77 +261,79 @@ const JobOrderForm = () => {
     return "";
   }
 
-  function mapOrderRowForPrefill(src = {}) {
-    const directRaw = pick(src, "Direct Stitching", "DirectStitching", "Direct_Stitching");
-    const direct = String(directRaw).toLowerCase();
-    const isDirect = ["yes", "true", "y", "1"].includes(direct);
-    
-    const garmentType = pick(src, "Garment Type", "Item Name", "Item", "Product");
-    const isShirt = isShirtGarment(garmentType);
+ function mapOrderRowForPrefill(src = {}) {
+  const directRaw = pick(src, "Direct Stitching", "DirectStitching", "Direct_Stitching");
+  const direct = String(directRaw).toLowerCase();
+  const isDirect = ["yes", "true", "y", "1"].includes(direct);
+  
+  const garmentType = pick(src, "Garment Type", "Item Name", "Item", "Product");
+  const isShirt = isShirtGarment(garmentType);
 
-    return {
-      Fabric: pick(src, "Fabric", "Material"),
-      Brand: pick(src, "Brand"),
-      Shade: pick(src, "Shade", "Colour", "Color"),
-      Size: pick(src, "Size", "Sizes"),
-      Quantity: pick(src, "Quantity", "Qty", "QTY"),
-      Unit: pick(src, "Unit", "Units"),
-      "Party Name": pick(src, "Party Name", "Party"),
-      "Garment Type": garmentType,
-      Section: pick(src, "Section", "Gender"),
-      Season: pick(src, "Season"),
-      Emb: isDirect ? "" : pick(src, "Emb", "Embroidery"),
-      Printing: isDirect ? "" : pick(src, "Printing", "Print"),
-      Pattern: pick(src, "Pattern", "Design"),
-      Style: pick(src, "Style"),
-      Zip: pick(src, "Zip", "ZIP"),
-      "Bottom Type": isShirt ? "" : pick(src, "Bottom Type", "BottomType", "Bottom"),
-      "Tape/Lace": pick(src, "Tape/Lace", "Tape Lace", "TapeLace"),
-      Remarks: pick(src, "Remarks", "Notes", "Note"),
-      "Direct Stitching": isDirect ? "yes" : directRaw || "",
-      "Emb Details": pick(src, "Emb Details", "Embroidery Details"),
-      "Printing Details": pick(src, "Printing Details", "Print Details"),
-      "Sticker": pick(src, "Sticker", "Sticker Option"),
-      "Bone": pick(src, "Bone", "Bone Option"),
-      "Collar": pick(src, "Collar", "Collar Option"),
-    };
-  }
+  return {
+    Fabric: pick(src, "Fabric", "Material"),
+    Brand: pick(src, "Brand"),
+    Shade: pick(src, "Shade", "Colour", "Color"),
+    Size: pick(src, "Size", "Sizes"),
+    Quantity: pick(src, "Quantity", "Qty", "QTY"),
+    Unit: pick(src, "Unit", "Units"),
+    "Party Name": pick(src, "Party Name", "Party"),
+    "Garment Type": garmentType,
+    Section: pick(src, "Section", "Gender"),
+    Season: pick(src, "Season"),
+    Emb: isDirect ? "" : pick(src, "Emb", "Embroidery"),
+    Printing: isDirect ? "" : pick(src, "Printing", "Print"),
+    Pattern: pick(src, "Pattern", "Design"),
+    Style: pick(src, "Style"),
+    Zip: pick(src, "Zip", "ZIP"),
+    "Bottom Type": isShirt ? "" : pick(src, "Bottom Type", "BottomType", "Bottom"),
+    "Tape/Lace": pick(src, "Tape/Lace", "Tape Lace", "TapeLace"),
+    Remarks: pick(src, "Remarks", "Notes", "Note"),
+    "Direct Stitching": isDirect ? "yes" : directRaw || "",
+    "Emb Details": pick(src, "Emb Details", "Embroidery Details"),
+    "Printing Details": pick(src, "Printing Details", "Print Details"),
+    "Sticker": pick(src, "Sticker", "Sticker Option"),
+    "Bone": pick(src, "Bone", "Bone Option"),
+    "Collar": pick(src, "Collar", "Collar Option"),
+    "Full Baju": pick(src, "Full Baju", "FullBaju", "Full Baju Attribute"), // ADD THIS LINE
+  };
+}
 
   function isShirtGarment(garmentType = "") {
     const type = String(garmentType || "").trim().toUpperCase();
     return type.includes("SHIRT");
   }
 
-  function getEmptyForm(currentOrderNo = "") {
-    return {
-      jobOrderNo: "",
-      date: "",
-      fabric: "",
-      brand: "",
-      shade: "",
-      quantity: "",
-      unit: "",
-      size: "",
-      partyName: "",
-      garmentType: "",
-      section: "",
-      season: "",
-      emb: "",
-      printing: "",
-      pattern: "",
-      style: "",
-      zip: "",
-      bottomType: "",
-      tapeLace: "",
-      remarks: "",
-      directStitching: "",
-      orderNo: currentOrderNo,
-      priority: "MEDIUM",
-      sticker: "",
-      bone: "",
-      collar: "",
-    };
-  }
+function getEmptyForm(currentOrderNo = "") {
+  return {
+    jobOrderNo: "",
+    date: "",
+    fabric: "",
+    brand: "",
+    shade: "",
+    quantity: "",
+    unit: "",
+    size: "",
+    partyName: "",
+    garmentType: "",
+    section: "",
+    season: "",
+    emb: "",
+    printing: "",
+    pattern: "",
+    style: "",
+    zip: "",
+    bottomType: "",
+    tapeLace: "",
+    remarks: "",
+    directStitching: "",
+    orderNo: currentOrderNo,
+    priority: "MEDIUM",
+    sticker: "",
+    bone: "",
+    collar: "",
+    fullBaju: "", // ADD THIS LINE
+  };
+}
 
   function parseWithOptionalQty(input) {
     const txt = String(input || "").trim().toUpperCase();
@@ -649,16 +661,20 @@ const JobOrderForm = () => {
     return items.join(" , ");
   }
 
-  function buildShadeString(rows) {
-    return rows
-      .filter((r) => r.shade && r.shade.trim())
-      .map((r) => {
-        const shade = r.shade.trim().toUpperCase();
-        const combo = (r.combos || "").trim().toUpperCase();
-        return combo ? `${shade} (${combo})` : shade;
-      })
-      .join(", ");
-  }
+ function buildShadeString(rows) {
+  return rows
+    .filter((r) => r.shade && r.shade.trim())
+    .map((r) => {
+      const shade = r.shade.trim().toUpperCase();
+      const combo = (r.combos || "").trim().toUpperCase();
+      const rolls = (r.rolls || "").trim();
+      let result = shade;
+      if (combo) result += ` (${combo})`;
+      if (rolls) result += ` [${rolls}]`;
+      return result;
+    })
+    .join(", ");
+}
 
   const deriveNextIdFromSheetValues = (values) => {
     for (let i = values.length - 1; i >= 0; i--) {
@@ -849,62 +865,63 @@ const JobOrderForm = () => {
     }
   }, [fetchNextJobNo, fetchRecentOrders]);
 
-  function applyOrderToForm(row) {
-    const isDirect =
-      String(row["Direct Stitching"] || "").toLowerCase() === "true" ||
-      String(row["Direct Stitching"] || "").toLowerCase() === "yes";
+ function applyOrderToForm(row) {
+  const isDirect =
+    String(row["Direct Stitching"] || "").toLowerCase() === "true" ||
+    String(row["Direct Stitching"] || "").toLowerCase() === "yes";
 
-    const nextEmbPos = parseDetailsToPositions(row["Emb Details"]);
-    const nextPrintPos = parseDetailsToPositions(row["Printing Details"]);
-    
-    const garmentType = String(row["Garment Type"] || "");
-    const isShirt = isShirtGarment(garmentType);
+  const nextEmbPos = parseDetailsToPositions(row["Emb Details"]);
+  const nextPrintPos = parseDetailsToPositions(row["Printing Details"]);
+  
+  const garmentType = String(row["Garment Type"] || "");
+  const isShirt = isShirtGarment(garmentType);
 
-    const priorityFromRow = String(row["Priority"] || "").toUpperCase();
-    let priority = priorityFromRow || "MEDIUM";
-    
-    if (priorityFromRow.startsWith("REPEATED_LOT#")) {
-      priority = priorityFromRow;
-    } else if (priorityFromRow === "REPEATED_LOT") {
-      priority = "REPEATED_LOT#N/A";
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      jobOrderNo: prev.jobOrderNo,
-      date: new Date().toISOString().split("T")[0],
-      fabric: String(row["Fabric"] || ""),
-      brand: String(row["Brand"] || ""),
-      shade: String(row["Shade"] || ""),
-      size: String(row["Size"] || ""),
-      quantity: String(row["Quantity"] || ""),
-      unit: String(row["Unit"] || ""),
-      partyName: String(row["Party Name"] || ""),
-      garmentType: garmentType,
-      section: String(row["Section"] || ""),
-      season: String(row["Season"] || ""),
-      emb: isDirect ? "" : String(row["Emb"] || ""),
-      printing: isDirect ? "" : String(row["Printing"] || ""),
-      pattern: String(row["Pattern"] || ""),
-      style: String(row["Style"] || ""),
-      zip: String(row["Zip"] || ""),
-      bottomType: isShirt ? "" : String(row["Bottom Type"] || ""),
-      tapeLace: String(row["Tape/Lace"] || ""),
-      remarks: String(row["Remarks"] || ""),
-      directStitching: isDirect ? "yes" : "no",
-      priority: priority,
-      sticker: String(row["Sticker"] || ""),
-      bone: String(row["Bone"] || ""),
-      collar: String(row["Collar"] || ""),
-    }));
-    setEmbPositions(nextEmbPos);
-    setPrintPositions(nextPrintPos);
-    setImageFile(null);
-    if (!formData.jobOrderNo || formData.jobOrderNo === "JO-PENDING") {
-      fetchNextJobNo().catch(() => {});
-    }
-    setShowRepeatDialog(false);
+  const priorityFromRow = String(row["Priority"] || "").toUpperCase();
+  let priority = priorityFromRow || "MEDIUM";
+  
+  if (priorityFromRow.startsWith("REPEATED_LOT#")) {
+    priority = priorityFromRow;
+  } else if (priorityFromRow === "REPEATED_LOT") {
+    priority = "REPEATED_LOT#N/A";
   }
+
+  setFormData((prev) => ({
+    ...prev,
+    jobOrderNo: prev.jobOrderNo,
+    date: new Date().toISOString().split("T")[0],
+    fabric: String(row["Fabric"] || ""),
+    brand: String(row["Brand"] || ""),
+    shade: String(row["Shade"] || ""),
+    size: String(row["Size"] || ""),
+    quantity: String(row["Quantity"] || ""),
+    unit: String(row["Unit"] || ""),
+    partyName: String(row["Party Name"] || ""),
+    garmentType: garmentType,
+    section: String(row["Section"] || ""),
+    season: String(row["Season"] || ""),
+    emb: isDirect ? "" : String(row["Emb"] || ""),
+    printing: isDirect ? "" : String(row["Printing"] || ""),
+    pattern: String(row["Pattern"] || ""),
+    style: String(row["Style"] || ""),
+    zip: String(row["Zip"] || ""),
+    bottomType: isShirt ? "" : String(row["Bottom Type"] || ""),
+    tapeLace: String(row["Tape/Lace"] || ""),
+    remarks: String(row["Remarks"] || ""),
+    directStitching: isDirect ? "yes" : "no",
+    priority: priority,
+    sticker: String(row["Sticker"] || ""),
+    bone: String(row["Bone"] || ""),
+    collar: String(row["Collar"] || ""),
+    fullBaju: String(row["Full Baju"] || ""), // ADD THIS LINE
+  }));
+  setEmbPositions(nextEmbPos);
+  setPrintPositions(nextPrintPos);
+  setImageFile(null);
+  if (!formData.jobOrderNo || formData.jobOrderNo === "JO-PENDING") {
+    fetchNextJobNo().catch(() => {});
+  }
+  setShowRepeatDialog(false);
+}
 
   useEffect(() => {
     const prefillRow = location.state?.prefill;
@@ -956,80 +973,80 @@ const JobOrderForm = () => {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-
-  const handleClearAll = useCallback(() => {
-    setFormData((prev) => ({
-      jobOrderNo: prev.jobOrderNo,
-      date: new Date().toISOString().split("T")[0],
-      fabric: "",
-      brand: "",
-      shade: "",
-      quantity: "",
-      unit: "",
-      size: "",
-      partyName: "",
-      garmentType: "",
-      section: "",
-      season: "",
-      emb: "",
-      printing: "",
-      pattern: "",
-      style: "",
-      zip: "",
-      bottomType: "",
-      tapeLace: "",
-      remarks: "",
-      directStitching: "no",
-      orderNo: "",
-      priority: "MEDIUM",
-      sticker: "",
-      bone: "",
-      collar: "",
-    }));
-    setImageFile(null);
-    setEmbPositions({
-      FRONT: false,
-      BACK: false,
-      RIB: false,
-      ARM: false,
-      LEFT: false,
-      RIGHT: false,
-      POCKET: false,
-      COLLAR: false,
-      HOOD: false,
-      GULLA: false,
-      other: "",
-    });
-    setPrintPositions({
-      FRONT: false,
-      BACK: false,
-      RIB: false,
-      ARM: false,
-      LEFT: false,
-      RIGHT: false,
-      POCKET: false,
-      COLLAR: false,
-      HOOD: false,
-      GULLA: false,
-      other: "",
-    });
-    setShadeRows([{ shade: "", combos: "" }]);
-    setSizeRows([{ value: "" }]);
-    setShowEmbDialog(false);
-    setShowPrintDialog(false);
-    setShowPatternDialog(false);
-    setShowSubmitterDialog(false);
-    setShowRepeatDialog(false);
-    setShowRepeatedLotDialog(false);
-    setSubmitterName("");
-    setCustomSubmitter("");
-    setReferrerName("Mohit Goyal");
-    setCustomReferrer("");
-    setRepeatedLotNumber("");
-    setPendingPayload(null);
-    setError("");
-    setSubmitSuccess(false);
-  }, []);
+const handleClearAll = useCallback(() => {
+  setFormData((prev) => ({
+    jobOrderNo: prev.jobOrderNo,
+    date: new Date().toISOString().split("T")[0],
+    fabric: "",
+    brand: "",
+    shade: "",
+    quantity: "",
+    unit: "",
+    size: "",
+    partyName: "",
+    garmentType: "",
+    section: "",
+    season: "",
+    emb: "",
+    printing: "",
+    pattern: "",
+    style: "",
+    zip: "",
+    bottomType: "",
+    tapeLace: "",
+    remarks: "",
+    directStitching: "no",
+    orderNo: "",
+    priority: "MEDIUM",
+    sticker: "",
+    bone: "",
+    collar: "",
+    fullBaju: "", // ADD THIS LINE
+  }));
+  setImageFile(null);
+  setEmbPositions({
+    FRONT: false,
+    BACK: false,
+    RIB: false,
+    ARM: false,
+    LEFT: false,
+    RIGHT: false,
+    POCKET: false,
+    COLLAR: false,
+    HOOD: false,
+    GULLA: false,
+    other: "",
+  });
+  setPrintPositions({
+    FRONT: false,
+    BACK: false,
+    RIB: false,
+    ARM: false,
+    LEFT: false,
+    RIGHT: false,
+    POCKET: false,
+    COLLAR: false,
+    HOOD: false,
+    GULLA: false,
+    other: "",
+  });
+  setShadeRows([{ shade: "", combos: "" }]);
+  setSizeRows([{ value: "" }]);
+  setShowEmbDialog(false);
+  setShowPrintDialog(false);
+  setShowPatternDialog(false);
+  setShowSubmitterDialog(false);
+  setShowRepeatDialog(false);
+  setShowRepeatedLotDialog(false);
+  setSubmitterName("");
+  setCustomSubmitter("");
+  setReferrerName("Mohit Goyal");
+  setCustomReferrer("");
+  setRepeatedLotNumber("");
+  setPendingPayload(null);
+  setError("");
+  setSubmitSuccess(false);
+}, []);
 
   const handleChange = (e) => {
     const { name } = e.target;
@@ -1154,105 +1171,114 @@ const JobOrderForm = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError("");
-    setSubmitSuccess(false);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+  setError("");
+  setSubmitSuccess(false);
 
-    try {
-      if (!formData.jobOrderNo?.trim()) throw new Error("Job Order No. is required");
-      if (!formData.date) throw new Error("Date is required");
-      if (!formData.fabric?.trim()) throw new Error("Fabric is required");
-      if (!formData.shade?.trim()) throw new Error("Shade is required");
-      if (!formData.quantity) throw new Error("Quantity is required");
-      if (!formData.unit) throw new Error("Please select a unit");
-      if (!formData.priority) throw new Error("Please select a priority");
-      
-      if (!formData.partyName?.trim()) throw new Error("Party Name is required");
-      if (!formData.garmentType?.trim()) throw new Error("Garment Type is required");
-      if (!formData.section?.trim()) throw new Error("Gender/Section is required");
-      if (!formData.season?.trim()) throw new Error("Season is required");
-      if (!formData.zip?.trim()) throw new Error("Zip is required");
-      if (!formData.sticker?.trim()) throw new Error("Sticker is required");
-      if (!formData.bone?.trim()) throw new Error("Bone is required");
-      if (!formData.collar?.trim()) throw new Error("Collar is required");
-
-      const isDirect = formData.directStitching === "yes";
-
-      let imagePayload = null;
-      if (imageFile) {
-        const { base64, mimeType } = await fileToBase64(imageFile);
-        imagePayload = {
-          name: imageFile.name,
-          mimeType,
-          base64,
-        };
-      }
-
-      const payload = {
-        action: "createJobOrder",
-        jobOrderNo: formData.jobOrderNo.trim(),
-        orderNo: (formData.orderNo || "").trim(),
-        date: formData.date,
-        fabric: formData.fabric.trim(),
-        brand: formData.brand?.trim() || "",
-        shade: formData.shade.trim(),
-        size: formData.size?.trim() || "",
-        quantity: formData.quantity ? Number(formData.quantity) : "",
-        unit: formData.unit,
-        partyName: formData.partyName || "",
-        garmentType: formData.garmentType || "",
-        section: formData.section || "",
-        season: formData.season || "",
-        emb: isDirect ? "" : formData.emb || "",
-        printing: isDirect ? "" : formData.printing || "",
-        priority: formData.priority,
-        zip: formData.zip || "",
-        bottomType: formData.bottomType || "",
-        tapeLace: formData.tapeLace || "",
-        sticker: formData.sticker || "",
-        bone: formData.bone || "",
-        collar: formData.collar || "",
-        embDetails: isDirect
-          ? ""
-          : (() => {
-              const picks = Object.entries(embPositions)
-                .filter(([k, v]) => (k === "other" ? embPositions.other.trim() : v))
-                .map(([k]) => (k === "other" ? `OTHER:${embPositions.other.trim()}` : k));
-              return picks.join(", ");
-            })(),
-        printingDetails: isDirect
-          ? ""
-          : (() => {
-              const picks = Object.entries(printPositions)
-                .filter(([k, v]) => (k === "other" ? printPositions.other.trim() : v))
-                .map(([k]) => (k === "other" ? `OTHER:${printPositions.other.trim()}` : k));
-              return picks.join(", ");
-            })(),
-        pattern: formData.pattern || "",
-        style: formData.style || "",
-        remarks: formData.remarks || "",
-        directStitching: isDirect,
-        image: imagePayload,
-        orderNo: formData.orderNo || "",
-      };
-
-      setPendingPayload(payload);
-      setReferrerName("Mohit Goyal");
-      setCustomReferrer("");
-      setSubmitterName("");
-      setCustomSubmitter("");
-      setShowSubmitterDialog(true);
-      setIsSubmitting(false);
-      return;
-    } catch (err) {
-      setError(err.message || "Something went wrong while saving.");
-    } finally {
-      if (!showSubmitterDialog) setIsSubmitting(false);
+  try {
+    if (!formData.jobOrderNo?.trim()) throw new Error("Job Order No. is required");
+    if (!formData.date) throw new Error("Date is required");
+    if (!formData.fabric?.trim()) throw new Error("Fabric is required");
+    if (!formData.shade?.trim()) throw new Error("Shade is required");
+    
+    // ✅ MOVED THIS INSIDE THE TRY BLOCK - Rolls validation
+    const shadeRowsFromForm = parseShadeString(formData.shade);
+    const hasEmptyRolls = shadeRowsFromForm.some(row => !row.rolls || !row.rolls.trim());
+    if (hasEmptyRolls) {
+      throw new Error("Rolls quantity is required for all shades. Please open the Shade dialog and add rolls quantity for each shade.");
     }
-  };
+    
+    if (!formData.quantity) throw new Error("Quantity is required");
+    if (!formData.unit) throw new Error("Please select a unit");
+    if (!formData.priority) throw new Error("Please select a priority");
+    if (!formData.fullBaju?.trim()) throw new Error("Full Baju Attribute is required");
 
+    if (!formData.partyName?.trim()) throw new Error("Party Name is required");
+    if (!formData.garmentType?.trim()) throw new Error("Garment Type is required");
+    if (!formData.section?.trim()) throw new Error("Gender/Section is required");
+    if (!formData.season?.trim()) throw new Error("Season is required");
+    if (!formData.zip?.trim()) throw new Error("Zip is required");
+    if (!formData.sticker?.trim()) throw new Error("Sticker is required");
+    if (!formData.bone?.trim()) throw new Error("Bone is required");
+    if (!formData.collar?.trim()) throw new Error("Collar is required");
+
+    const isDirect = formData.directStitching === "yes";
+
+    let imagePayload = null;
+    if (imageFile) {
+      const { base64, mimeType } = await fileToBase64(imageFile);
+      imagePayload = {
+        name: imageFile.name,
+        mimeType,
+        base64,
+      };
+    }
+
+    const payload = {
+      action: "createJobOrder",
+      jobOrderNo: formData.jobOrderNo.trim(),
+      orderNo: (formData.orderNo || "").trim(),
+      date: formData.date,
+      fabric: formData.fabric.trim(),
+      brand: formData.brand?.trim() || "",
+      shade: formData.shade.trim(),
+      size: formData.size?.trim() || "",
+      quantity: formData.quantity ? Number(formData.quantity) : "",
+      unit: formData.unit,
+      partyName: formData.partyName || "",
+      garmentType: formData.garmentType || "",
+      section: formData.section || "",
+      season: formData.season || "",
+      emb: isDirect ? "" : formData.emb || "",
+      printing: isDirect ? "" : formData.printing || "",
+      priority: formData.priority,
+      zip: formData.zip || "",
+      bottomType: formData.bottomType || "",
+      tapeLace: formData.tapeLace || "",
+      sticker: formData.sticker || "",
+      bone: formData.bone || "",
+      collar: formData.collar || "",
+      fullBaju: formData.fullBaju || "",
+      embDetails: isDirect
+        ? ""
+        : (() => {
+            const picks = Object.entries(embPositions)
+              .filter(([k, v]) => (k === "other" ? embPositions.other.trim() : v))
+              .map(([k]) => (k === "other" ? `OTHER:${embPositions.other.trim()}` : k));
+            return picks.join(", ");
+          })(),
+      printingDetails: isDirect
+        ? ""
+        : (() => {
+            const picks = Object.entries(printPositions)
+              .filter(([k, v]) => (k === "other" ? printPositions.other.trim() : v))
+              .map(([k]) => (k === "other" ? `OTHER:${printPositions.other.trim()}` : k));
+            return picks.join(", ");
+          })(),
+      pattern: formData.pattern || "",
+      style: formData.style || "",
+      remarks: formData.remarks || "",
+      directStitching: isDirect,
+      image: imagePayload,
+      orderNo: formData.orderNo || "",
+    };
+
+    setPendingPayload(payload);
+    setReferrerName("Mohit Goyal");
+    setCustomReferrer("");
+    setSubmitterName("");
+    setCustomSubmitter("");
+    setShowSubmitterDialog(true);
+    setIsSubmitting(false);
+    return;
+  } catch (err) {
+    setError(err.message || "Something went wrong while saving.");
+  } finally {
+    if (!showSubmitterDialog) setIsSubmitting(false);
+  }
+};
   const getPriorityDisplay = (priority) => {
     if (priority && priority.startsWith("REPEATED_LOT#")) {
       const lotNumber = priority.split("#")[1];
@@ -1582,7 +1608,17 @@ const JobOrderForm = () => {
                 loading={loading}
               />
             </div>
+             <Select
+  label="Full Baju Attribute"
+  emoji="👚"
+  name="fullBaju"
+  value={formData.fullBaju}
+  options={FULL_BAJU_OPTIONS}
+  onChange={handleChange}
+  required={true}
+/>
           </div>
+         
         </div>
 
         {/* Right Column - Additional Information */}
@@ -2143,107 +2179,146 @@ const JobOrderForm = () => {
       )}
 
       {/* Shade Modal */}
-      {showShadeDialog && (
-        <div style={styles.modalOverlay} onClick={() => setShowShadeDialog(false)}>
-          <div style={{ ...styles.modal, maxWidth: 700 }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={styles.modalTitle}>Shades & Combinations</h3>
-            <p style={styles.modalDescription}>
-              Add one or more shades with optional combinations
-            </p>
+    {showShadeDialog && (
+  <div style={styles.modalOverlay} onClick={() => setShowShadeDialog(false)}>
+    <div style={{ ...styles.modal, maxWidth: 800 }} onClick={(e) => e.stopPropagation()}>
+      <h3 style={styles.modalTitle}>Shades & Combinations</h3>
+      <p style={styles.modalDescription}>
+        Add one or more shades with optional combinations and <strong style={{color: '#ef4444'}}>required rolls</strong>
+      </p>
 
-            <div style={styles.shadeGrid}>
-              <div style={styles.shadeHeader}>
-                <div>Shade</div>
-                <div>Combinations</div>
-                <div></div>
-              </div>
-              
-              {shadeRows.map((row, idx) => (
-                <div key={idx} style={styles.shadeRow}>
-                  <input
-                    value={row.shade}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setShadeRows((prev) => {
-                        const copy = [...prev];
-                        copy[idx] = { ...copy[idx], shade: val };
-                        return copy;
-                      });
-                    }}
-                    placeholder="e.g., BLACK"
-                    style={styles.shadeInput}
-                    autoFocus={idx === shadeRows.length - 1 && !row.shade}
-                  />
-                  <input
-                    value={row.combos}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setShadeRows((prev) => {
-                        const copy = [...prev];
-                        copy[idx] = { ...copy[idx], combos: val };
-                        return copy;
-                      });
-                    }}
-                    placeholder="e.g., OFF-WHITE, OLIVE"
-                    style={styles.comboInput}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShadeRows((prev) =>
-                        prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev
-                      )
-                    }
-                    style={styles.removeButton}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div style={styles.shadeActions}>
-              <button
-                type="button"
-                style={styles.addRowButton}
-                onClick={() => {
-                  setShadeRows((prev) => [...prev, { shade: "", combos: "" }]);
-                }}
-              >
-                + Add Row
-              </button>
-              <button
-                type="button"
-                style={styles.clearAllButton}
-                onClick={() => setShadeRows([{ shade: "", combos: "" }])}
-              >
-                Clear All
-              </button>
-            </div>
-
-            <div style={styles.modalFooter}>
-              <button
-                type="button"
-                style={styles.modalSaveButton}
-                onClick={() => {
-                  const txt = buildShadeString(shadeRows);
-                  setFormData((prev) => ({ ...prev, shade: txt }));
-                  setShowShadeDialog(false);
-                }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                style={styles.modalCancelButton}
-                onClick={() => setShowShadeDialog(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      <div style={styles.shadeGrid}>
+        <div style={styles.shadeHeader}>
+          <div>Shade <span style={{color: '#ef4444'}}>*</span></div>
+          <div>Combinations</div>
+          <div>Rolls <span style={{color: '#ef4444'}}>*</span></div>
+          <div></div>
         </div>
-      )}
+        
+        {shadeRows.map((row, idx) => (
+          <div key={idx} style={styles.shadeRow}>
+            <input
+              value={row.shade}
+              onChange={(e) => {
+                const val = e.target.value;
+                setShadeRows((prev) => {
+                  const copy = [...prev];
+                  copy[idx] = { ...copy[idx], shade: val };
+                  return copy;
+                });
+              }}
+              placeholder="e.g., BLACK"
+              style={{
+                ...styles.shadeInput,
+                ...(!row.shade && row.shade !== "" && styles.requiredField)
+              }}
+              autoFocus={idx === shadeRows.length - 1 && !row.shade}
+            />
+            <input
+              value={row.combos}
+              onChange={(e) => {
+                const val = e.target.value;
+                setShadeRows((prev) => {
+                  const copy = [...prev];
+                  copy[idx] = { ...copy[idx], combos: val };
+                  return copy;
+                });
+              }}
+              placeholder="e.g., OFF-WHITE, OLIVE"
+              style={styles.comboInput}
+            />
+            <input
+              value={row.rolls}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Only allow numbers
+                if (val === "" || /^\d+$/.test(val)) {
+                  setShadeRows((prev) => {
+                    const copy = [...prev];
+                    copy[idx] = { ...copy[idx], rolls: val };
+                    return copy;
+                  });
+                }
+              }}
+              placeholder="Number of rolls"
+              type="text"
+              inputMode="numeric"
+              style={{
+                ...styles.rollsInput,
+                ...(!row.rolls && row.rolls !== "" && styles.requiredField)
+              }}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                setShadeRows((prev) =>
+                  prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev
+                )
+              }
+              style={styles.removeButton}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div style={styles.shadeActions}>
+        <button
+          type="button"
+          style={styles.addRowButton}
+          onClick={() => {
+            setShadeRows((prev) => [...prev, { shade: "", combos: "", rolls: "" }]);
+          }}
+        >
+          + Add Row
+        </button>
+        <button
+          type="button"
+          style={styles.clearAllButton}
+          onClick={() => setShadeRows([{ shade: "", combos: "", rolls: "" }])}
+        >
+          Clear All
+        </button>
+      </div>
+
+      <div style={styles.modalFooter}>
+        <button
+          type="button"
+          style={styles.modalSaveButton}
+          onClick={() => {
+            // Validate that every row has both shade and rolls
+            const hasEmptyShade = shadeRows.some(row => !row.shade || !row.shade.trim());
+            const hasEmptyRolls = shadeRows.some(row => !row.rolls || !row.rolls.trim());
+            
+            if (hasEmptyShade) {
+              alert("Please fill in all shade values before saving");
+              return;
+            }
+            
+            if (hasEmptyRolls) {
+              alert("Please fill in rolls quantity for all shades before saving");
+              return;
+            }
+            
+            const txt = buildShadeString(shadeRows);
+            setFormData((prev) => ({ ...prev, shade: txt }));
+            setShowShadeDialog(false);
+          }}
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          style={styles.modalCancelButton}
+          onClick={() => setShowShadeDialog(false)}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Size Picker Modal */}
       {showSizeDialog && (
@@ -2583,7 +2658,7 @@ const styles = {
 
   // Header
   header: {
-    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+    background: "linear-gradient(135deg, #090085 0%, #004181 100%)",
     borderRadius: "16px",
     padding: "24px",
     marginBottom: "24px",
@@ -2604,7 +2679,7 @@ const styles = {
   logoWrapper: {
     width: "56px",
     height: "56px",
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    background: "linear-gradient(135deg, #ffffff, #8b5cf6)",
     borderRadius: "12px",
     display: "flex",
     alignItems: "center",
@@ -2622,7 +2697,7 @@ const styles = {
     margin: 0,
     fontSize: "28px",
     fontWeight: 700,
-    color: "#0f172a",
+    color: "#ffffff",
     letterSpacing: "-0.5px",
     lineHeight: 1.2,
   },
@@ -2642,7 +2717,7 @@ const styles = {
   headerSubtitle: {
     margin: "8px 0 0",
     fontSize: "14px",
-    color: "#64748b",
+    color: "#ffffff",
   },
   headerRight: {
     display: "flex",
@@ -2796,20 +2871,34 @@ const styles = {
   },
   sectionTitle: {
     margin: 0,
-    fontSize: "16px",
-    fontWeight: 600,
-    color: "#1e293b",
+    fontSize: "19px",
+    fontWeight: 900,
+    color: "#002b70",
   },
   sectionSubtitle: {
     margin: "2px 0 0",
     fontSize: "12px",
-    color: "#64748b",
+    color: "#000000",
   },
   sectionContent: {
     display: "flex",
     flexDirection: "column",
     gap: "16px",
   },
+  // Add to styles object
+glassCard: {
+  background: "rgba(255, 255, 255, 0.9)",
+  backdropFilter: "blur(10px)",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
+  boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.07)",
+},
+
+gradientBorder: {
+  position: "relative",
+  background: "linear-gradient(white, white) padding-box, linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899) border-box",
+  border: "2px solid transparent",
+  borderRadius: "16px",
+},
 
   // Form Fields
   fieldContainer: {
@@ -2820,9 +2909,9 @@ const styles = {
     alignItems: "center",
     gap: "6px",
     marginBottom: "6px",
-    fontSize: "13px",
+    fontSize: "15px",
     fontWeight: 500,
-    color: "#475569",
+    color: "#002558",
   },
   fieldEmoji: {
     fontSize: "14px",
@@ -2837,8 +2926,8 @@ const styles = {
     padding: "10px 12px",
     borderRadius: "8px",
     border: "1px solid #e2e8f0",
-    fontSize: "14px",
-    color: "#1e293b",
+    fontSize: "17px",
+    color: "#000000",
     background: "#ffffff",
     transition: "all 0.2s",
   },
@@ -2847,8 +2936,8 @@ const styles = {
     padding: "10px 12px",
     borderRadius: "8px",
     border: "1px solid #e2e8f0",
-    fontSize: "14px",
-    color: "#1e293b",
+    fontSize: "17px",
+    color: "#000000",
     background: "#ffffff",
     cursor: "pointer",
     appearance: "none",
@@ -2943,7 +3032,7 @@ const styles = {
     padding: "10px 12px",
     borderRadius: "8px",
     border: "1px dashed #cbd5e1",
-    background: "#f8fafc",
+    background: "#ffffff",
     display: "flex",
     alignItems: "center",
     gap: "8px",
@@ -2958,6 +3047,13 @@ const styles = {
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
+  },
+    rollsInput: {
+    padding: "8px 10px",
+    borderRadius: "6px",
+    border: "1px solid #e2e8f0",
+    fontSize: "13px",
+    width: "100%",
   },
   fileClearButton: {
     padding: "10px 12px",
@@ -3025,10 +3121,10 @@ const styles = {
   },
   submitButton: {
     padding: "14px 48px",
-    background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    background: "linear-gradient(135deg, #00026d, #1e0064)",
     color: "white",
     border: "none",
-    borderRadius: "40px",
+    borderRadius: "30px",
     fontSize: "16px",
     fontWeight: 600,
     cursor: "pointer",
@@ -3042,7 +3138,7 @@ const styles = {
     fontSize: "18px",
   },
   submittingButton: {
-    background: "linear-gradient(135deg, #a5b4fc, #c7d2fe)",
+    background: "linear-gradient(135deg, #001061, #c7d2fe)",
     cursor: "not-allowed",
     transform: "none",
     boxShadow: "none",
@@ -3252,7 +3348,7 @@ const styles = {
   },
   shadeHeader: {
     display: "grid",
-    gridTemplateColumns: "1fr 2fr 40px",
+    gridTemplateColumns: "1fr 1.5fr 0.8fr 40px",
     gap: "8px",
     padding: "8px 0",
     fontSize: "12px",
@@ -3262,10 +3358,11 @@ const styles = {
   },
   shadeRow: {
     display: "grid",
-    gridTemplateColumns: "1fr 2fr 40px",
+    gridTemplateColumns: "1fr 1.5fr 0.8fr 40px",
     gap: "8px",
     marginBottom: "8px",
   },
+
   shadeInput: {
     padding: "8px 10px",
     borderRadius: "6px",
