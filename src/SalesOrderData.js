@@ -141,7 +141,7 @@ export default function SalesOrderData() {
   // Google Sheets API config
   const API_KEY = 'AIzaSyAomDFBkOySlIxKWSKGHe6ATv9gvaBr7uk';
   const SPREADSHEET_ID = '1Frg7kHPiiGeydB02LsGKJ-0UeO8N45-19skJRRvU_Qg';
-  const SHEET_RANGE = 'Orders!A1:K1000';
+  const SHEET_RANGE = 'Orderss!A1:K1000';
 
   // Animation variants
   const containerVariants = {

@@ -32,62 +32,42 @@ const FiActivity = lazy(() => import('react-icons/fi').then(mod => ({ default: m
 const FiCheckCircle = lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiCheckCircle })));
 const FiAlertCircle = lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiAlertCircle })));
 
-/** =========================
- * Modern Layout - Sidebar + Kanban Style Dashboard
- * Enhanced with Elegant Cards, Rich Colors, and Advanced Animations
- * ========================= */
-
-// Enhanced Modern Theme - Rich Dark/Light Fusion with Glassmorphism and Gradient Accents
+// Blue & White Professional Theme - direct values, no :root colors
 const THEME = {
-  primary: '#6366f1',
-  primaryDark: '#4f46e5',
-  primaryLight: '#818cf8',
-  secondary: '#06b6d4',
-  secondaryDark: '#0891b2',
-  accent: '#f43f5e',
-  accentDark: '#e11d48',
+  primary: '#2563eb',
+  primaryDark: '#1d4ed8',
+  primaryLight: '#3b82f6',
+  primarySoft: '#eff6ff',
+  secondary: '#0284c7',
+  secondaryLight: '#38bdf8',
+  tertiary: '#0ea5e9',
   success: '#10b981',
-  successDark: '#059669',
   warning: '#f59e0b',
-  warningDark: '#d97706',
   danger: '#ef4444',
-  dangerDark: '#dc2626',
-  purple: '#8b5cf6',
-  pink: '#ec4899',
-  indigo: '#4f46e5',
-  
-  background: '#ffffff',
-  backgroundDark: '#0f172a',
-  sidebarBg: 'rgba(255, 255, 255, 0.98)',
+  info: '#06b6d4',
+  white: '#ffffff',
+  background: '#f8fafc',
   cardBg: '#ffffff',
-  glassBg: 'rgba(255, 255, 255, 0.85)',
-  glassBorder: 'rgba(255, 255, 255, 0.3)',
-  
-  textPrimary: '#000000',
-  textSecondary: '#003175',
-  textLight: '#003074',
-  textMuted: '#cbd5e1',
-  
-  border: 'rgba(0, 0, 0, 0.06)',
-  borderLight: 'rgba(0, 0, 0, 0.03)',
-  
-  shadowSm: '0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06)',
+  sidebarBg: '#ffffff',
+  textPrimary: '#0f172a',
+  textSecondary: '#1e293b',
+  textLight: '#334155',
+  textMuted: '#475569',
+  border: '#e2e8f0',
+  borderLight: '#f1f5f9',
+  shadowSm: '0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.05)',
   shadowMd: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-  shadowLg: '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
-  shadowXl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.02)',
-  shadowGlow: '0 0 20px rgba(99, 102, 241, 0.15)',
-  
-  gradientPrimary: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #818cf8 100%)',
-  gradientSecondary: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-  gradientSuccess: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-  gradientWarning: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-  gradientDanger: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-  gradientPurple: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-  gradientPink: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-  gradientCard: 'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.95) 100%)',
+  shadowLg: '0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.03)',
+  shadowXl: '0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.02)',
+  shadowBlue: '0 4px 12px rgba(37, 99, 235, 0.12)',
+  shadowBlueHover: '0 8px 24px rgba(37, 99, 235, 0.18)',
+  gradientPrimary: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)',
+  gradientLight: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+  gradientCard: 'linear-gradient(135deg, #ffffff 0%, #ffffff 100%)',
+  gradientBlueMist: 'linear-gradient(135deg, #e0f2fe 0%, #bfdbfe 100%)',
 };
 
-// Enhanced Animations
+// Animations
 const slideIn = keyframes`
   from { transform: translateX(-100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
@@ -108,36 +88,17 @@ const shimmer = keyframes`
   100% { background-position: 200% 0; }
 `;
 
-const float = keyframes`
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-5px); }
-`;
-
-const glowPulse = keyframes`
-  0%, 100% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.5); }
-`;
-
-const rotateSlow = keyframes`
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-`;
-
-const dash = keyframes`
-  to { stroke-dashoffset: 0; }
-`;
-
-// Enhanced Card Data with rich metadata
+// Card data
 const CARDS = [
   { id: 1, icon: 'FiFileText', title: 'Sales Order Form', description: 'Create and manage customer sales orders with real-time tracking', path: '/sales-order', category: 'Orders', priority: 'high', stats: '24 today', badge: 'urgent', trend: '+12%', color: 'primary' },
   { id: 2, icon: 'FiList', title: 'Order Tracking', description: 'Monitor production status in real-time with analytics', path: '/sales-data', category: 'Orders', priority: 'medium', stats: '12 pending', badge: 'in-progress', trend: '+5%', color: 'secondary' },
-  { id: 3, icon: 'FiGrid', title: 'All Orders', description: 'Complete order management system with insights', path: '/all-order-details', category: 'Orders', priority: 'low', stats: '156 total', badge: 'archived', trend: '-3%', color: 'purple' },
-  { id: 4, icon: 'FiSettings', title: 'Sample Design', description: 'Submit and track design samples with feedback', path: '/sample-design-form', category: 'Design', priority: 'high', stats: '8 new', badge: 'review', trend: '+25%', color: 'pink' },
+  { id: 3, icon: 'FiGrid', title: 'All Orders', description: 'Complete order management system with insights', path: '/all-order-details', category: 'Orders', priority: 'low', stats: '156 total', badge: 'archived', trend: '-3%', color: 'primary' },
+  { id: 4, icon: 'FiSettings', title: 'Sample Design', description: 'Submit and track design samples with feedback', path: '/sample-design-form', category: 'Design', priority: 'high', stats: '8 new', badge: 'review', trend: '+25%', color: 'secondary' },
   { id: 6, icon: 'FiUsers', title: 'Issued Lot No.', description: 'Fabric issue resolution with batch tracking', path: '/pending-fabric-issues', category: 'Fabric', priority: 'critical', stats: '3 urgent', badge: 'critical', trend: '+40%', color: 'danger' },
   { id: 7, icon: 'FiClipboard', title: 'Cutting Job Order', description: 'Create cutting job orders with precision', path: '/job-order-form', category: 'Cutting', priority: 'high', stats: '5 today', badge: 'active', trend: '+8%', color: 'primary' },
   { id: 8, icon: 'FiList', title: 'All Cutting Jobs', description: 'Manage all cutting orders efficiently', path: '/all-job-orders', category: 'Cutting', priority: 'medium', stats: '42 active', badge: 'ongoing', trend: '+2%', color: 'secondary' },
-  { id: 9, icon: 'FiScissors', title: 'Embroidery Challan', description: 'Embroidery order management with quality check', path: '/embroidery-challan', category: 'Embroidery', priority: 'medium', stats: '15 pending', badge: 'waiting', trend: '-5%', color: 'purple' },
-  { id: 10, icon: 'FiPrinter', title: 'Printing Challan', description: 'Printing order tracking with color management', path: '/printing-challan', category: 'Printing', priority: 'high', stats: '8 today', badge: 'new', trend: '+18%', color: 'pink' },
+  { id: 9, icon: 'FiScissors', title: 'Embroidery Challan', description: 'Embroidery order management with quality check', path: '/embroidery-challan', category: 'Embroidery', priority: 'medium', stats: '15 pending', badge: 'waiting', trend: '-5%', color: 'primary' },
+  { id: 10, icon: 'FiPrinter', title: 'Printing Challan', description: 'Printing order tracking with color management', path: '/printing-challan', category: 'Printing', priority: 'high', stats: '8 today', badge: 'new', trend: '+18%', color: 'secondary' },
   { id: 11, icon: 'FiScissors', title: 'Cutting Details', description: 'Cutting budget calculator with analytics', path: '/cutting-budget', category: 'Cutting', priority: 'low', stats: '3 entries', badge: 'draft', trend: '0%', color: 'primary' },
   { id: 12, icon: 'FiPackage', title: 'Cutting Records', description: 'Historical cutting data with patterns', path: '/details', category: 'Cutting', priority: 'low', stats: '28 records', badge: 'completed', trend: '+15%', color: 'success' },
   { id: 13, icon: 'FiBox', title: 'Embroidery Pending', description: 'Pending embroidery challans with deadlines', path: '/emb-pending-challan', category: 'Embroidery', priority: 'critical', stats: '7 pending', badge: 'delayed', trend: '+30%', color: 'danger' },
@@ -146,41 +107,38 @@ const CARDS = [
   { id: 16, icon: 'FiX', title: 'Cancel Order', description: 'Order cancellation workflow with approvals', path: '/cancel-order', category: 'Orders', priority: 'medium', stats: '2 today', badge: 'warning', trend: '-8%', color: 'danger' },
   { id: 17, icon: 'FiClipboard', title: 'Material Requisition', description: 'Material planning form with inventory sync', path: '/material-requisition-form', category: 'Planning', priority: 'high', stats: '4 new', badge: 'pending', trend: '+35%', color: 'primary' },
   { id: 18, icon: 'FiTrendingUp', title: 'Requisition Dashboard', description: 'Material analytics dashboard with KPIs', path: '/material-requisition-dashboard', category: 'Planning', priority: 'medium', stats: 'Live', badge: 'active', trend: '+28%', color: 'success' },
-  { id: 19, icon: 'FiUsers', title: 'Parta Details', description: 'Parta information management system', path: '/parta-details', category: 'Production', priority: 'medium', stats: '6 entries', badge: 'completed', trend: '+4%', color: 'purple' },
+  { id: 19, icon: 'FiUsers', title: 'Parta Details', description: 'Parta information management system', path: '/parta-details', category: 'Production', priority: 'medium', stats: '6 entries', badge: 'completed', trend: '+4%', color: 'primary' },
   { id: 20, icon: 'FiPackage', title: 'Packing Report', description: 'Update packing reports with quality control', path: '/packing-report', category: 'Logistics', priority: 'high', stats: '9 pending', badge: 'in-progress', trend: '+16%', color: 'secondary' },
 ];
 
-// Categories for sidebar with gradient icons
+// Sidebar items
 const SIDEBAR_ITEMS = [
-  { id: 'all', label: 'All Modules', icon: 'FiGrid', count: CARDS.length, gradient: THEME.gradientPrimary },
-  { id: 'Orders', label: 'Orders', icon: 'FiShoppingCart', count: CARDS.filter(c => c.category === 'Orders').length, gradient: THEME.gradientPrimary },
-  { id: 'Cutting', label: 'Cutting', icon: 'FiScissors', count: CARDS.filter(c => c.category === 'Cutting').length, gradient: THEME.gradientSecondary },
-  { id: 'Embroidery', label: 'Embroidery', icon: 'FiBox', count: CARDS.filter(c => c.category === 'Embroidery').length, gradient: THEME.gradientPurple },
-  { id: 'Printing', label: 'Printing', icon: 'FiPrinter', count: CARDS.filter(c => c.category === 'Printing').length, gradient: THEME.gradientPink },
-  { id: 'Planning', label: 'Planning', icon: 'FiTrendingUp', count: CARDS.filter(c => c.category === 'Planning').length, gradient: THEME.gradientSuccess },
-  { id: 'Design', label: 'Design', icon: 'FiSettings', count: CARDS.filter(c => c.category === 'Design').length, gradient: THEME.gradientWarning },
-  { id: 'Fabric', label: 'Fabric', icon: 'FiUsers', count: CARDS.filter(c => c.category === 'Fabric').length, gradient: THEME.gradientDanger },
-  { id: 'Documents', label: 'Documents', icon: 'FiFileText', count: CARDS.filter(c => c.category === 'Documents').length, gradient: THEME.gradientSecondary },
-  { id: 'Logistics', label: 'Logistics', icon: 'FiPackage', count: CARDS.filter(c => c.category === 'Logistics').length, gradient: THEME.gradientPurple },
-  { id: 'Production', label: 'Production', icon: 'FiSettings', count: CARDS.filter(c => c.category === 'Production').length, gradient: THEME.gradientPrimary },
+  { id: 'all', label: 'All Modules', icon: 'FiGrid', count: CARDS.length },
+  { id: 'Orders', label: 'Orders', icon: 'FiShoppingCart', count: CARDS.filter(c => c.category === 'Orders').length },
+  { id: 'Cutting', label: 'Cutting', icon: 'FiScissors', count: CARDS.filter(c => c.category === 'Cutting').length },
+  { id: 'Embroidery', label: 'Embroidery', icon: 'FiBox', count: CARDS.filter(c => c.category === 'Embroidery').length },
+  { id: 'Printing', label: 'Printing', icon: 'FiPrinter', count: CARDS.filter(c => c.category === 'Printing').length },
+  { id: 'Planning', label: 'Planning', icon: 'FiTrendingUp', count: CARDS.filter(c => c.category === 'Planning').length },
+  { id: 'Design', label: 'Design', icon: 'FiSettings', count: CARDS.filter(c => c.category === 'Design').length },
+  { id: 'Fabric', label: 'Fabric', icon: 'FiUsers', count: CARDS.filter(c => c.category === 'Fabric').length },
+  { id: 'Documents', label: 'Documents', icon: 'FiFileText', count: CARDS.filter(c => c.category === 'Documents').length },
+  { id: 'Logistics', label: 'Logistics', icon: 'FiPackage', count: CARDS.filter(c => c.category === 'Logistics').length },
+  { id: 'Production', label: 'Production', icon: 'FiSettings', count: CARDS.filter(c => c.category === 'Production').length },
 ];
 
-// Enhanced priority colors with gradients
 const PRIORITY_COLORS = {
-  critical: { bg: 'linear-gradient(135deg, #ef444415 0%, #dc262615 100%)', text: '#ef4444', border: '#ef4444', glow: 'rgba(239, 68, 68, 0.2)' },
-  high: { bg: 'linear-gradient(135deg, #f43f5e15 0%, #e11d4815 100%)', text: '#f43f5e', border: '#f43f5e', glow: 'rgba(244, 63, 94, 0.2)' },
-  medium: { bg: 'linear-gradient(135deg, #f59e0b15 0%, #d9770615 100%)', text: '#f59e0b', border: '#f59e0b', glow: 'rgba(245, 158, 11, 0.2)' },
-  low: { bg: 'linear-gradient(135deg, #10b98115 0%, #05966915 100%)', text: '#10b981', border: '#10b981', glow: 'rgba(16, 185, 129, 0.2)' },
+  critical: { bg: '#fef2f2', text: '#ef4444', border: '#fee2e2' },
+  high: { bg: '#eff6ff', text: '#2563eb', border: '#dbeafe' },
+  medium: { bg: '#fffbeb', text: '#f59e0b', border: '#fef3c7' },
+  low: { bg: '#f0fdf4', text: '#10b981', border: '#dcfce7' },
 };
 
 const CARD_COLORS = {
-  primary: { gradient: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', light: 'rgba(99, 102, 241, 0.1)' },
-  secondary: { gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', light: 'rgba(6, 182, 212, 0.1)' },
-  success: { gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', light: 'rgba(16, 185, 129, 0.1)' },
-  warning: { gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', light: 'rgba(245, 158, 11, 0.1)' },
-  danger: { gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', light: 'rgba(239, 68, 68, 0.1)' },
-  purple: { gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', light: 'rgba(139, 92, 246, 0.1)' },
-  pink: { gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', light: 'rgba(236, 72, 153, 0.1)' },
+  primary: { gradient: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', light: '#eff6ff' },
+  secondary: { gradient: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', light: '#f0f9ff' },
+  success: { gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', light: '#f0fdf4' },
+  warning: { gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', light: '#fffbeb' },
+  danger: { gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', light: '#fef2f2' },
 };
 
 const CANCEL_ROUTES = {
@@ -188,7 +146,6 @@ const CANCEL_ROUTES = {
   job: '/cancel-order/job',
 };
 
-// Icon mapping
 const iconComponents = {
   FiFileText, FiList, FiArrowRight, FiTrendingUp, FiUsers, FiSettings, FiClipboard,
   FiPrinter, FiScissors, FiStar, FiX, FiShoppingCart, FiLayers, FiBox, FiPackage,
@@ -196,7 +153,7 @@ const iconComponents = {
   FiActivity, FiCheckCircle, FiAlertCircle,
 };
 
-// Global Styles with enhanced typography
+// Global Styles with darker text
 const GlobalStyle = createGlobalStyle`
   * {
     margin: 0;
@@ -206,9 +163,10 @@ const GlobalStyle = createGlobalStyle`
 
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Poppins', sans-serif;
-    background: ${THEME.background};
-    color: ${THEME.textPrimary};
+    background: #f8fafc;
+    color: #0f172a;
     overflow-x: hidden;
+    font-size: 16px;
   }
 
   ::-webkit-scrollbar {
@@ -222,19 +180,12 @@ const GlobalStyle = createGlobalStyle`
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #94a3b8;
     border-radius: 10px;
-    transition: all 0.2s;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: ${THEME.primary};
-  }
-
-  @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    background: #2563eb;
   }
 `;
 
@@ -249,27 +200,16 @@ const SalesDashboard = () => {
     const saved = localStorage.getItem('favoriteModulesModern');
     return saved ? JSON.parse(saved) : [1, 4, 7];
   });
-  const [hoveredCard, setHoveredCard] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('favoriteModulesModern', JSON.stringify(favorites));
   }, [favorites]);
 
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') setShowCancelPicker(false);
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
-
   const filteredCards = useMemo(() => {
     let filtered = CARDS;
-    
     if (activeCategory !== 'all') {
       filtered = filtered.filter(card => card.category === activeCategory);
     }
-    
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(card => 
@@ -277,7 +217,6 @@ const SalesDashboard = () => {
         card.description.toLowerCase().includes(query)
       );
     }
-    
     return filtered;
   }, [activeCategory, searchQuery]);
 
@@ -310,46 +249,29 @@ const SalesDashboard = () => {
     return CARD_COLORS[colorName] || CARD_COLORS.primary;
   };
 
-  // Group cards by priority for Kanban view
   const kanbanGroups = useMemo(() => {
-    const groups = {
-      critical: [],
-      high: [],
-      medium: [],
-      low: [],
-    };
-    
+    const groups = { critical: [], high: [], medium: [], low: [] };
     filteredCards.forEach(card => {
-      const isFav = favorites.includes(card.id);
-      groups[card.priority].push({ ...card, isFavorite: isFav });
+      groups[card.priority].push({ ...card, isFavorite: favorites.includes(card.id) });
     });
-    
     return groups;
   }, [filteredCards, favorites]);
 
-  // Enhanced card render with elegant design
   const renderCard = (card) => {
     const cardColor = getCardColor(card.color);
-    const isHovered = hoveredCard === card.id;
-    
     return (
       <Card
         key={card.id}
         onClick={() => handleCardClick(card)}
         $priority={card.priority}
-        $cardColor={cardColor}
-        $isHovered={isHovered}
-        onMouseEnter={() => setHoveredCard(card.id)}
-        onMouseLeave={() => setHoveredCard(null)}
-        whileHover={{ y: -8, transition: { duration: 0.2 } }}
-        initial={{ opacity: 0, y: 30 }}
+        whileHover={{ y: -4, transition: { duration: 0.2 } }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
+        transition={{ duration: 0.2 }}
       >
-        <CardGlow $priority={card.priority} />
         <CardHeader>
-          <IconWrapper $priority={card.priority} $cardColor={cardColor}>
+          <IconWrapper $priority={card.priority}>
             {renderIcon(card.icon, { size: 24 })}
           </IconWrapper>
           <FavoriteBtn 
@@ -363,24 +285,15 @@ const SalesDashboard = () => {
         <CardTitle>{card.title}</CardTitle>
         <CardDesc>{card.description}</CardDesc>
         <CardFooter>
-          <BadgeContainer>
-            <Badge $priority={card.priority}>
-              <BadgeDot $priority={card.priority} />
-              {card.badge || card.priority}
-            </Badge>
-            {card.trend && (
-              <TrendBadge $positive={!card.trend.startsWith('-')}>
-                {card.trend}
-                {renderIcon('FiTrendingUp', { size: 10 })}
-              </TrendBadge>
-            )}
-          </BadgeContainer>
+          <Badge $priority={card.priority}>
+            <BadgeDot $priority={card.priority} />
+            {card.badge || card.priority}
+          </Badge>
           <Stats>
-            {renderIcon('FiClock', { size: 12 })}
+            {renderIcon('FiClock', { size: 14 })}
             <span>{card.stats}</span>
           </Stats>
         </CardFooter>
-        <CardDecoration />
       </Card>
     );
   };
@@ -389,15 +302,12 @@ const SalesDashboard = () => {
     <>
       <GlobalStyle />
       <DashboardContainer>
-        {/* Enhanced Sidebar */}
+        {/* Sidebar */}
         <Sidebar $collapsed={sidebarCollapsed}>
           <SidebarHeader>
             <Logo $collapsed={sidebarCollapsed}>
-              <LogoIcon>
-                <LogoGlow />
-                MH
-              </LogoIcon>
-              {!sidebarCollapsed && <LogoText>MH Dashboard</LogoText>}
+              <LogoIcon>MH</LogoIcon>
+              {!sidebarCollapsed && <LogoText>Manufacturing Hub</LogoText>}
             </Logo>
             <CollapseBtn onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
               {renderIcon('FiMenu', { size: 20 })}
@@ -411,8 +321,6 @@ const SalesDashboard = () => {
                 $active={activeCategory === item.id}
                 onClick={() => setActiveCategory(item.id)}
                 $collapsed={sidebarCollapsed}
-                whileHover={{ x: sidebarCollapsed ? 0 : 8 }}
-                transition={{ type: "spring", stiffness: 400 }}
               >
                 <NavIcon $active={activeCategory === item.id}>
                   {renderIcon(item.icon, { size: 20 })}
@@ -429,35 +337,24 @@ const SalesDashboard = () => {
 
           <SidebarFooter>
             {!sidebarCollapsed && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <FooterText>Production Suite v3.0</FooterText>
-                <FooterSub>Enterprise Ready</FooterSub>
-              </motion.div>
+              <FooterText>Production Suite v3.0</FooterText>
             )}
           </SidebarFooter>
         </Sidebar>
 
         {/* Main Content */}
         <MainContent>
-          {/* Enhanced Top Bar */}
           <TopBar>
             <WelcomeSection>
               <Greeting>
-                <GreetingIcon>✨</GreetingIcon>
-                Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}
+                <span>✨</span>
+                Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : ' Evening'}
               </Greeting>
               <UserName>Production Manager</UserName>
             </WelcomeSection>
 
             <RightSection>
-              <SearchBar
-                whileFocus={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 400 }}
-              >
+              <SearchBar>
                 {renderIcon('FiSearch', { size: 18 })}
                 <SearchInput 
                   type="text" 
@@ -468,77 +365,58 @@ const SalesDashboard = () => {
               </SearchBar>
               
               <ViewToggle>
-                <ViewBtn 
-                  $active={viewMode === 'grid'} 
-                  onClick={() => setViewMode('grid')}
-                  whileTap={{ scale: 0.95 }}
-                >
+                <ViewBtn $active={viewMode === 'grid'} onClick={() => setViewMode('grid')}>
                   {renderIcon('FiGrid', { size: 18 })}
                 </ViewBtn>
-                <ViewBtn 
-                  $active={viewMode === 'kanban'} 
-                  onClick={() => setViewMode('kanban')}
-                  whileTap={{ scale: 0.95 }}
-                >
+                <ViewBtn $active={viewMode === 'kanban'} onClick={() => setViewMode('kanban')}>
                   {renderIcon('FiLayers', { size: 18 })}
                 </ViewBtn>
               </ViewToggle>
 
-              <NotificationBtn whileTap={{ scale: 0.95 }}>
+              <NotificationBtn>
                 {renderIcon('FiBell', { size: 20 })}
-                <NotificationBadge>
-                  <motion.span
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                  >
-                    3
-                  </motion.span>
-                </NotificationBadge>
+                <NotificationBadge>3</NotificationBadge>
               </NotificationBtn>
             </RightSection>
           </TopBar>
 
-          {/* Enhanced Stats Overview */}
+          {/* Stats Overview */}
           <StatsOverview>
-            <StatCard whileHover={{ y: -4, transition: { duration: 0.2 } }}>
-              <StatIcon $color={THEME.primary}>
+            <StatCard>
+              <StatIcon $color="#2563eb">
                 {renderIcon('FiGrid', { size: 22 })}
               </StatIcon>
               <StatInfo>
                 <StatValue>{filteredCards.length}</StatValue>
                 <StatLabel>Active Modules</StatLabel>
               </StatInfo>
-              <StatTrend $positive>+12%</StatTrend>
             </StatCard>
-            <StatCard whileHover={{ y: -4, transition: { duration: 0.2 } }}>
-              <StatIcon $color={THEME.success}>
+            <StatCard>
+              <StatIcon $color="#10b981">
                 {renderIcon('FiStar', { size: 22 })}
               </StatIcon>
               <StatInfo>
                 <StatValue>{favorites.length}</StatValue>
                 <StatLabel>Favorites</StatLabel>
               </StatInfo>
-              <StatTrend $positive>+5%</StatTrend>
             </StatCard>
-            <StatCard whileHover={{ y: -4, transition: { duration: 0.2 } }}>
-              <StatIcon $color={THEME.warning}>
+            <StatCard>
+              <StatIcon $color="#f59e0b">
                 {renderIcon('FiClock', { size: 22 })}
               </StatIcon>
               <StatInfo>
                 <StatValue>{filteredCards.filter(c => c.priority === 'critical' || c.priority === 'high').length}</StatValue>
                 <StatLabel>High Priority</StatLabel>
               </StatInfo>
-              <StatTrend $positive={false}>+8%</StatTrend>
             </StatCard>
-            <StatCard whileHover={{ y: -4, transition: { duration: 0.2 } }}>
-              <StatIcon $color={THEME.secondary}>
+            <StatCard>
+              <StatIcon $color="#0284c7">
                 {renderIcon('FiTrendingUp', { size: 22 })}
               </StatIcon>
               <StatInfo>
                 <StatValue>98%</StatValue>
                 <StatLabel>Efficiency</StatLabel>
               </StatInfo>
-              <StatTrend $positive>+2%</StatTrend>
             </StatCard>
           </StatsOverview>
 
@@ -549,16 +427,6 @@ const SalesDashboard = () => {
                 {activeCategory === 'all' ? 'All Modules' : activeCategory}
                 <ModuleCount>{filteredCards.length}</ModuleCount>
               </SectionTitle>
-              {favorites.length > 0 && (
-                <FavHint
-                  as={motion.div}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                >
-                  {renderIcon('FiStar', { size: 14, fill: '#f59e0b', color: '#f59e0b' })}
-                  Starred items appear first
-                </FavHint>
-              )}
             </SectionHeader>
 
             <Suspense fallback={<LoadingSkeleton viewMode={viewMode} />}>
@@ -579,13 +447,7 @@ const SalesDashboard = () => {
               ) : (
                 <KanbanContainer>
                   {Object.entries(kanbanGroups).map(([priority, cards]) => (
-                    <KanbanColumn
-                      key={priority}
-                      as={motion.div}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
+                    <KanbanColumn key={priority}>
                       <ColumnHeader $priority={priority}>
                         <ColumnTitle>
                           <PriorityDot $priority={priority} />
@@ -601,17 +463,13 @@ const SalesDashboard = () => {
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               exit={{ opacity: 0, x: 20 }}
-                              transition={{ duration: 0.2 }}
                             >
                               {renderCard(card)}
                             </motion.div>
                           ))}
                         </AnimatePresence>
                         {cards.length === 0 && (
-                          <EmptyColumn>
-                            <EmptyIcon>📭</EmptyIcon>
-                            No items
-                          </EmptyColumn>
+                          <EmptyColumn>No items</EmptyColumn>
                         )}
                       </ColumnContent>
                     </KanbanColumn>
@@ -621,11 +479,7 @@ const SalesDashboard = () => {
             </Suspense>
 
             {filteredCards.length === 0 && (
-              <EmptyState
-                as={motion.div}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-              >
+              <EmptyState>
                 <EmptyIcon>🔍</EmptyIcon>
                 <EmptyTitle>No modules found</EmptyTitle>
                 <EmptyDesc>Try adjusting your search or category filter</EmptyDesc>
@@ -634,7 +488,7 @@ const SalesDashboard = () => {
           </ContentArea>
         </MainContent>
 
-        {/* Enhanced Cancel Modal */}
+        {/* Cancel Modal */}
         <AnimatePresence>
           {showCancelPicker && (
             <ModalOverlay
@@ -644,48 +498,39 @@ const SalesDashboard = () => {
               onClick={() => setShowCancelPicker(false)}
             >
               <ModalContent
-                initial={{ scale: 0.9, opacity: 0, y: 30 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 30 }}
-                transition={{ type: "spring", damping: 25 }}
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <ModalHeader>
                   <ModalTitle>Cancel Order</ModalTitle>
-                  <CloseBtn onClick={() => setShowCancelPicker(false)} whileTap={{ scale: 0.9 }}>
+                  <CloseBtn onClick={() => setShowCancelPicker(false)}>
                     {renderIcon('FiX', { size: 20 })}
                   </CloseBtn>
                 </ModalHeader>
                 <ModalBody>
                   <ModalDesc>Select the type of order you want to cancel</ModalDesc>
                   <OptionGrid>
-                    <OptionItem 
-                      onClick={() => handlePick('sale')}
-                      whileHover={{ x: 8, transition: { duration: 0.2 } }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <OptionIcon $color={THEME.primary}>
-                        {renderIcon('FiShoppingCart', { size: 24 })}
+                    <OptionItem onClick={() => handlePick('sale')}>
+                      <OptionIcon $color="#2563eb">
+                        {renderIcon('FiShoppingCart', { size: 22 })}
                       </OptionIcon>
                       <OptionInfo>
                         <OptionName>Sales Order</OptionName>
                         <OptionDesc>Cancel customer-facing sales orders</OptionDesc>
                       </OptionInfo>
-                      <ArrowIcon>{renderIcon('FiArrowRight', { size: 16 })}</ArrowIcon>
+                      {renderIcon('FiArrowRight', { size: 16 })}
                     </OptionItem>
-                    <OptionItem 
-                      onClick={() => handlePick('job')}
-                      whileHover={{ x: 8, transition: { duration: 0.2 } }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <OptionIcon $color={THEME.secondary}>
-                        {renderIcon('FiLayers', { size: 24 })}
+                    <OptionItem onClick={() => handlePick('job')}>
+                      <OptionIcon $color="#0284c7">
+                        {renderIcon('FiLayers', { size: 22 })}
                       </OptionIcon>
                       <OptionInfo>
                         <OptionName>Job Order</OptionName>
                         <OptionDesc>Cancel internal production job orders</OptionDesc>
                       </OptionInfo>
-                      <ArrowIcon>{renderIcon('FiArrowRight', { size: 16 })}</ArrowIcon>
+                      {renderIcon('FiArrowRight', { size: 16 })}
                     </OptionItem>
                   </OptionGrid>
                 </ModalBody>
@@ -698,7 +543,7 @@ const SalesDashboard = () => {
   );
 };
 
-// Loading Skeleton with shimmer effect
+// Loading Skeleton
 const LoadingSkeleton = ({ viewMode }) => (
   viewMode === 'grid' ? (
     <GridContainer>
@@ -717,30 +562,25 @@ const LoadingSkeleton = ({ viewMode }) => (
   )
 );
 
-// ========== ENHANCED STYLED COMPONENTS ==========
+// ========== STYLED COMPONENTS ==========
 const DashboardContainer = styled.div`
   display: flex;
   min-height: 100vh;
-  background: ${THEME.background};
+  background: #ffffff;
 `;
 
 const Sidebar = styled.aside`
   width: ${props => props.$collapsed ? '80px' : '280px'};
-  background: ${THEME.sidebarBg};
-  backdrop-filter: blur(20px);
-  border-right: 1px solid ${THEME.border};
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.2s ease;
   position: sticky;
   top: 0;
   height: 100vh;
   overflow-y: auto;
   z-index: 100;
-  
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
 `;
 
 const SidebarHeader = styled.div`
@@ -748,7 +588,7 @@ const SidebarHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid ${THEME.border};
+  border-bottom: 1px solid #e2e8f0;
 `;
 
 const Logo = styled.div`
@@ -759,51 +599,37 @@ const Logo = styled.div`
 `;
 
 const LogoIcon = styled.div`
-  position: relative;
   width: 42px;
   height: 42px;
-  background: ${THEME.gradientPrimary};
-  border-radius: 14px;
+  background: #2563eb;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 800;
   font-size: 1.1rem;
-  overflow: hidden;
-`;
-
-const LogoGlow = styled.div`
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent);
-  border-radius: 14px;
 `;
 
 const LogoText = styled.span`
   font-weight: 800;
-  font-size: 1.2rem;
-  background: ${THEME.gradientPrimary};
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-size: 200% auto;
-  animation: gradientShift 3s ease infinite;
+  font-size: 1.1rem;
+  color: #0f172a;
 `;
 
-const CollapseBtn = styled(motion.button)`
+const CollapseBtn = styled.button`
   background: none;
   border: none;
   cursor: pointer;
-  color: ${THEME.textSecondary};
+  color: #64748b;
   padding: 0.5rem;
-  border-radius: 10px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  transition: all 0.2s;
   
   &:hover {
-    background: ${THEME.border};
-    color: ${THEME.primary};
+    background: #f1f5f9;
+    color: #2563eb;
   }
 `;
 
@@ -815,71 +641,62 @@ const SidebarNav = styled.nav`
   gap: 0.25rem;
 `;
 
-const NavItem = styled(motion.button)`
+const NavItem = styled.button`
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   width: 100%;
-  background: ${props => props.$active ? `${THEME.primary}10` : 'transparent'};
+  background: ${props => props.$active ? '#eff6ff' : 'transparent'};
   border: none;
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  color: ${props => props.$active ? THEME.primary : THEME.textSecondary};
+  color: ${props => props.$active ? '#2563eb' : '#1e293b'};
   justify-content: ${props => props.$collapsed ? 'center' : 'flex-start'};
-  position: relative;
+  font-weight: 500;
+  font-size: 0.95rem;
   
   &:hover {
-    background: ${props => props.$active ? `${THEME.primary}15` : `${THEME.border}`};
+    background: ${props => props.$active ? '#eff6ff' : '#f8fafc'};
   }
 `;
 
 const NavIcon = styled.span`
   display: flex;
   align-items: center;
-  color: ${props => props.$active ? THEME.primary : THEME.textSecondary};
+  color: ${props => props.$active ? '#2563eb' : '#475569'};
 `;
 
 const NavLabel = styled.span`
   flex: 1;
   text-align: left;
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 `;
 
 const NavCount = styled.span`
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: ${THEME.textSecondary};
-  background: ${THEME.border};
-  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 0.2rem 0.55rem;
   border-radius: 20px;
-  min-width: 28px;
-  text-align: center;
 `;
 
 const SidebarFooter = styled.div`
   padding: 1.5rem;
-  border-top: 1px solid ${THEME.border};
+  border-top: 1px solid #e2e8f0;
   text-align: center;
 `;
 
 const FooterText = styled.div`
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${THEME.textSecondary};
-`;
-
-const FooterSub = styled.div`
-  font-size: 0.7rem;
-  color: ${THEME.textLight};
-  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #475569;
 `;
 
 const MainContent = styled.main`
   flex: 1;
-  overflow-x: hidden;
   padding: 1.5rem 2rem;
   
   @media (max-width: 768px) {
@@ -896,29 +713,22 @@ const TopBar = styled.div`
   gap: 1rem;
 `;
 
-const WelcomeSection = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
+const WelcomeSection = styled.div``;
 
 const Greeting = styled.span`
-  font-size: 0.85rem;
-  color: ${THEME.textLight};
+  font-size: 0.9rem;
+  color: #475569;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-`;
-
-const GreetingIcon = styled.span`
-  font-size: 1rem;
+  font-weight: 500;
 `;
 
 const UserName = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 700;
-  background: ${THEME.gradientPrimary};
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 0.25rem;
 `;
 
 const RightSection = styled.div`
@@ -927,20 +737,19 @@ const RightSection = styled.div`
   gap: 1rem;
 `;
 
-const SearchBar = styled(motion.div)`
+const SearchBar = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
   background: white;
   padding: 0.5rem 1rem;
   border-radius: 40px;
-  border: 1px solid ${THEME.border};
-  color: ${THEME.textLight};
-  transition: all 0.2s;
+  border: 1px solid #e2e8f0;
+  color: #94a3b8;
   
   &:focus-within {
-    border-color: ${THEME.primary};
-    box-shadow: 0 0 0 3px ${THEME.primary}20;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 `;
 
@@ -948,11 +757,11 @@ const SearchInput = styled.input`
   border: none;
   outline: none;
   background: transparent;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   width: 200px;
   
   &::placeholder {
-    color: ${THEME.textLight};
+    color: #94a3b8;
   }
 `;
 
@@ -962,39 +771,38 @@ const ViewToggle = styled.div`
   background: white;
   padding: 0.25rem;
   border-radius: 40px;
-  border: 1px solid ${THEME.border};
+  border: 1px solid #e2e8f0;
 `;
 
-const ViewBtn = styled(motion.button)`
-  background: ${props => props.$active ? THEME.primary : 'transparent'};
-  color: ${props => props.$active ? 'white' : THEME.textSecondary};
+const ViewBtn = styled.button`
+  background: ${props => props.$active ? '#2563eb' : 'transparent'};
+  color: ${props => props.$active ? 'white' : '#475569'};
   border: none;
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 30px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  transition: all 0.2s;
+  font-weight: 500;
   
   &:hover {
-    background: ${props => props.$active ? THEME.primary : THEME.border};
+    background: ${props => props.$active ? '#2563eb' : '#f1f5f9'};
   }
 `;
 
-const NotificationBtn = styled(motion.button)`
+const NotificationBtn = styled.button`
   position: relative;
   background: white;
-  border: 1px solid ${THEME.border};
+  border: 1px solid #e2e8f0;
   padding: 0.5rem;
   border-radius: 40px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  color: ${THEME.textSecondary};
+  color: #475569;
   
   &:hover {
-    background: ${THEME.border};
-    color: ${THEME.primary};
+    background: #f8fafc;
   }
 `;
 
@@ -1002,20 +810,18 @@ const NotificationBadge = styled.span`
   position: absolute;
   top: -4px;
   right: -4px;
-  background: ${THEME.gradientDanger};
+  background: #ef4444;
   color: white;
-  font-size: 0.6rem;
-  padding: 0.15rem 0.4rem;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.4rem;
   border-radius: 20px;
   font-weight: 700;
-  min-width: 18px;
-  text-align: center;
 `;
 
 const StatsOverview = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
+  gap: 1.25rem;
   margin-bottom: 2rem;
   
   @media (max-width: 768px) {
@@ -1023,28 +829,26 @@ const StatsOverview = styled.div`
   }
 `;
 
-const StatCard = styled(motion.div)`
+const StatCard = styled.div`
   background: white;
-  padding: 1rem;
+  padding: 1.25rem;
   border-radius: 20px;
   display: flex;
   align-items: center;
   gap: 1rem;
-  border: 1px solid ${THEME.border};
+  border: 1px solid #e2e8f0;
   transition: all 0.2s;
-  position: relative;
-  overflow: hidden;
   
   &:hover {
-    box-shadow: ${THEME.shadowLg};
-    border-color: ${THEME.primary}30;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-color: #2563eb30;
   }
 `;
 
 const StatIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  background: ${props => `${props.$color}15`};
+  width: 52px;
+  height: 52px;
+  background: ${props => `${props.$color}10`};
   border-radius: 16px;
   display: flex;
   align-items: center;
@@ -1059,71 +863,48 @@ const StatInfo = styled.div`
 `;
 
 const StatValue = styled.div`
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 800;
-  color: ${THEME.textPrimary};
+  color: #0f172a;
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.75rem;
-  color: ${THEME.textLight};
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #475569;
 `;
 
-const StatTrend = styled.div`
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: ${props => props.$positive ? THEME.success : THEME.danger};
-  background: ${props => props.$positive ? `${THEME.success}10` : `${THEME.danger}10`};
-  padding: 0.2rem 0.5rem;
-  border-radius: 20px;
-`;
-
-const ContentArea = styled.div`
-  background: transparent;
-  border-radius: 20px;
-`;
+const ContentArea = styled.div``;
 
 const SectionHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
 `;
 
 const SectionTitle = styled.h3`
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: ${THEME.textPrimary};
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
 `;
 
 const ModuleCount = styled.span`
-  background: ${THEME.border};
-  padding: 0.2rem 0.6rem;
+  background: #e2e8f0;
+  padding: 0.2rem 0.65rem;
   border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-`;
-
-const FavHint = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  color: ${THEME.textLight};
-  background: ${THEME.warning}10;
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
 `;
 
 const GridContainer = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 1.5rem;
+  gap: 1.25rem;
 `;
 
 const KanbanContainer = styled.div`
@@ -1131,7 +912,6 @@ const KanbanContainer = styled.div`
   grid-template-columns: repeat(4, 1fr);
   gap: 1.25rem;
   overflow-x: auto;
-  min-height: 500px;
   
   @media (max-width: 1200px) {
     grid-template-columns: repeat(2, 1fr);
@@ -1142,25 +922,22 @@ const KanbanContainer = styled.div`
   }
 `;
 
-const KanbanColumn = styled(motion.div)`
-  background: ${THEME.glassBg};
-  backdrop-filter: blur(8px);
-  border-radius: 24px;
-  border: 1px solid ${THEME.border};
+const KanbanColumn = styled.div`
+  background: white;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  height: fit-content;
-  min-height: 400px;
   overflow: hidden;
 `;
 
 const ColumnHeader = styled.div`
   padding: 1rem 1.25rem;
-  background: ${props => PRIORITY_COLORS[props.$priority]?.bg || `${THEME.primary}10`};
+  background: ${props => PRIORITY_COLORS[props.$priority]?.bg || '#f8fafc'};
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 2px solid ${props => PRIORITY_COLORS[props.$priority]?.border || THEME.primary};
+  border-bottom: 2px solid ${props => PRIORITY_COLORS[props.$priority]?.text || '#2563eb'};
 `;
 
 const ColumnTitle = styled.div`
@@ -1170,31 +947,32 @@ const ColumnTitle = styled.div`
   font-weight: 800;
   font-size: 0.85rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  color: #1e293b;
 `;
 
 const PriorityDot = styled.div`
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: ${props => PRIORITY_COLORS[props.$priority]?.text || THEME.primary};
-  box-shadow: 0 0 5px ${props => PRIORITY_COLORS[props.$priority]?.text || THEME.primary};
+  background: ${props => PRIORITY_COLORS[props.$priority]?.text || '#2563eb'};
 `;
 
 const ColumnCount = styled.span`
-  background: rgba(0,0,0,0.05);
+  background: #e2e8f0;
   padding: 0.2rem 0.6rem;
   border-radius: 20px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
+  color: #1e293b;
 `;
 
 const ColumnContent = styled.div`
   flex: 1;
-  padding: 0.75rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
   max-height: 600px;
   overflow-y: auto;
 `;
@@ -1202,57 +980,24 @@ const ColumnContent = styled.div`
 const EmptyColumn = styled.div`
   text-align: center;
   padding: 2rem;
-  color: ${THEME.textLight};
-  font-size: 0.85rem;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 500;
 `;
 
-const EmptyIcon = styled.div`
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  opacity: 0.5;
-`;
-
-// Enhanced Card Component
 const Card = styled(motion.div)`
-  background: ${THEME.gradientCard};
-  border-radius: 20px;
+  background: white;
+  border-radius: 18px;
   padding: 1.25rem;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid ${THEME.border};
+  transition: all 0.2s;
+  border: 1px solid #e2e8f0;
   position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(4px);
-  
-  &:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: ${props => PRIORITY_COLORS[props.$priority]?.gradient || THEME.gradientPrimary};
-    transform: scaleX(${props => props.$isHovered ? 1 : 0});
-    transition: transform 0.3s ease;
-  }
   
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: ${THEME.shadowXl};
-    border-color: ${props => PRIORITY_COLORS[props.$priority]?.border || THEME.primary}40;
-  }
-`;
-
-const CardGlow = styled.div`
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 30% 20%, ${props => PRIORITY_COLORS[props.$priority]?.glow || 'rgba(99, 102, 241, 0.1)'}, transparent 70%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  
-  ${Card}:hover & {
-    opacity: 1;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    border-color: #2563eb40;
   }
 `;
 
@@ -1266,50 +1011,44 @@ const CardHeader = styled.div`
 const IconWrapper = styled.div`
   width: 48px;
   height: 48px;
-  background: ${props => PRIORITY_COLORS[props.$priority]?.bg || `${THEME.primary}10`};
-  border-radius: 16px;
+  background: ${props => PRIORITY_COLORS[props.$priority]?.bg || '#eff6ff'};
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${props => PRIORITY_COLORS[props.$priority]?.text || THEME.primary};
-  transition: all 0.3s ease;
-  
-  ${Card}:hover & {
-    transform: scale(1.05);
-  }
+  color: ${props => PRIORITY_COLORS[props.$priority]?.text || '#2563eb'};
 `;
 
 const FavoriteBtn = styled(motion.button)`
   background: none;
   border: none;
   cursor: pointer;
-  color: ${props => props.$isFavorite ? '#f59e0b' : THEME.textLight};
+  color: ${props => props.$isFavorite ? '#f59e0b' : '#cbd5e1'};
   padding: 0.25rem;
   border-radius: 8px;
-  transition: all 0.2s;
   
   &:hover {
-    transform: scale(1.1);
     color: #f59e0b;
   }
 `;
 
 const CardTitle = styled.h4`
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 800;
   margin-bottom: 0.5rem;
-  color: ${THEME.textPrimary};
+  color: #0f172a;
 `;
 
 const CardDesc = styled.p`
-  font-size: 0.8rem;
-  color: ${THEME.textSecondary};
+  font-size: 0.85rem;
+  color: #475569;
   margin-bottom: 1rem;
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  font-weight: 500;
 `;
 
 const CardFooter = styled.div`
@@ -1318,70 +1057,41 @@ const CardFooter = styled.div`
   align-items: center;
 `;
 
-const BadgeContainer = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-`;
-
 const Badge = styled.span`
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 0.25rem 0.75rem;
+  padding: 0.3rem 0.8rem;
   border-radius: 20px;
-  background: ${props => PRIORITY_COLORS[props.$priority]?.bg || `${THEME.primary}10`};
-  color: ${props => PRIORITY_COLORS[props.$priority]?.text || THEME.primary};
+  background: ${props => PRIORITY_COLORS[props.$priority]?.bg || '#f1f5f9'};
+  color: ${props => PRIORITY_COLORS[props.$priority]?.text || '#475569'};
   text-transform: capitalize;
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
 `;
 
 const BadgeDot = styled.span`
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: ${props => PRIORITY_COLORS[props.$priority]?.text || THEME.primary};
-`;
-
-const TrendBadge = styled.span`
-  font-size: 0.65rem;
-  font-weight: 600;
-  padding: 0.2rem 0.5rem;
-  border-radius: 20px;
-  background: ${props => props.$positive ? `${THEME.success}15` : `${THEME.danger}15`};
-  color: ${props => props.$positive ? THEME.success : THEME.danger};
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
+  background: ${props => PRIORITY_COLORS[props.$priority]?.text || '#475569'};
 `;
 
 const Stats = styled.div`
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.7rem;
-  color: ${THEME.textLight};
-  font-weight: 500;
-`;
-
-const CardDecoration = styled.div`
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 60px;
-  height: 60px;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
 `;
 
 // Skeleton Components
 const SkeletonCard = styled.div`
   background: white;
-  border-radius: 20px;
+  border-radius: 18px;
   padding: 1.25rem;
-  border: 1px solid ${THEME.border};
+  border: 1px solid #e2e8f0;
   animation: ${shimmer} 1.5s infinite;
   background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
   background-size: 200% 100%;
@@ -1389,19 +1099,19 @@ const SkeletonCard = styled.div`
 `;
 
 const SkeletonColumn = styled.div`
-  background: ${THEME.glassBg};
-  border-radius: 24px;
-  border: 1px solid ${THEME.border};
+  background: white;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.75rem;
+  gap: 1rem;
+  padding: 1rem;
 `;
 
 const SkeletonColumnHeader = styled.div`
   height: 50px;
   background: #e2e8f0;
-  border-radius: 16px;
+  border-radius: 12px;
   animation: ${pulse} 1s infinite;
 `;
 
@@ -1409,8 +1119,8 @@ const SkeletonColumnHeader = styled.div`
 const ModalOverlay = styled(motion.div)`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1420,11 +1130,11 @@ const ModalOverlay = styled(motion.div)`
 
 const ModalContent = styled(motion.div)`
   background: white;
-  border-radius: 32px;
+  border-radius: 28px;
   max-width: 440px;
   width: 100%;
   overflow: hidden;
-  box-shadow: ${THEME.shadowXl};
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
 `;
 
 const ModalHeader = styled.div`
@@ -1432,28 +1142,25 @@ const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid ${THEME.border};
+  border-bottom: 1px solid #e2e8f0;
 `;
 
 const ModalTitle = styled.h3`
   font-size: 1.25rem;
   font-weight: 800;
-  background: ${THEME.gradientPrimary};
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #0f172a;
 `;
 
-const CloseBtn = styled(motion.button)`
+const CloseBtn = styled.button`
   background: none;
   border: none;
   cursor: pointer;
-  color: ${THEME.textLight};
-  padding: 0.25rem;
-  border-radius: 10px;
+  color: #94a3b8;
+  padding: 0.35rem;
+  border-radius: 8px;
   
   &:hover {
-    background: ${THEME.border};
-    color: ${THEME.textSecondary};
+    background: #f1f5f9;
   }
 `;
 
@@ -1462,9 +1169,10 @@ const ModalBody = styled.div`
 `;
 
 const ModalDesc = styled.p`
-  color: ${THEME.textSecondary};
+  color: #475569;
   margin-bottom: 1.5rem;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 500;
 `;
 
 const OptionGrid = styled.div`
@@ -1473,27 +1181,26 @@ const OptionGrid = styled.div`
   gap: 1rem;
 `;
 
-const OptionItem = styled(motion.div)`
+const OptionItem = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid ${THEME.border};
-  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
   cursor: pointer;
-  transition: all 0.2s;
   
   &:hover {
-    border-color: ${THEME.primary};
-    background: ${THEME.primary}05;
+    border-color: #2563eb;
+    background: #eff6ff;
   }
 `;
 
 const OptionIcon = styled.div`
   width: 48px;
   height: 48px;
-  background: ${props => `${props.$color}15`};
-  border-radius: 16px;
+  background: ${props => `${props.$color}10`};
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1506,41 +1213,42 @@ const OptionInfo = styled.div`
 
 const OptionName = styled.div`
   font-weight: 700;
+  font-size: 1rem;
   margin-bottom: 0.25rem;
+  color: #0f172a;
 `;
 
 const OptionDesc = styled.div`
-  font-size: 0.75rem;
-  color: ${THEME.textLight};
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
 `;
 
-const ArrowIcon = styled.div`
-  color: ${THEME.textLight};
-  transition: transform 0.2s;
-  
-  ${OptionItem}:hover & {
-    transform: translateX(4px);
-    color: ${THEME.primary};
-  }
-`;
-
-const EmptyState = styled(motion.div)`
+const EmptyState = styled.div`
   text-align: center;
   padding: 4rem;
   background: white;
-  border-radius: 32px;
-  border: 1px solid ${THEME.border};
+  border-radius: 28px;
+  border: 1px solid #e2e8f0;
+`;
+
+const EmptyIcon = styled.div`
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
 `;
 
 const EmptyTitle = styled.h4`
   font-size: 1.2rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
+  color: #0f172a;
 `;
 
 const EmptyDesc = styled.p`
-  color: ${THEME.textLight};
+  color: #64748b;
   font-size: 0.9rem;
+  font-weight: 500;
 `;
 
 export default React.memo(SalesDashboard);

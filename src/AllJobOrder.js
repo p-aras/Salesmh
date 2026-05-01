@@ -1081,50 +1081,97 @@ if (season && season !== "—") {
 };
 
 const drawStickerBox = (startY, pageNumber) => {
-  const boxWidth = 140;
-  const boxHeight = 80;
-  const boxX = LANDSCAPE_W - boxWidth - M; // RIGHT side
-  const boxY = startY;
+  const boxWidth = 130;
+  const boxHeight = 70;
+  const boxSpacing = 20;
+  const boxX1 = LANDSCAPE_W - (boxWidth * 2 + boxSpacing) - M;
+  const boxX2 = boxX1 + boxWidth + boxSpacing;
   
-  // NORMAL STICKER BOX (your original design)
+  // Draw PARTA CHECKED sticker
   doc.setDrawColor(...C.black);
   doc.setLineWidth(1.5);
-  doc.rect(boxX, boxY, boxWidth, boxHeight);
+  doc.rect(boxX1, startY, boxWidth, boxHeight);
   
   doc.setFillColor(255, 255, 255);
-  doc.rect(boxX, boxY, boxWidth, boxHeight, "F");
+  doc.rect(boxX1, startY, boxWidth, boxHeight, "F");
   
-  let contentY = boxY + 12;
-  
-  setFont("bold", 12);
-  doc.text("PARTA CHECKED", boxX + boxWidth / 2, contentY, { align: "center" });
-  contentY += 18;
-  
-  // DATE section
-  setFont("bold", 10);
-  doc.text("DATE :", boxX + 15, contentY);
-  
-  const dateLineY = contentY + 4;
-  doc.setDrawColor(...C.black);
-  doc.setLineWidth(0.8);
-  doc.line(boxX + 50, dateLineY, boxX + boxWidth - 15, dateLineY);
-  contentY += 16;
+  let contentY = startY + 10;
   
   setFont("bold", 11);
-  doc.text("Cutting Head Sign", boxX + boxWidth / 2, contentY, { align: "center" });
+  doc.text("PARTA CHECKED", boxX1 + boxWidth / 2, contentY, { align: "center" });
+  contentY += 15;
   
-  // SIMPLE SIGNATURE ON LEFT SIDE (no box, just text and line)
-const signatureBottomY = LANDSCAPE_H - 60; // Position at bottom of page
-setFont("bold", 12);
-doc.text("SIGNATURE", M + 70, signatureBottomY, { align: "center" });
-
-// Signature line
-const signatureLineY = signatureBottomY + 20;
-doc.setDrawColor(...C.black);
-doc.setLineWidth(0.8);
-doc.line(M + 10, signatureLineY, M + 130, signatureLineY);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  doc.line(boxX1 + 10, contentY, boxX1 + boxWidth - 10, contentY);
+  contentY += 10;
   
-  return boxY + boxHeight;
+  setFont("bold", 9);
+  doc.text("DATE :", boxX1 + 12, contentY);
+  
+  const dateLineStartX1 = boxX1 + 45;
+  const dateLineEndX1 = boxX1 + boxWidth - 12;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  const dateLineY1 = contentY + 3;
+  doc.line(dateLineStartX1, dateLineY1, dateLineEndX1, dateLineY1);
+  contentY += 14;
+  
+  setFont("bold", 10);
+  doc.text("Parta Incharge Sign", boxX1 + boxWidth / 2, contentY, { align: "center" });
+  contentY += 7;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  const signLineY1 = contentY + 1;
+  const signLineStartX1 = boxX1 + 15;
+  const signLineEndX1 = boxX1 + boxWidth - 15;
+  doc.line(signLineStartX1, signLineY1, signLineEndX1, signLineY1);
+  
+  // Draw QUALITY CHECKED sticker
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1.5);
+  doc.rect(boxX2, startY, boxWidth, boxHeight);
+  
+  doc.setFillColor(255, 255, 255);
+  doc.rect(boxX2, startY, boxWidth, boxHeight, "F");
+  
+  contentY = startY + 10;
+  
+  setFont("bold", 11);
+  doc.text("QUALITY CHECKED", boxX2 + boxWidth / 2, contentY, { align: "center" });
+  contentY += 15;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  doc.line(boxX2 + 10, contentY, boxX2 + boxWidth - 10, contentY);
+  contentY += 10;
+  
+  setFont("bold", 9);
+  doc.text("DATE :", boxX2 + 12, contentY);
+  
+  const dateLineStartX2 = boxX2 + 45;
+  const dateLineEndX2 = boxX2 + boxWidth - 12;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  const dateLineY2 = contentY + 3;
+  doc.line(dateLineStartX2, dateLineY2, dateLineEndX2, dateLineY2);
+  contentY += 14;
+  
+  setFont("bold", 10);
+  doc.text("Quality Incharge Sign", boxX2 + boxWidth / 2, contentY, { align: "center" });
+  contentY += 7;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  const signLineY2 = contentY + 1;
+  const signLineStartX2 = boxX2 + 15;
+  const signLineEndX2 = boxX2 + boxWidth - 15;
+  doc.line(signLineStartX2, signLineY2, signLineEndX2, signLineY2);
+  
+  return startY + boxHeight + 8;
 };
       
       // Function to draw a table page
@@ -2747,55 +2794,99 @@ const renderLandscapeTablePage = async () => {
     return separatorY + 5; // Reduced from 10 to 5
   };
   
-  const drawStickerBox = (startY, pageNumber) => {
-    const boxWidth = 130; // Reduced from 140 to 130
-    const boxHeight = 70; // Reduced from 80 to 70
-    const boxX = LANDSCAPE_W - boxWidth - M;
-    const boxY = startY;
-    
-    doc.setDrawColor(...C.black);
-    doc.setLineWidth(1.5);
-    doc.rect(boxX, boxY, boxWidth, boxHeight);
-    
-    doc.setFillColor(255, 255, 255);
-    doc.rect(boxX, boxY, boxWidth, boxHeight, "F");
-    
-    let contentY = boxY + 10; // Reduced from 12 to 10
-    
-    setFont("bold", 11); // Reduced from 12 to 11
-    doc.text("PARTA CHECKED", boxX + boxWidth / 2, contentY, { align: "center" });
-    contentY += 15; // Reduced from 18 to 15
-    
-    doc.setDrawColor(...C.black);
-    doc.setLineWidth(0.8);
-    doc.line(boxX + 10, contentY, boxX + boxWidth - 10, contentY);
-    contentY += 10; // Reduced from 12 to 10
-    
-    setFont("bold", 9); // Reduced from 10 to 9
-    doc.text("DATE :", boxX + 12, contentY); // Reduced from 15 to 12
-    
-    const dateLineStartX = boxX + 45; // Reduced from 50 to 45
-    const dateLineEndX = boxX + boxWidth - 12; // Reduced from 15 to 12
-    
-    doc.setDrawColor(...C.black);
-    doc.setLineWidth(0.8);
-    const dateLineY = contentY + 3; // Reduced from 4 to 3
-    doc.line(dateLineStartX, dateLineY, dateLineEndX, dateLineY);
-    contentY += 14; // Reduced from 16 to 14
-    
-    setFont("bold", 10); // Reduced from 11 to 10
-    doc.text("Cutting Head Sign", boxX + boxWidth / 2, contentY, { align: "center" });
-    contentY += 7; // Reduced from 8 to 7
-    
-    doc.setDrawColor(...C.black);
-    doc.setLineWidth(0.8);
-    const signLineY = contentY + 1; // Reduced from 2 to 1
-    const signLineStartX = boxX + 15; // Reduced from 20 to 15
-    const signLineEndX = boxX + boxWidth - 15;
-    doc.line(signLineStartX, signLineY, signLineEndX, signLineY);
-    
-    return boxY + boxHeight + 8; // Reduced spacing after box
-  };
+ const drawStickerBox = (startY, pageNumber) => {
+  const boxWidth = 130;
+  const boxHeight = 70;
+  const boxSpacing = 20;
+  const boxX1 = LANDSCAPE_W - (boxWidth * 2 + boxSpacing) - M;
+  const boxX2 = boxX1 + boxWidth + boxSpacing;
+  
+  // Draw PARTA CHECKED sticker
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1.5);
+  doc.rect(boxX1, startY, boxWidth, boxHeight);
+  
+  doc.setFillColor(255, 255, 255);
+  doc.rect(boxX1, startY, boxWidth, boxHeight, "F");
+  
+  let contentY = startY + 10;
+  
+  setFont("bold", 11);
+  doc.text("PARTA CHECKED", boxX1 + boxWidth / 2, contentY, { align: "center" });
+  contentY += 15;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  doc.line(boxX1 + 10, contentY, boxX1 + boxWidth - 10, contentY);
+  contentY += 10;
+  
+  setFont("bold", 9);
+  doc.text("DATE :", boxX1 + 12, contentY);
+  
+  const dateLineStartX1 = boxX1 + 45;
+  const dateLineEndX1 = boxX1 + boxWidth - 12;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  const dateLineY1 = contentY + 3;
+  doc.line(dateLineStartX1, dateLineY1, dateLineEndX1, dateLineY1);
+  contentY += 14;
+  
+  setFont("bold", 10);
+  doc.text("Parta Incharge Sign", boxX1 + boxWidth / 2, contentY, { align: "center" });
+  contentY += 7;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  const signLineY1 = contentY + 1;
+  const signLineStartX1 = boxX1 + 15;
+  const signLineEndX1 = boxX1 + boxWidth - 15;
+  doc.line(signLineStartX1, signLineY1, signLineEndX1, signLineY1);
+  
+  // Draw QUALITY CHECKED sticker
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1.5);
+  doc.rect(boxX2, startY, boxWidth, boxHeight);
+  
+  doc.setFillColor(255, 255, 255);
+  doc.rect(boxX2, startY, boxWidth, boxHeight, "F");
+  
+  contentY = startY + 10;
+  
+  setFont("bold", 11);
+  doc.text("QUALITY CHECKED", boxX2 + boxWidth / 2, contentY, { align: "center" });
+  contentY += 15;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  doc.line(boxX2 + 10, contentY, boxX2 + boxWidth - 10, contentY);
+  contentY += 10;
+  
+  setFont("bold", 9);
+  doc.text("DATE :", boxX2 + 12, contentY);
+  
+  const dateLineStartX2 = boxX2 + 45;
+  const dateLineEndX2 = boxX2 + boxWidth - 12;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  const dateLineY2 = contentY + 3;
+  doc.line(dateLineStartX2, dateLineY2, dateLineEndX2, dateLineY2);
+  contentY += 14;
+  
+  setFont("bold", 10);
+  doc.text("Quality Checked Sign", boxX2 + boxWidth / 2, contentY, { align: "center" });
+  contentY += 7;
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.8);
+  const signLineY2 = contentY + 1;
+  const signLineStartX2 = boxX2 + 15;
+  const signLineEndX2 = boxX2 + boxWidth - 15;
+  doc.line(signLineStartX2, signLineY2, signLineEndX2, signLineY2);
+  
+  return startY + boxHeight + 8;
+};
   
   const drawTablePage = (shadeBatch, pageIndex, totalPages, startSrNo) => {
     const tableStartY = drawPageHeader(pageIndex + 1, totalPages);
