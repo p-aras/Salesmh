@@ -22,9 +22,9 @@ const initialState = {
 const API_KEY = 'AIzaSyAomDFBkOySlIxKWSKGHe6ATv9gvaBr7uk';
 const SPREADSHEET_ID = '1Frg7kHPiiGeydB02LsGKJ-0UeO8N45-19skJRRvU_Qg';
 const PARTY_RANGE = 'Parties!A2:A';
-const ORDER_RANGE = 'Orderss!B2:B';
-// Updated Web App URL that handles CORS properly
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwsojrRrH7QyqUitK1PH_JuRVAuwCJpEHz0VBGgF30zRW3YyC8ONyMN8YZtiJ7gIKq1/exec';
+const ORDER_RANGE = 'Orders!B2:B';
+const ALL_ORDERS_RANGE = 'Orders!A2:M';
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwh24O_HFs9ihShK5ArOOvJOXfPkveX9Tx6VFyaKSNhK0WMT_-TSZoo5p5q_k8ZlDbR/exec';
 
 const SalesOrderForm = () => {
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -35,11 +35,15 @@ const SalesOrderForm = () => {
   const [submitStatus, setSubmitStatus] = useState(null);
   const [errors, setErrors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(Date.now());
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [submittedOrderNo, setSubmittedOrderNo] = useState(null);
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showRepeatOrderDialog, setShowRepeatOrderDialog] = useState(false);
+  const [repeatOrderNo, setRepeatOrderNo] = useState('');
+  const [repeatOrderLoading, setRepeatOrderLoading] = useState(false);
+  const [repeatOrderError, setRepeatOrderError] = useState('');
 
   const navigate = useNavigate();
 
@@ -48,8 +52,6 @@ const SalesOrderForm = () => {
     if (!formData.partyName) newErrors.partyName = 'Party name is required';
     if (!formData.season) newErrors.season = 'Season is required';
     if (!formData.itemName) newErrors.itemName = 'Item name is required';
-    if (!formData.quantity) newErrors.quantity = 'Quantity is required';
-    if (!formData.rate) newErrors.rate = 'Rate is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -126,74 +128,109 @@ const SalesOrderForm = () => {
 
   const uploadImageToDrive = async (file, orderNo) => {
     try {
-      console.log('📤 Starting image upload for order:', orderNo);
-      
       const base64 = await imageCompression.getDataUrlFromFile(file);
       const imageBase64 = base64.split(',')[1];
 
-      // Use a proxy or alternative approach for image upload
-      const formData = new FormData();
-      formData.append('image', imageBase64);
-      formData.append('filename', `order_${orderNo}_${Date.now()}.jpg`);
-
       const uploadRes = await fetch('https://script.google.com/macros/s/AKfycbwh24O_HFs9ihShK5ArOOvJOXfPkveX9Tx6VFyaKSNhK0WMT_-TSZoo5p5q_k8ZlDbR/exec', {
         method: 'POST',
-        mode: 'no-cors', // Use no-cors for image upload too
-        body: formData,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          image: imageBase64,
+          filename: `order_${orderNo}_${Date.now()}.jpg`,
+        }),
       });
 
-      // With no-cors, we can't read response, so assume success
-      console.log('📸 Image upload request sent');
-      
-      // Return a placeholder URL (you'll need to store the actual URL from server logs)
-      return `https://drive.google.com/uc?export=view&id=order_${orderNo}`;
+      const uploadJson = await uploadRes.json();
+
+      if (uploadJson.status === 'success' && uploadJson.url) {
+        const fileId = uploadJson.url.split('/d/')[1]?.split('/')[0];
+        return fileId
+          ? `https://drive.google.com/uc?id=${fileId}`
+          : uploadJson.url;
+      } else {
+        console.error('❌ Upload response error:', uploadJson);
+        throw new Error('Image upload failed');
+      }
     } catch (err) {
       console.error('❌ Image upload error:', err);
       throw err;
     }
   };
 
-  // Function to submit using form submission (bypasses CORS)
-  const submitUsingForm = (payload) => {
-    return new Promise((resolve, reject) => {
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = WEB_APP_URL;
-      form.target = 'hidden_iframe';
+  const handleRepeatOrder = async () => {
+    if (!repeatOrderNo.trim()) {
+      setRepeatOrderError('Please enter an Order Number');
+      return;
+    }
+
+    setRepeatOrderLoading(true);
+    setRepeatOrderError('');
+
+    try {
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(ALL_ORDERS_RANGE)}?key=${API_KEY}`
+      );
       
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = 'data';
-      input.value = JSON.stringify(payload);
-      form.appendChild(input);
+      const data = await response.json();
+      const rows = data.values;
+
+      if (!rows || rows.length === 0) {
+        throw new Error('No orders found');
+      }
+
+      const orderRow = rows.find(row => row[1] === repeatOrderNo.trim());
+
+      if (!orderRow) {
+        throw new Error(`Order #${repeatOrderNo} not found`);
+      }
+
+      const quantityStr = orderRow[9] || '';
+      const quantityMatch = quantityStr.match(/^(\d+)\s+(.+)$/);
+      const quantityValue = quantityMatch ? quantityMatch[1] : quantityStr;
+      const quantityUnit = quantityMatch ? quantityMatch[2] : 'PCS';
+
+      let photoUrl = orderRow[12] || null;
       
-      // Create hidden iframe
-      let iframe = document.getElementById('hidden_iframe');
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'hidden_iframe';
-        iframe.name = 'hidden_iframe';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
+      // Convert to viewable format if it's a Google Drive link
+      if (photoUrl && photoUrl.includes('uc?id=')) {
+        const fileId = photoUrl.split('uc?id=')[1];
+        photoUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
       }
       
-      form.target = 'hidden_iframe';
-      document.body.appendChild(form);
+      const nextOrderNo = String(parseInt(formData.orderNo, 10));
+
+      setFormData({
+        ...formData,
+        orderNo: nextOrderNo,
+        date: today,
+        partyName: orderRow[2] || '',
+        season: orderRow[3] || '',
+        itemName: orderRow[4] || '',
+        brand: orderRow[6] || '',
+        colour: orderRow[7] || '',
+        size: orderRow[8] || '',
+        quantity: quantityValue,
+        rate: orderRow[10] || '',
+        remarks: orderRow[11] || '',
+        qtyUnit: quantityUnit,
+        photo: null,
+        photoPreview: photoUrl,
+      });
+
+      setShowRepeatOrderDialog(false);
+      setRepeatOrderNo('');
       
-      // Set timeout for response
-      const timeout = setTimeout(() => {
-        document.body.removeChild(form);
-        reject(new Error('Request timeout'));
-      }, 30000);
-      
-      iframe.onload = () => {
-        clearTimeout(timeout);
-        document.body.removeChild(form);
-        resolve({ status: 'success' });
-      };
-      
-      form.submit();
-    });
+      setSubmitStatus('repeat_success');
+      setTimeout(() => setSubmitStatus(null), 3000);
+
+    } catch (err) {
+      console.error('❌ Repeat order error:', err);
+      setRepeatOrderError(err.message);
+    } finally {
+      setRepeatOrderLoading(false);
+    }
   };
 
   const handleSubmit = useCallback(async (e) => {
@@ -204,51 +241,37 @@ const SalesOrderForm = () => {
     setSubmitStatus(null);
 
     const payload = { ...formData };
-    
+
     if (payload.quantity) {
       const unit = payload.qtyUnit || 'PCS';
       payload.quantity = `${String(payload.quantity).trim()} ${unit}`.trim();
     }
     delete payload.qtyUnit;
-    delete payload.photoPreview;
-
-    console.log('📦 Submitting order payload:', payload);
 
     try {
-      let photoUrl = null;
-      
-      if (payload.photo && payload.photo instanceof File) {
+      // Only upload if it's a new file (not an existing URL)
+      if (payload.photo && typeof payload.photo !== 'string' && payload.photo instanceof File) {
         setUploadingImage(true);
-        console.log('📸 Uploading image...');
-        photoUrl = await uploadImageToDrive(payload.photo, payload.orderNo);
-        payload.photo = photoUrl;
-        console.log('✅ Image uploaded:', photoUrl);
+        const url = await uploadImageToDrive(payload.photo, payload.orderNo);
+        payload.photo = url;
         setUploadingImage(false);
-      } else {
-        delete payload.photo;
+      } else if (payload.photoPreview && typeof payload.photoPreview === 'string' && payload.photoPreview.startsWith('http')) {
+        // If it's an existing photo URL from repeat order, keep it as is
+        payload.photo = payload.photoPreview;
       }
 
-      // Try using fetch with no-cors first
-      try {
-        const response = await fetch(WEB_APP_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-        
-        // With no-cors, we can't read response, so assume success
-        console.log('📡 Request sent successfully');
-        
-      } catch (fetchError) {
-        console.warn('Fetch failed, trying form submission:', fetchError);
-        // Fallback to form submission
-        await submitUsingForm(payload);
+      const response = await fetch(WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await response.json();
+      
+      if (json.status !== 'success') {
+        throw new Error('Google Sheets Error');
       }
 
-      // Success
       setSubmittedOrderNo(payload.orderNo);
       setShowSuccess(true);
       
@@ -260,8 +283,6 @@ const SalesOrderForm = () => {
         qtyUnit: 'PCS',
       }));
       
-      setFileInputKey(Date.now());
-      
       setTimeout(() => {
         setShowSuccess(false);
         setSubmittedOrderNo(null);
@@ -272,6 +293,7 @@ const SalesOrderForm = () => {
     } catch (err) {
       console.error('❌ Submission error:', err);
       setSubmitStatus('error');
+      
       setTimeout(() => setSubmitStatus(null), 5000);
     } finally {
       setSubmitting(false);
@@ -280,7 +302,11 @@ const SalesOrderForm = () => {
   }, [formData, today, validateForm]);
 
   const removePhoto = () => {
-    setFormData(f => ({ ...f, photo: null, photoPreview: null }));
+    setFormData(f => ({ 
+      ...f, 
+      photo: null, 
+      photoPreview: null 
+    }));
   };
 
   if (loading) {
@@ -309,14 +335,33 @@ const SalesOrderForm = () => {
         </div>
       )}
       
+      {/* Repeat Order Success Notification */}
+      {submitStatus === 'repeat_success' && (
+        <div style={styles.successNotification}>
+          <div style={styles.notificationContent}>
+            <span style={styles.emoji}>🔄</span>
+            <div>
+              <h3 style={styles.notificationTitle}>Order Loaded Successfully!</h3>
+              <p style={styles.notificationMessage}>Order details have been copied. Review and submit.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setSubmitStatus(null)} 
+            style={styles.notificationCloseButton}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+      
       {/* Error Notification */}
       {submitStatus === 'error' && (
         <div style={styles.errorNotification}>
           <div style={styles.notificationContent}>
             <span style={styles.emoji}>⚠</span>
             <div>
-              <h3 style={styles.notificationTitle}>Failed to Save Order</h3>
-              <p style={styles.notificationMessage}>Please check your connection and try again.</p>
+              <h3 style={styles.notificationTitle}>Oops! Something went wrong</h3>
+              <p style={styles.notificationMessage}>Failed to save order. Please try again.</p>
             </div>
           </div>
           <button 
@@ -354,6 +399,13 @@ const SalesOrderForm = () => {
             <div style={styles.badgeContainer}>
               <span style={styles.badge}>🆔 Order #{formData.orderNo}</span>
               <span style={styles.badge}>📅 {formData.date}</span>
+              <button
+                type="button"
+                onClick={() => setShowRepeatOrderDialog(true)}
+                style={styles.repeatOrderButton}
+              >
+                🔄 Repeat Order
+              </button>
             </div>
           </div>
         </div>
@@ -547,6 +599,12 @@ const SalesOrderForm = () => {
                     src={formData.photoPreview} 
                     alt="Preview" 
                     style={styles.photoPreview}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="%23999" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"%3E%3Crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3E%3C/rect%3E%3Ccircle cx="8.5" cy="8.5" r="1.5"%3E%3C/circle%3E%3Cpolyline points="21 15 16 10 5 21"%3E%3C/polyline%3E%3C/svg%3E';
+                      e.target.style.objectFit = 'contain';
+                      e.target.style.opacity = '0.5';
+                    }}
                   />
                   <button
                     type="button"
@@ -649,6 +707,62 @@ const SalesOrderForm = () => {
             </div>
           </div>
         )}
+
+        {/* Repeat Order Dialog */}
+        {showRepeatOrderDialog && (
+          <div style={styles.dialogOverlay}>
+            <div style={styles.dialogBox}>
+              <h3 style={styles.dialogTitle}>🔄 Repeat Order</h3>
+              <p style={styles.dialogSubtitle}>Enter the Order Number to copy all details</p>
+              
+              <div style={styles.repeatOrderInputGroup}>
+                <input
+                  type="text"
+                  style={styles.repeatOrderInput}
+                  placeholder="Enter Order Number (e.g., 1, 2, 3...)"
+                  value={repeatOrderNo}
+                  onChange={(e) => {
+                    setRepeatOrderNo(e.target.value);
+                    setRepeatOrderError('');
+                  }}
+                  disabled={repeatOrderLoading}
+                  autoFocus
+                />
+                {repeatOrderError && (
+                  <p style={styles.errorText}>❌ {repeatOrderError}</p>
+                )}
+              </div>
+
+              <div style={styles.repeatOrderActions}>
+                <button
+                  onClick={handleRepeatOrder}
+                  style={styles.repeatOrderConfirmButton}
+                  disabled={repeatOrderLoading}
+                >
+                  {repeatOrderLoading ? (
+                    <>
+                      <span style={styles.submitSpinner}>🌀</span>
+                      Loading...
+                    </>
+                  ) : (
+                    'Copy Order'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRepeatOrderDialog(false);
+                    setRepeatOrderNo('');
+                    setRepeatOrderError('');
+                  }}
+                  style={styles.dialogCancel}
+                  disabled={repeatOrderLoading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Hidden Camera Input */}
@@ -663,6 +777,8 @@ const SalesOrderForm = () => {
         onChange={async (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
+
+          console.log('📸 Camera captured file:', file);
 
           try {
             const shouldCompress = file.size > 150 * 1024;
@@ -683,6 +799,7 @@ const SalesOrderForm = () => {
               photoPreview: base64,
             }));
             setFileInputKey(Date.now());
+            console.log('✅ Camera image preview ready');
           } catch (err) {
             console.error('❌ Camera image error:', err);
           }
@@ -699,14 +816,19 @@ const SalesOrderForm = () => {
         style={{ display: 'none' }}
         onChange={(e) => {
           const file = e.target.files?.[0];
+          console.log('🖼 Gallery selected file:', file);
           if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
+              console.log('✅ FileReader result:', reader.result);
               setFormData(f => ({
                 ...f,
                 photo: file,
                 photoPreview: reader.result,
               }));
+            };
+            reader.onerror = (err) => {
+              console.error('❌ FileReader error:', err);
             };
             reader.readAsDataURL(file);
             setFileInputKey(Date.now());
@@ -793,6 +915,22 @@ const styles = {
     cursor: 'pointer',
     transition: 'background-color 0.2s ease',
   },
+  repeatOrderButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    border: 'none',
+    color: 'white',
+    fontSize: '14px',
+    fontWeight: '500',
+    padding: '8px 16px',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    backdropFilter: 'blur(5px)',
+    marginLeft: '8px',
+  },
   popupOverlay: {
     position: 'fixed',
     top: 0,
@@ -864,6 +1002,7 @@ const styles = {
   badgeContainer: {
     display: 'flex',
     gap: '12px',
+    alignItems: 'center',
   },
   badge: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -973,10 +1112,6 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     backgroundColor: '#f9fafb',
-    ':hover': {
-      borderColor: '#8b5cf6',
-      backgroundColor: '#f5f3ff',
-    },
   },
   fileUploadContent: {
     display: 'flex',
@@ -1051,10 +1186,6 @@ const styles = {
     padding: '0',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     transition: 'all 0.2s ease',
-    ':hover': {
-      backgroundColor: '#dc2626',
-      transform: 'scale(1.1)',
-    },
   },
   removeIcon: {
     width: '16px',
@@ -1066,9 +1197,6 @@ const styles = {
   actionsContainer: {
     display: 'flex',
     justifyContent: 'flex-end',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-    gap: '10px',
   },
   submitButton: {
     display: 'flex',
@@ -1124,9 +1252,56 @@ const styles = {
     backgroundColor: '#fff',
     padding: '32px',
     borderRadius: '16px',
-    width: 'min(90vw, 380px)',
+    width: 'min(90vw, 420px)',
     textAlign: 'center',
     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+  },
+  dialogTitle: {
+    fontSize: '20px',
+    fontWeight: '700',
+    marginBottom: '8px',
+    color: '#1f2937',
+  },
+  dialogSubtitle: {
+    fontSize: '14px',
+    color: '#6b7280',
+    marginBottom: '24px',
+  },
+  repeatOrderInputGroup: {
+    marginBottom: '24px',
+  },
+  repeatOrderInput: {
+    width: '100%',
+    padding: '14px 16px',
+    border: '1px solid #e5e7eb',
+    borderRadius: '10px',
+    fontSize: '16px',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+    boxSizing: 'border-box',
+  },
+  repeatOrderActions: {
+    display: 'flex',
+    gap: '12px',
+    flexDirection: 'column',
+  },
+  repeatOrderConfirmButton: {
+    width: '100%',
+    padding: '14px',
+    backgroundColor: '#7c3aed',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    fontSize: '15px',
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 4px 6px -1px rgba(124, 58, 237, 0.2)',
   },
   dialogButton: {
     width: '100%',
@@ -1144,6 +1319,7 @@ const styles = {
     justifyContent: 'center',
     gap: '8px',
     transition: 'all 0.3s ease',
+    boxShadow: '0 4px 6px -1px rgba(124, 58, 237, 0.2)',
   },
   dialogCancel: {
     width: '100%',
@@ -1165,6 +1341,21 @@ const styles = {
     alignItems: 'center',
     gap: '4px',
   },
+  successNotification: {
+    marginBottom: '24px',
+    backgroundColor: '#ecfdf5',
+    border: '1px solid #10b981',
+    color: '#065f46',
+    padding: '18px 24px',
+    borderRadius: '12px',
+    maxWidth: '1200px',
+    marginLeft: 'auto',
+    marginRight: 'auto',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  },
   errorNotification: {
     marginBottom: '24px',
     backgroundColor: '#fef2f2',
@@ -1184,7 +1375,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '16px',
-    flex: 1,
   },
   emoji: {
     fontSize: '24px',
@@ -1207,17 +1397,6 @@ const styles = {
     cursor: 'pointer',
     opacity: 0.7,
     padding: '4px',
-  },
-  retryButton: {
-    marginTop: '8px',
-    padding: '6px 12px',
-    backgroundColor: '#dc2626',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: '500',
   },
   loadingContainer: {
     display: 'flex',

@@ -8,7 +8,7 @@ import imageCompression from 'browser-image-compression';
 
 const SPREADSHEET_ID = '1Frg7kHPiiGeydB02LsGKJ-0UeO8N45-19skJRRvU_Qg';
 const API_KEY = 'AIzaSyAomDFBkOySlIxKWSKGHe6ATv9gvaBr7uk';
-const RANGE = 'Orderss!A1:Z';
+const RANGE = 'Orders!A1:Z';
 const DRIVE_IMAGE_WEBAPP = 'https://script.google.com/macros/s/AKfycbwh24O_HFs9ihShK5ArOOvJOXfPkveX9Tx6VFyaKSNhK0WMT_-TSZoo5p5q_k8ZlDbR/exec';
 
 const AllOrders = () => {
@@ -472,45 +472,79 @@ const AllOrders = () => {
       }
     }
   };
+const loadImageAsBase64 = async (url) => {
+  if (!url || typeof url !== 'string') {
+    console.warn('⚠️ Invalid image URL:', url);
+    throw new Error('Invalid URL');
+  }
 
-  const loadImageAsBase64 = (url) => {
+  // Function to convert blob to base64
+  const blobToBase64 = (blob) => {
     return new Promise((resolve, reject) => {
-      if (!url || typeof url !== 'string') {
-        console.warn('⚠️ Invalid image URL:', url);
-        return reject(new Error('Invalid URL'));
-      }
-
-      const cleanUrl = url.replace(/^https?:\/\//, '');
-      const proxiedUrl = `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}`;
-
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-
-          const base64 = canvas.toDataURL('image/jpeg');
-          resolve(base64);
-        } catch (err) {
-          console.error('❌ Canvas conversion error:', err);
-          reject(err);
-        }
-      };
-
-      img.onerror = () => {
-        console.warn('⚠️ Image failed to load:', proxiedUrl);
-        reject(new Error('Image load failed'));
-      };
-
-      img.src = proxiedUrl;
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
   };
+
+  try {
+    let imageUrl = url;
+    
+    // Convert Google Drive URLs to direct download links
+    if (url.includes('drive.google.com')) {
+      let fileId = null;
+      
+      if (url.includes('uc?id=')) {
+        fileId = url.split('uc?id=')[1]?.split('&')[0];
+      } else if (url.includes('/file/d/')) {
+        fileId = url.split('/file/d/')[1]?.split('/')[0];
+      } else if (url.includes('open?id=')) {
+        fileId = url.split('open?id=')[1]?.split('&')[0];
+      }
+      
+      if (fileId) {
+        // Try multiple export formats
+        const exportUrls = [
+          `https://drive.google.com/uc?export=download&id=${fileId}`,
+          `https://drive.google.com/uc?export=view&id=${fileId}`,
+          `https://lh3.googleusercontent.com/d/${fileId}`,
+          // Using a public proxy for Google Drive images
+          `https://images.weserv.nl/?url=drive.google.com/uc?id=${fileId}&export=download`
+        ];
+        
+        for (const tryUrl of exportUrls) {
+          try {
+            const response = await fetch(tryUrl);
+            if (response.ok) {
+              const blob = await response.blob();
+              if (blob.type.startsWith('image/')) {
+                return await blobToBase64(blob);
+              }
+            }
+          } catch (err) {
+            console.warn(`Failed with URL: ${tryUrl}`, err);
+          }
+        }
+        throw new Error('Could not load Google Drive image');
+      }
+    }
+    
+    // For non-Google Drive URLs, use the proxy
+    const cleanUrl = imageUrl.replace(/^https?:\/\//, '');
+    const proxiedUrl = `https://images.weserv.nl/?url=${encodeURIComponent(cleanUrl)}&w=800&h=800&fit=cover`;
+    
+    const response = await fetch(proxiedUrl);
+    if (!response.ok) throw new Error('Failed to fetch image');
+    
+    const blob = await response.blob();
+    return await blobToBase64(blob);
+    
+  } catch (error) {
+    console.error('❌ Error loading image:', error);
+    throw error;
+  }
+};
 
   const onGenerateClick = (order) => {
     // Regular Job Order - does NOT update sheet
