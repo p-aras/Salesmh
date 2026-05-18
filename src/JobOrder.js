@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 
 const API_KEY = "AIzaSyAomDFBkOySlIxKWSKGHe6ATv9gvaBr7uk";
@@ -10,7 +10,7 @@ const SHEET_ID1 = "1fKSwGBIpzWEFk566WRQ4bzQ0anJlmasoY8TwrTLQHXI";
 
 const MAX_ROWS = 10000;
 const GAS_WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbzmfWypKJuAzaS5HD5OOyK3DU-N_PrGeRnFR0RNn_Jm_tMCWJnOnE77HfgEdcL4JYNbBQ/exec";
+  "https://script.google.com/macros/s/AKfycbzelSoypwKdJOT1vAeSsuHJ6B8H8e9JoWnhjmIWpi0qRX5pgxpWbtvLhWSE-A-f0CFV3Q/exec";
 
 const HEADER_MAP = {
   partyName: "Party Name",
@@ -21,14 +21,15 @@ const HEADER_MAP = {
   printing: "Printing",
   pattern: "Pattern",
   style: "Style",
+  fabric: "FABRIC",      // ← Change to uppercase FABRIC
+  brand: "BRAND"         // ← Change to uppercase BRAND
 };
-
 const UNIT_OPTIONS = ["SETS", "ROLLS", "PCS"];
 const ZIP_OPTIONS = ["YES", "NO", "NOT DECIDED"];
 const BONE_OPTIONS = ["YES", "NO"];
 const COLLAR_OPTIONS = ["YES", "NO"];
 const BOTTOM_TYPE_OPTIONS = ["Elastic and Stopper", "Normal Fold", "1 Inch Elastic"];
-const SUBMITTERS = ["Mohit Goyal", "EA", "Chandan", "Ravinder Singh"];
+const SUBMITTERS = [ "EA", "Ravinder Singh","Namin Jain"];
 const OTHER_SUBMITTER_TOKEN = "__ANY_OTHER__";
 const REFERRERS = ["Mohit Goyal", "EA", "Varun Goyal"];
 const TAPE_LACE_OPTIONS = ["YES", "NO", "NOT DECIDED"];
@@ -70,7 +71,7 @@ const JobOrderForm = () => {
   sticker: "",
   bone: "",
   collar: "",
-  fullBaju: "", // ADD THIS LINE
+  fullBaju: "NO", // ADD THIS LINE
 });
 
   const [lists, setLists] = useState(
@@ -331,7 +332,7 @@ function getEmptyForm(currentOrderNo = "") {
     sticker: "",
     bone: "",
     collar: "",
-    fullBaju: "", // ADD THIS LINE
+    fullBaju: "NO", // ADD THIS LINE
   };
 }
 
@@ -417,18 +418,26 @@ function getEmptyForm(currentOrderNo = "") {
 
     const totalSelected = Array.from(counts.values()).reduce((a, b) => a + b, 0);
 
-    const saveAndClose = () => {
-      const orderedTokens = uniqueOrderedSizes(Array.from(counts.keys()));
-      const orderedCounts = new Map();
-      orderedTokens.forEach((tok) => {
-        const n = counts.get(tok) || 0;
-        if (n > 0) orderedCounts.set(tok, n);
-      });
-      const finalRows = countsToRows(orderedCounts);
-      setSizeRows(finalRows);
-      setFormData((prev) => ({ ...prev, size: buildSizeString(finalRows) }));
-      onClose();
-    };
+  const saveAndClose = () => {
+  const orderedTokens = uniqueOrderedSizes(Array.from(counts.keys()));
+  const orderedCounts = new Map();
+  orderedTokens.forEach((tok) => {
+    const n = counts.get(tok) || 0;
+    if (n > 0) orderedCounts.set(tok, n);
+  });
+  const finalRows = countsToRows(orderedCounts);
+  
+  // ✅ ADD VALIDATION - Prevent saving empty sizes
+  const hasValidSize = finalRows.some(row => row.value && row.value.trim());
+  if (!hasValidSize) {
+    alert("Please select at least one size before saving.");
+    return;
+  }
+  
+  setSizeRows(finalRows);
+  setFormData((prev) => ({ ...prev, size: buildSizeString(finalRows) }));
+  onClose();
+};
 
     return (
       <div style={styles.modalOverlay} onClick={onClose}>
@@ -1001,7 +1010,7 @@ const handleClearAll = useCallback(() => {
     sticker: "",
     bone: "",
     collar: "",
-    fullBaju: "", // ADD THIS LINE
+    fullBaju: "NO", // ADD THIS LINE
   }));
   setImageFile(null);
   setEmbPositions({
@@ -1048,130 +1057,231 @@ const handleClearAll = useCallback(() => {
   setSubmitSuccess(false);
 }, []);
 
-  const handleChange = (e) => {
-    const { name } = e.target;
-    let { value } = e.target;
 
-    if (name === "garmentType") {
-      const isShirt = isShirtGarment(value);
-      
-      if (isShirt) {
-        setFormData((prev) => ({
-          ...prev,
-          garmentType: value,
-          bottomType: "",
-        }));
-      } else {
-        setFormData((prev) => ({ ...prev, garmentType: value }));
+const handleChange = (e) => {
+  const { name } = e.target;
+  let { value } = e.target;
+
+  if (name === "garmentType") {
+    const isShirt = isShirtGarment(value);
+    
+    if (isShirt) {
+      setFormData((prev) => ({
+        ...prev,
+        garmentType: value,
+        bottomType: "",
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, garmentType: value }));
+    }
+    return;
+  }
+
+  if (name === "quantity") {
+    const cleaned = value.replace(/[^\d.]/g, "");
+    setFormData((prev) => ({ ...prev, [name]: cleaned }));
+    return;
+  }
+
+  if (name === "directStitching") {
+    if (value === "yes") {
+      setFormData((prev) => ({
+        ...prev,
+        directStitching: "yes",
+        emb: "",
+        printing: "",
+      }));
+      setEmbPositions({
+        FRONT: false,
+        BACK: false,
+        RIB: false,
+        ARM: false,
+        LEFT: false,
+        RIGHT: false,
+        POCKET: false,
+        COLLAR: false,
+        HOOD: false,
+        GULLA: false,
+        other: "",
+      });
+      setPrintPositions({
+        FRONT: false,
+        BACK: false,
+        RIB: false,
+        ARM: false,
+        LEFT: false,
+        RIGHT: false,
+        POCKET: false,
+        COLLAR: false,
+        HOOD: false,
+        GULLA: false,
+        other: "",
+      });
+      setShowEmbDialog(false);
+      setShowPrintDialog(false);
+    } else {
+      setFormData((prev) => ({ ...prev, directStitching: "no" }));
+    }
+    return;
+  }
+
+  if (name === "style") {
+    const v = (value || "").toLowerCase().replace(/[.\u2026]/g, "").trim();
+    if (v === "any other" || /^any\s*other$/.test(v)) {
+      setStyleOtherText("");
+      setShowStyleDialog(true);
+      return;
+    }
+    setFormData((prev) => ({ ...prev, style: value }));
+    return;
+  }
+
+  if (name === "pattern") {
+    const v = (value || "").toLowerCase().replace(/[.\u2026]/g, "").trim();
+    if (v === "any other" || /^any\s*other$/.test(v)) {
+      setPatternOtherText("");
+      setShowPatternDialog(true);
+      return;
+    }
+    setFormData((prev) => ({ ...prev, pattern: value }));
+    return;
+  }
+
+  
+  if (name === "emb") {
+    setFormData((prev) => ({ ...prev, emb: value }));
+    // Only show dialog if value is NOT "N/A" or "NOT DECIDED"
+    if (value && formData.directStitching !== "yes" && value !== "NA" && value !== "Not Decided") {
+      setShowEmbDialog(true);
+    }
+    return;
+  }
+
+  // ✅ UPDATED: Printing handler - don't open dialog for N/A or NOT DECIDED
+  if (name === "printing") {
+    setFormData((prev) => ({ ...prev, printing: value }));
+    // Only show dialog if value is NOT "N/A" or "NOT DECIDED"
+    if (value && formData.directStitching !== "yes" && value !== "NA" && value !== "Not Decided") {
+      setShowPrintDialog(true);
+    }
+    return;
+  }
+
+  if (name === "priority") {
+    if (value === "REPEATED_LOT") {
+      setShowRepeatedLotDialog(true);
+      return;
+    }
+    setFormData((prev) => ({ ...prev, priority: value }));
+    return;
+  }
+
+  const tag = e.target.tagName;
+  const type = (e.target.type || "").toLowerCase();
+  const isTextLike =
+    tag === "TEXTAREA" ||
+    (tag === "INPUT" && (type === "" || type === "text" || type === "search"));
+
+  if (isTextLike) {
+    value = value.toUpperCase();
+  }
+
+  setFormData((prev) => ({ ...prev, [name]: value }));
+};
+  // Add this new component before the Field component
+const SearchableSelect = ({ label, name, value, options, onChange, loading, emoji, disabled, required = true }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm.trim()) return options;
+    return options.filter(opt => 
+      opt.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [options, searchTerm]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
       }
-      return;
-    }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    if (name === "quantity") {
-      const cleaned = value.replace(/[^\d.]/g, "");
-      setFormData((prev) => ({ ...prev, [name]: cleaned }));
-      return;
-    }
-
-    if (name === "directStitching") {
-      if (value === "yes") {
-        setFormData((prev) => ({
-          ...prev,
-          directStitching: "yes",
-          emb: "",
-          printing: "",
-        }));
-        setEmbPositions({
-          FRONT: false,
-          BACK: false,
-          RIB: false,
-          ARM: false,
-          LEFT: false,
-          RIGHT: false,
-          POCKET: false,
-          COLLAR: false,
-          HOOD: false,
-          GULLA: false,
-          other: "",
-        });
-        setPrintPositions({
-          FRONT: false,
-          BACK: false,
-          RIB: false,
-          ARM: false,
-          LEFT: false,
-          RIGHT: false,
-          POCKET: false,
-          COLLAR: false,
-          HOOD: false,
-          GULLA: false,
-          other: "",
-        });
-        setShowEmbDialog(false);
-        setShowPrintDialog(false);
-      } else {
-        setFormData((prev) => ({ ...prev, directStitching: "no" }));
-      }
-      return;
-    }
-
-    if (name === "style") {
-      const v = (value || "").toLowerCase().replace(/[.\u2026]/g, "").trim();
-      if (v === "any other" || /^any\s*other$/.test(v)) {
-        setStyleOtherText("");
-        setShowStyleDialog(true);
-        return;
-      }
-      setFormData((prev) => ({ ...prev, style: value }));
-      return;
-    }
-
-    if (name === "pattern") {
-      const v = (value || "").toLowerCase().replace(/[.\u2026]/g, "").trim();
-      if (v === "any other" || /^any\s*other$/.test(v)) {
-        setPatternOtherText("");
-        setShowPatternDialog(true);
-        return;
-      }
-      setFormData((prev) => ({ ...prev, pattern: value }));
-      return;
-    }
-
-    if (name === "emb") {
-      setFormData((prev) => ({ ...prev, emb: value }));
-      if (value && formData.directStitching !== "yes") setShowEmbDialog(true);
-      return;
-    }
-
-    if (name === "printing") {
-      setFormData((prev) => ({ ...prev, printing: value }));
-      if (value && formData.directStitching !== "yes") setShowPrintDialog(true);
-      return;
-    }
-
-    if (name === "priority") {
-      if (value === "REPEATED_LOT") {
-        setShowRepeatedLotDialog(true);
-        return;
-      }
-      setFormData((prev) => ({ ...prev, priority: value }));
-      return;
-    }
-
-    const tag = e.target.tagName;
-    const type = (e.target.type || "").toLowerCase();
-    const isTextLike =
-      tag === "TEXTAREA" ||
-      (tag === "INPUT" && (type === "" || type === "text" || type === "search"));
-
-    if (isTextLike) {
-      value = value.toUpperCase();
-    }
-
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleSelect = (selectedValue) => {
+    onChange({ target: { name, value: selectedValue } });
+    setSearchTerm("");
+    setIsOpen(false);
   };
 
- const handleSubmit = async (e) => {
+  const isDisabled = !!disabled || loading || options.length === 0;
+  const displayValue = value || "";
+
+  return (
+    <Field label={label} emoji={emoji} required={required}>
+      <div ref={dropdownRef} style={{ position: "relative", width: "100%" }}>
+        <div
+          onClick={() => !isDisabled && setIsOpen(!isOpen)}
+          style={{
+            ...styles.searchableSelect,
+            ...(isDisabled ? styles.disabledSelect : {}),
+            ...(isOpen ? styles.searchableSelectOpen : {})
+          }}
+        >
+          <input
+            type="text"
+            value={isOpen ? searchTerm : displayValue}
+            onChange={(e) => {
+              if (isOpen) {
+                setSearchTerm(e.target.value);
+              }
+            }}
+            onFocus={() => !isDisabled && setIsOpen(true)}
+            placeholder={disabled ? "Disabled by Direct Stitching" : loading ? "Loading options..." : `Search ${label}...`}
+            disabled={isDisabled}
+            style={{
+              ...styles.searchableInput,
+              ...(isDisabled ? styles.disabledSelect : {})
+            }}
+          />
+          <span style={styles.dropdownArrow}>
+            {isOpen ? "▲" : "▼"}
+          </span>
+        </div>
+        
+        {isOpen && !isDisabled && (
+          <div style={styles.dropdownList}>
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((opt) => (
+                <div
+                  key={opt}
+                  onClick={() => handleSelect(opt)}
+                  style={{
+                    ...styles.dropdownItem,
+                    ...(opt === displayValue ? styles.dropdownItemSelected : {})
+                  }}
+                >
+                  {opt}
+                  {opt === displayValue && <span style={styles.checkMark}>✓</span>}
+                </div>
+              ))
+            ) : (
+              <div style={styles.dropdownEmpty}>
+                No options found for "{searchTerm}"
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Field>
+  );
+};
+
+const handleSubmit = async (e) => {
   e.preventDefault();
   setIsSubmitting(true);
   setError("");
@@ -1183,7 +1293,9 @@ const handleClearAll = useCallback(() => {
     if (!formData.fabric?.trim()) throw new Error("Fabric is required");
     if (!formData.shade?.trim()) throw new Error("Shade is required");
     
-    // ✅ MOVED THIS INSIDE THE TRY BLOCK - Rolls validation
+    // ✅ SIZE VALIDATION - ADD THIS LINE
+    if (!formData.size?.trim()) throw new Error("Size is required. Please click on the size field to select sizes.");
+    
     const shadeRowsFromForm = parseShadeString(formData.shade);
     const hasEmptyRolls = shadeRowsFromForm.some(row => !row.rolls || !row.rolls.trim());
     if (hasEmptyRolls) {
@@ -1397,26 +1509,27 @@ const handleClearAll = useCallback(() => {
                 />
               </Field>
 
-              <Field label="Fabric" emoji="🧶">
-                <input
-                  name="fabric"
-                  value={formData.fabric}
-                  onChange={handleChange}
-                  style={styles.input}
-                  placeholder="e.g., Organic Cotton 180 GSM"
-                  required
-                />
-              </Field>
+   <SearchableSelect
+  label="Fabric"
+  emoji="🧶"
+  name="fabric"
+  value={formData.fabric}
+  options={lists.fabric}
+  onChange={handleChange}
+  loading={loading}
+  required={true}
+/>
 
-              <Field label="Brand" emoji="🏷️" required={false}>
-                <input
-                  name="brand"
-                  value={formData.brand}
-                  onChange={handleChange}
-                  style={styles.input}
-                  placeholder="e.g., Alpha Fashion Co."
-                />
-              </Field>
+<SearchableSelect
+  label="Brand"
+  emoji="🏷️"
+  name="brand"
+  value={formData.brand}
+  options={lists.brand}
+  onChange={handleChange}
+  loading={loading}
+  required={false}
+/>
               <Select
                 label="Style"
                 emoji="👔"
@@ -1444,7 +1557,7 @@ const handleClearAll = useCallback(() => {
                   />
                 </Field>
 
-                <Field label="Size" emoji="📏" required={false}>
+                <Field label="Size" emoji="📏" required={true}>
                   <input
                     name="size"
                     value={formData.size}
@@ -2719,6 +2832,81 @@ const styles = {
     fontSize: "14px",
     color: "#ffffff",
   },
+  // Add these to your styles object
+searchableSelect: {
+  position: "relative",
+  width: "100%",
+  border: "1px solid #e2e8f0",
+  borderRadius: "8px",
+  background: "#ffffff",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+},
+searchableSelectOpen: {
+  borderColor: "#6366f1",
+  boxShadow: "0 0 0 3px rgba(99, 102, 241, 0.1)",
+},
+searchableInput: {
+  flex: 1,
+  padding: "10px 12px",
+  border: "none",
+  borderRadius: "8px",
+  fontSize: "17px",
+  color: "#000000",
+  background: "transparent",
+  outline: "none",
+  cursor: "pointer",
+},
+dropdownArrow: {
+  padding: "0 12px",
+  color: "#64748b",
+  fontSize: "12px",
+  pointerEvents: "none",
+},
+dropdownList: {
+  position: "absolute",
+  top: "calc(100% + 4px)",
+  left: 0,
+  right: 0,
+  maxHeight: "300px",
+  overflowY: "auto",
+  background: "#ffffff",
+  border: "1px solid #e2e8f0",
+  borderRadius: "8px",
+  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+  zIndex: 1000,
+},
+dropdownItem: {
+  padding: "10px 12px",
+  cursor: "pointer",
+  fontSize: "14px",
+  color: "#1e293b",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  transition: "background 0.2s",
+  "&:hover": {
+    background: "#f1f5f9",
+  },
+},
+dropdownItemSelected: {
+  background: "#eef2ff",
+  color: "#6366f1",
+  fontWeight: 500,
+},
+dropdownEmpty: {
+  padding: "20px",
+  textAlign: "center",
+  color: "#64748b",
+  fontSize: "14px",
+},
+checkMark: {
+  color: "#6366f1",
+  fontWeight: "bold",
+  fontSize: "14px",
+},
   headerRight: {
     display: "flex",
     flexDirection: "column",
@@ -2909,7 +3097,7 @@ gradientBorder: {
     alignItems: "center",
     gap: "6px",
     marginBottom: "6px",
-    fontSize: "15px",
+    fontSize: "16px",
     fontWeight: 500,
     color: "#002558",
   },
@@ -2919,14 +3107,14 @@ gradientBorder: {
   fieldRequired: {
     color: "#ef4444",
     marginLeft: "2px",
-    fontSize: "12px",
+    fontSize: "14px",
   },
   input: {
     width: "100%",
     padding: "10px 12px",
     borderRadius: "8px",
     border: "1px solid #e2e8f0",
-    fontSize: "17px",
+    fontSize: "18px",
     color: "#000000",
     background: "#ffffff",
     transition: "all 0.2s",
@@ -2936,7 +3124,7 @@ gradientBorder: {
     padding: "10px 12px",
     borderRadius: "8px",
     border: "1px solid #e2e8f0",
-    fontSize: "17px",
+    fontSize: "18px",
     color: "#000000",
     background: "#ffffff",
     cursor: "pointer",
@@ -3194,6 +3382,11 @@ gradientBorder: {
     fontSize: "14px",
     marginBottom: "20px",
   },
+  requiredFieldIndicator: {
+  color: "#ef4444",
+  fontSize: "14px",
+  marginLeft: "4px",
+},
   modalFooter: {
     display: "flex",
     gap: "12px",
