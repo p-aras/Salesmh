@@ -3135,6 +3135,10 @@ const renderLandscapeTablePage = async () => {
     await renderFirstPageWithHeading("JOB ORDER FOR CUTTING HEAD");
     doc.addPage();
     await pause(0);
+
+    await renderFirstPageWithHeading("JOB ORDER FOR FABRIC HEAD");
+    doc.addPage();
+    await pause(0);
     
     // Page 4: Second Page (Summary)
     await renderSecondPage();
@@ -3493,138 +3497,369 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
     };
 
     // ====== RENDER FIRST PAGE ======
-    const renderFirstPage = async (row) => {
-      const joNum = (row?.["Job Order No"] ?? "").toString().trim() || "Unknown";
-      
-      // Check if we should show stars
-      const priorityText = val("Priority", row)?.toString() || "";
-      const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
-                         priorityText.toLowerCase().includes("repeated_lot") || 
-                         priorityText.toLowerCase().includes("repeated") ||
-                         priorityText.toLowerCase().includes("repeat");
-      
-      PAGE = firstPageScaffold();
-      y = shouldStars ? 190 : 170; // Adjust Y position based on stars
+  // ====== RENDER FIRST PAGE (Matching generatePdf style) ======
+const renderFirstPage = async (row) => {
+  const joNum = (row?.["Job Order No"] ?? "").toString().trim() || "Unknown";
+  
+  // Check if we should show stars
+  const priorityText = val("Priority", row)?.toString() || "";
+  const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
+                     priorityText.toLowerCase().includes("repeated_lot") || 
+                     priorityText.toLowerCase().includes("repeated") ||
+                     priorityText.toLowerCase().includes("repeat");
+  
+  PAGE = firstPageScaffold();
+  
+  // Adjust Y position based on stars
+  let y = shouldStars ? 190 : 170;
 
-      // Blue headings on white
-      setFont("bold", 32, C.primary);
-      doc.text("JOB ORDER", doc.internal.pageSize.getWidth() / 2, 65, { align: "center" });
+  // Main heading
+  setFont("bold", 26, C.primary);
+  doc.text("JOB ORDER FOR PRODUCTION USE", PAGE.w / 2, 50, { align: "center" });
+  
+  // Add stars if lot is repeated
+  if (shouldStars) {
+    const starSize = 11;
+    const starSpacing = 22;
+    const totalWidth = 5 * starSpacing - starSpacing/2;
+    const startX = PAGE.w / 2 - totalWidth / 2;
+    const starY = 72;
+    
+    for (let i = 0; i < 5; i++) {
+      drawStar(doc, startX + (i * starSpacing), starY, starSize);
+    }
+    
+    setFont("bold", 14, C.highlight);
+    doc.text("LOT REPEATED", PAGE.w / 2, 95, { align: "center" });
+    
+    setFont("bold", 12, C.primary);
+    doc.text(`Job Order #${joNum}`, PAGE.w / 2, 115, { align: "center" });
+    
+    y = 130; // Reset y for cards after stars
+  } else {
+    setFont("bold", 12, C.primary);
+    doc.text(`Job Order #${joNum}`, PAGE.w / 2, 82, { align: "center" });
+    y = 115;
+  }
+
+  // JO Badge
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.dark);
+  doc.setLineWidth(1);
+  doc.circle(M + 25, 48, 20, "FD");
+  setFont("bold", 14, C.dark);
+  doc.text("JO", M + 25, 55, { align: "center" });
+
+  // Generated info
+  const submittedBy = asText(row?.["Submitted By"] || "—");
+  const genDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+  setFont("normal", F.meta - 1, C.grayDark);
+  doc.text(`Generated: ${genDate}`, PAGE.w - M, 43, { align: "right" });
+  doc.text(`Submitted by: ${submittedBy}`, PAGE.w - M, 58, { align: "right" });
+
+  // Direct Stitching badge
+  const dsEnabled = asBool(row?.["Direct Stitching"]);
+  if (dsEnabled) {
+    const padX = 10, hChip = 24, r = 10;
+    setFont("bold", 10, C.white);
+    const label = "DIRECT STITCHING";
+    const wChip = doc.getTextWidth(label) + padX * 2 + 10;
+    const xChip = M;
+    const yChip = shouldStars ? 125 : 110;
+    doc.setFillColor(...C.success);
+    doc.roundedRect(xChip, yChip - hChip + 2, wChip, hChip, r, r, "F");
+    doc.text(label, xChip + padX + 8, yChip - 6);
+  }
+
+  // Custom drawCard for first page with centered text
+  const drawCardForPage = async ({ label, value, x, w }) => {
+    const padX = 15, padY = 10;
+    const labelH = F.label * 1.2;
+    const maxWidth = w - padX * 2;
+    const txt = value && String(value).trim() ? String(value) : "—";
+    
+    const isPriorityCard = label.toLowerCase() === "priority";
+    const bodyFontSize = isPriorityCard ? F.body - 2 : F.body;
+    const lineH = (bodyFontSize - 1) * 1.3;
+    
+    const lines = doc.splitTextToSize(txt, maxWidth);
+    const contentH = Math.max(lineH, lines.length * lineH);
+    const h = padY + labelH + 6 + Math.max(lineH, contentH) + padY;
+
+    await ensurePageRoom(h);
+
+    doc.setDrawColor(...C.border);
+    doc.setLineWidth(1);
+    doc.setFillColor(...C.white);
+    doc.roundedRect(x, y, w, h, 8, 8, "FD");
+
+    const priorityValue = isPriorityCard ? txt.toLowerCase() : "";
+    const isRepeatedPriority = isPriorityCard && (
+      priorityValue.includes("lot_repeated") || 
+      priorityValue.includes("repeated_lot") || 
+      priorityValue.includes("repeated") ||
+      priorityValue.includes("repeat")
+    );
+
+    setFont("bold", F.label - 1, C.primary);
+    doc.text(label.toUpperCase(), x + w / 2, y + padY + labelH/2 - 2, { align: "center" });
+
+    if (isRepeatedPriority) {
+      const starSize = 7;
+      const starSpacing = 12;
+      const totalStarWidth = 5 * starSpacing - starSpacing/2;
+      const startX = x + w / 2 - totalStarWidth / 2;
+      const starY = y + padY + labelH + 6;
       
-      // Add stars if lot is repeated
-      if (shouldStars) {
-        // Draw 5 gold stars below the main title
-        const starSize = 12;
-        const starSpacing = 24;
-        const totalWidth = 5 * starSpacing - starSpacing/2;
-        const startX = PAGE.w / 2 - totalWidth / 2;
-        const starY = 85;
-        
-        // Draw 5 stars
-        for (let i = 0; i < 5; i++) {
-          drawStar(doc, startX + (i * starSpacing), starY, starSize);
-        }
-        
-        // Add "LOT REPEATED" text below stars
-        setFont("bold", 16, C.highlight);
-        doc.text("LOT REPEATED", PAGE.w / 2, 110, { align: "center" });
-        
-        // Order # positioned below LOT REPEATED text
-        setFont("bold", 16, C.primary);
-        doc.text(`Order #${joNum}`, PAGE.w / 2, 135, { align: "center" });
-      } else {
-        // Normal position when not "repeated"
-        setFont("bold", 16, C.primary);
-        doc.text(`Order #${joNum}`, doc.internal.pageSize.getWidth() / 2, 90, { align: "center" });
+      for (let i = 0; i < 5; i++) {
+        drawStar(doc, startX + (i * starSpacing), starY, starSize);
       }
+      
+      setFont("bold", bodyFontSize, C.highlight);
+      const textY = starY + starSize + 6;
+      
+      lines.forEach((line, i) => {
+        doc.text(line, x + w / 2, textY + i * lineH, { align: "center" });
+      });
+    } else {
+      setFont(isPriorityCard ? "bold" : "normal", bodyFontSize, C.dark);
+      const textY = y + padY + labelH + 6 + (h - (padY + labelH + 6 + lines.length * lineH)) / 2;
+      
+      lines.forEach((line, i) => {
+        doc.text(line, x + w / 2, textY + i * lineH, { align: "center" });
+      });
+    }
 
-      // JO badge: white circle with black outline, black text
-      doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.dark);
-      doc.setLineWidth(1);
-      doc.circle(M + 30, 60, 30, "FD");
-      setFont("bold", 20, C.dark);
-      doc.text("JO", M + 30, 67, { align: "center" });
+    const bottom = y + h;
+    y = bottom;
+    await pause(0);
+    return bottom;
+  };
 
-      const submittedBy = asText(row?.["Submitted By"] || "—");
-      const genDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
-      setFont("normal", F.meta, C.grayDark);
-      doc.text(`Generated: ${genDate}`, PAGE.w - M, 50, { align: "right" });
-      doc.text(`Submitted by: ${submittedBy}`, PAGE.w - M, 70, { align: "right" });
+  const drawGridRowForPage = async (items, { cols = items.length, rowGap = 12 } = {}) => {
+    const totalW = contentW();
+    const gapW = GRID_COL_GAP * (cols - 1);
+    const cardW = (totalW - gapW) / cols;
 
-      if (asBool(row?.["Direct Stitching"])) {
-        const padX = 14, hChip = 30, r = 15, label = "DIRECT STITCHING";
-        setFont("bold", 12, C.white);
-        const wChip = doc.getTextWidth(label) + padX * 2 + 14;
-        const xChip = PAGE.w - M - wChip;
-        const yChip = shouldStars ? 150 : 85; // Adjust Y position based on stars
-        doc.setFillColor(...C.success);
-        doc.roundedRect(xChip, yChip - hChip + 2, wChip, hChip, r, r, "F");
-        doc.text(label, xChip + padX + 12, yChip - 8);
-      }
+    const padX = 15, padY = 10, labelH = F.label * 1.2;
+    const heights = items.map(({ value, label }) => {
+      const maxWidth = cardW - padX * 2;
+      const txt = (value || "—").toString();
+      
+      const isPriorityCard = label?.toLowerCase() === "priority";
+      const bodyFontSize = isPriorityCard ? F.body - 2 : F.body;
+      const lineH = (bodyFontSize - 1) * 1.3;
+      
+      const lines = doc.splitTextToSize(txt, maxWidth);
+      
+      const priorityValue = isPriorityCard ? txt.toLowerCase() : "";
+      const isRepeatedPriority = isPriorityCard && (
+        priorityValue.includes("lot_repeated") || 
+        priorityValue.includes("repeated_lot") || 
+        priorityValue.includes("repeated") ||
+        priorityValue.includes("repeat")
+      );
+      
+      const extraHeight = isRepeatedPriority ? 18 : 0;
+      
+      return padY + labelH + 6 + Math.max(lineH, lines.length * lineH) + padY + extraHeight;
+    });
+    
+    const rowH = Math.max(...heights);
+    await ensurePageRoom(rowH + rowGap);
 
-      const contentRow = (items, cols) => drawGridRow(items, { cols });
-      await sectionHeader("Order Details", { rightBigText: ` ${val("Lot Number", row)}` });
-      await contentRow([
-        { label: "Job Order No", value: joNum },
-        { label: "Date", value: vDate("Date", row) },
-        { label: "Lot Number", value: val("Lot Number", row) },
-        { label: "Party Name", value: val("Party Name", row) },
-        { label: "Brand", value: val("Brand", row) },
-      ], 5);
-      await contentRow([
-        { label: "Fabric", value: val("Fabric", row) },
-        { label: "Garment Type", value: val("Garment Type", row) },
-        { label: "Section", value: val("Section", row) },
-        { label: "Quantity", value: val("Quantity", row) },
-        { label: "Unit", value: val("Unit", row) },
-      ], 5);
-      await contentRow([
-        { label: "Season", value: val("Season", row) },
-        { label: "Style", value: val("Style", row) },
-        { label: "Pattern", value: val("Pattern", row) },
-        { label: "Size", value: val("Size", row) },
-        { label: "Priority", value: val("Priority", row) },
-      ], 5);
-      await contentRow([{ label: "Shade", value: val("Shade", row) }], 1);
-
-      await sectionHeader("Special Processes");
-      const stickerValue = row?.["Sticker"] ? String(row["Sticker"]).trim() : "—";
-      await contentRow([
-        { label: "Embroidery", value: val("Emb", row) },
-        { label: "Printing", value: val("Printing", row) },
-        { label: "Direct Stitching", value: asBool(row?.["Direct Stitching"]) ? "Yes" : asText(row?.["Direct Stitching"]) },
-        { label: "Component", value: val("Component", row) },
-          // { label: "Sticker", value: val("Sticker") },
-          { label: "Sticker", value: stickerValue },
-      ], 5);
-      await contentRow([
-        { label: "Embroidery Details", value: val("Emb Details", row) },
-        { label: "Printing Details", value: val("Printing Details", row) },
-      ], 2);
-
-      await sectionHeader("Remarks & Visual Reference");
-      const twoColW = (contentW() - GRID_COL_GAP) / 2;
-
-      // left: remarks (lock height)
+    const yTop = y;
+    let maxBottom = yTop;
+    
+    for (let i = 0; i < items.length; i++) {
+      const cardX = M + i * (cardW + GRID_COL_GAP);
       const oldY = y;
-      const remarksText = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
-      await drawCard({ label: "Remarks", value: remarksText, x: M, w: twoColW });
+      y = yTop;
+      const bottom = await drawCardForPage({ 
+        ...items[i], 
+        x: cardX, 
+        w: cardW
+      });
+      maxBottom = Math.max(maxBottom, bottom);
       y = oldY;
+    }
+    
+    y = maxBottom + rowGap;
+  };
 
-      // right: image
-      await tryDrawImage({ url: row?.["Image URL"], x: M + twoColW + GRID_COL_GAP, w: twoColW, h: 220 });
+  const sectionHeaderForPage = async (text, opts = {}) => {
+    await ensurePageRoom(40);
+    
+    const yMid = y + 6;
 
-      // footer page 1
-      const w = doc.internal.pageSize.getWidth();
-      const h = doc.internal.pageSize.getHeight();
-      doc.setDrawColor(...C.accent);
-      doc.setLineWidth(2);
-      doc.line(M, h - FOOTER_H - 24, M + 120, h - FOOTER_H - 24);
-      setFont("normal", F.meta, C.grayDark);
-      doc.text(`Page 1 • ${joNum}`, w - M, h - FOOTER_H - 5, { align: "right" });
-      setFont("normal", F.meta, C.grayDark);
-      doc.text(`Submitted by: ${submittedBy}`, M, h - FOOTER_H - 5);
-    };
+    setFont("bold", F.h3 - 2, C.primary);
+    doc.text(text, PAGE.w / 2, yMid, { align: "center" });
+
+    if (opts.rightBigText) {
+      setFont("bold", 22, C.highlight);
+      const padRight = 6;
+      const yOffset = 12;
+      doc.text(String(opts.rightBigText), PAGE.w - M - padRight, yMid - yOffset, { align: "right" });
+    }
+
+    doc.setDrawColor(...C.accent);
+    doc.setLineWidth(1.2);
+    doc.line(PAGE.w / 2 - 70, yMid + 10, PAGE.w / 2 + 70, yMid + 10);
+
+    y += 26;
+    await pause(0);
+  };
+
+  // Render Order Details
+  await sectionHeaderForPage("Order Details", { rightBigText: ` ${val("Lot Number", row)}` });
+  
+  await drawGridRowForPage([
+    { label: "Job Order No", value: joNum },
+    { label: "Date", value: vDate("Date", row) },
+    { label: "Lot Number", value: val("Lot Number", row) },
+    { label: "Party Name", value: val("Party Name", row) },
+    { label: "Brand", value: val("Brand", row) },
+  ], { cols: 5, rowGap: 12 });
+
+  await drawGridRowForPage([
+    { label: "Fabric", value: val("Fabric", row) },
+    { label: "Garment Type", value: val("Garment Type", row) },
+    { label: "Section", value: val("Section", row) },
+    { label: "Quantity", value: val("Quantity", row) },
+    { label: "Unit", value: val("Unit", row) },
+  ], { cols: 5, rowGap: 12 });
+
+  await drawGridRowForPage([
+    { label: "Season", value: val("Season", row) },
+    { label: "Style", value: val("Style", row) },
+    { label: "Pattern", value: val("Pattern", row) },
+    { label: "Size", value: val("Size", row) },
+    { label: "Priority", value: val("Priority", row) },
+  ], { cols: 5, rowGap: 12 });
+
+  await drawGridRowForPage([
+    { label: "Shade", value: val("Shade", row) }
+  ], { cols: 1, rowGap: 12 });
+
+  // Accessories Section
+  await sectionHeaderForPage("Accessories");
+
+  const collar = val("Collar", row) !== "—" ? val("Collar", row) : "—";
+  const bone = val("Bone", row) !== "—" ? val("Bone", row) : "—";
+  const tapeLace = val("Tape/Lace", row) !== "—" ? val("Tape/Lace", row) : "—";
+  const bottomType = val("Bottom Type", row) !== "—" ? val("Bottom Type", row) : "—";
+  const zip = val("Zip", row) !== "—" ? val("Zip", row) : "—";
+  const fullBaju = val("FULL BAJU", row) !== "—" ? val("FULL BAJU", row) : "—";
+
+  await drawGridRowForPage([
+    { label: "Collar", value: collar },
+    { label: "Bone", value: bone },
+    { label: "Tape/Lace", value: tapeLace },
+    { label: "Bottom Type", value: bottomType },
+    { label: "Zip", value: zip },
+    { label: "FULL BAJU", value: fullBaju },
+  ], { cols: 6, rowGap: 12 });
+
+  // Special Processes Section
+  await sectionHeaderForPage("Special Processes");
+
+  const stickerValue = row?.["Sticker"] ? String(row["Sticker"]).trim() : "—";
+
+  await drawGridRowForPage([
+    { label: "Embroidery", value: val("Emb", row) },
+    { label: "Printing", value: val("Printing", row) },
+    { label: "Direct Stitching", value: dsEnabled ? "Yes" : asText(row?.["Direct Stitching"]) },
+    { label: "Component", value: val("Component", row) },
+    { label: "Sticker", value: stickerValue },
+  ], { cols: 5, rowGap: 12 });
+
+  await drawGridRowForPage([
+    { label: "Embroidery Details", value: val("Emb Details", row) },
+    { label: "Printing Details", value: val("Printing Details", row) },
+  ], { cols: 2, rowGap: 12 });
+
+  // Remarks & Visual Reference Section
+  await sectionHeaderForPage("Remarks & Visual Reference");
+  
+  const twoColW = (contentW() - GRID_COL_GAP) / 2;
+  const imageHeight = 220;
+  
+  const startY = y;
+  
+  const remarksText = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
+  const padX = 15, padY = 10, labelH = F.label * 1.2;
+  const maxWidth = twoColW - padX * 2;
+  const txt = remarksText;
+  const lines = doc.splitTextToSize(txt, maxWidth);
+  const lineH = (F.body - 1) * 1.3;
+  const contentH = Math.max(lineH, lines.length * lineH);
+  const remarksCardHeight = padY + labelH + 6 + Math.max(lineH, contentH) + padY;
+  
+  const finalHeight = Math.max(remarksCardHeight, imageHeight);
+  
+  await ensurePageRoom(finalHeight);
+  
+  // Left: Remarks
+  doc.setDrawColor(...C.border);
+  doc.setLineWidth(1);
+  doc.setFillColor(...C.white);
+  doc.roundedRect(M, startY, twoColW, finalHeight, 8, 8, "FD");
+  
+  setFont("bold", F.label - 1, C.primary);
+  doc.text("REMARKS", M + twoColW / 2, startY + padY + labelH/2 - 2, { align: "center" });
+  
+  const textTotalHeight = lines.length * lineH;
+  const textStartY = startY + padY + labelH + 6 + (finalHeight - (padY + labelH + 6) - textTotalHeight) / 2;
+  
+  setFont("normal", F.body, C.dark);
+  lines.forEach((line, i) => {
+    doc.text(line, M + twoColW / 2, textStartY + i * lineH, { align: "center" });
+  });
+  
+  // Right: Image
+  const imageX = M + twoColW + GRID_COL_GAP;
+  doc.setDrawColor(...C.border);
+  doc.setLineWidth(1);
+  doc.setFillColor(...C.white);
+  doc.roundedRect(imageX, startY, twoColW, finalHeight, 8, 8, "FD");
+  
+  setFont("bold", F.label - 1, C.primary);
+  doc.text("IMAGE", imageX + twoColW / 2, startY + padY + labelH/2 - 2, { align: "center" });
+  
+  let drewImage = false;
+  try {
+    const cleanUrl = asText(row?.["Image URL"]) === "—" ? "" : row?.["Image URL"];
+    if (cleanUrl) {
+      const dataUrl = await withTimeout(
+        loadImageAsBase64ForPdf(cleanUrl, { maxWidth: IMG_MAX, maxHeight: IMG_MAX }),
+        IMG_TIMEOUT_MS
+      );
+      if (dataUrl) {
+        const p = doc.getImageProperties(dataUrl);
+        const fitW = twoColW - 40;
+        const fitH = finalHeight - (padY + labelH + 6) - 20;
+        const ratio = Math.min(fitW / p.width, fitH / p.height);
+        const iw = Math.max(1, p.width * ratio);
+        const ih = Math.max(1, p.height * ratio);
+        const ix = imageX + (twoColW - iw) / 2;
+        const iy = startY + padY + labelH + 8 + (fitH - ih) / 2;
+        doc.addImage(dataUrl, "JPEG", ix, iy, iw, ih);
+        drewImage = true;
+      }
+    }
+  } catch (_) { }
+  
+  if (!drewImage) {
+    setFont("normal", F.meta, C.grayDark);
+    doc.text("No image provided / failed to load", imageX + twoColW / 2, startY + finalHeight / 2, { align: "center" });
+  }
+  
+  y = startY + finalHeight + 8;
+  
+  await pause(0);
+};
 
     // ====== RENDER SECOND PAGE ======
     const renderSecondPage = async (row) => {
