@@ -18,13 +18,15 @@ const LOAD_MORE_CHUNK = 1000; // "Load more" chunk size
 /** ====== sheet columns ====== */
 /** ====== sheet columns ====== */
 // Update this section around line 20
+// Update this section around line 20
 const HEADERS = [
   "Job Order No","Date","Fabric","Brand","Shade","Size","Quantity","Unit",
   "Party Name","Garment Type","Section","Season","Emb","Emb Details",
   "Printing","Printing Details","Pattern","Style","Remarks","Direct Stitching",
   "Submitted By","Image URL","Lot Number","Component","Priority",
   "Tape/Lace", "Bottom Type", "Zip", "Sticker",
-  "Collar", "Bone", "FULL BAJU"  // Changed to match exact sheet column name
+  "Collar", "Bone", "FULL BAJU",
+  "FABRIC_SUPERVISOR", "Order No."  // Add these two new columns
 ];
 // Function to log PDF generation to Google Sheets
 const logPdfGeneration = async (row, pdfType, status = "Generated", notes = "") => {
@@ -354,7 +356,8 @@ const [loadingGeneratedLots, setLoadingGeneratedLots] = useState(false);
 // Update around line 105
 const VISIBLE_HEADERS = [
   "Job Order No","Date","Party Name","Fabric","Shade","Quantity","Unit","Lot Number",
-  "Priority", "Sticker", "Collar", "Bone", "FULL BAJU"  // Changed to match exact name
+  "Priority", "Sticker", "Collar", "Bone", "FULL BAJU",
+  "FABRIC_SUPERVISOR", "Order No."  // Add here to show in main table
 ];
   const DETAIL_HEADERS = HEADERS.filter((h) => !VISIBLE_HEADERS.includes(h));
   const [expanded, setExpanded] = useState(() => new Set());
@@ -382,7 +385,7 @@ const fetchData = async ({ isRefresh = false, signal } = {}) => {
     // IMPORTANT: Make sure the range includes enough columns
     // AG = column 33 (for 33 columns including Full Baju)
     // Using AU (column 47) gives plenty of room for future columns
-    const range = `${encodeURIComponent(TAB_NAME)}!A1:AU${upto}`;
+    const range = `${encodeURIComponent(TAB_NAME)}!A1:AW${upto}`;
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`;
     const res = await fetch(url, { signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1869,27 +1872,26 @@ const renderFirstPageWithHeading = async (customHeading) => {
     doc.text(label, xChip + padX + 8, yChip - 6);
   }
 
-  // INCREASED PADDING FOR CARDS
   const drawCardForPage = async ({ label, value, x, w, isLastInRow = false }) => {
-    const padX = 15, padY = 10; // Increased from 10 and 8
-    const labelH = F.label * 1.2; // Slightly increased
+    const padX = 15, padY = 10;
+    const labelH = F.label * 1.2;
     const maxWidth = w - padX * 2;
     const txt = value && String(value).trim() ? String(value) : "—";
     
     const isPriorityCard = label.toLowerCase() === "priority";
     const bodyFontSize = isPriorityCard ? F.body - 2 : F.body;
-    const lineH = (bodyFontSize - 1) * 1.3; // Increased line height
+    const lineH = (bodyFontSize - 1) * 1.3;
     
     const lines = doc.splitTextToSize(txt, maxWidth);
     const contentH = Math.max(lineH, lines.length * lineH);
-    const h = padY + labelH + 6 + Math.max(lineH, contentH) + padY; // Increased padding
+    const h = padY + labelH + 6 + Math.max(lineH, contentH) + padY;
 
     await ensurePageRoom(h);
 
     doc.setDrawColor(...C.black);
     doc.setLineWidth(1);
     doc.setFillColor(...C.white);
-    doc.roundedRect(x, y, w, h, 8, 8, "FD"); // Increased corner radius
+    doc.roundedRect(x, y, w, h, 8, 8, "FD");
 
     const priorityValue = isPriorityCard ? txt.toLowerCase() : "";
     const isRepeatedPriority = isPriorityCard && (
@@ -1899,7 +1901,7 @@ const renderFirstPageWithHeading = async (customHeading) => {
       priorityValue.includes("repeat")
     );
 
-    setFont("bold", F.label - 1); // Slightly larger label
+    setFont("bold", F.label - 1);
     doc.text(label.toUpperCase(), x + w / 2, y + padY + labelH/2 - 2, { align: "center" });
 
     if (isRepeatedPriority) {
@@ -1934,7 +1936,7 @@ const renderFirstPageWithHeading = async (customHeading) => {
     return bottom;
   };
 
-  const drawGridRowForPage = async (items, { cols = items.length, rowGap = 12 } = {}) => { // Increased row gap
+  const drawGridRowForPage = async (items, { cols = items.length, rowGap = 12 } = {}) => {
     const totalW = contentW();
     const gapW = GRID_COL_GAP * (cols - 1);
     const cardW = (totalW - gapW) / cols;
@@ -1987,7 +1989,7 @@ const renderFirstPageWithHeading = async (customHeading) => {
   };
 
   const sectionHeaderForPage = async (text, opts = {}) => {
-    await ensurePageRoom(40); // Increased from 35
+    await ensurePageRoom(40);
     
     const yMid = y + 6;
 
@@ -2005,13 +2007,17 @@ const renderFirstPageWithHeading = async (customHeading) => {
     doc.setLineWidth(1.2);
     doc.line(PAGE.w / 2 - 70, yMid + 10, PAGE.w / 2 + 70, yMid + 10);
 
-    y += 26; // Increased from 22
+    y += 26;
     await pause(0);
   };
 
-  y += 10; // Increased from 8
+  y += 10;
   
-  await sectionHeaderForPage("Order Details", { rightBigText: ` ${val("Lot Number")}` });
+const fabricSupervisor = val("FABRIC_SUPERVISOR") || "";
+const orderDetailsTitle = fabricSupervisor && fabricSupervisor !== "—" 
+  ? `Order Details (${fabricSupervisor})` 
+  : "Order Details";
+await sectionHeaderForPage(orderDetailsTitle, { rightBigText: ` ${val("Lot Number")}` });
   
   await drawGridRowForPage([
     { label: "Job Order No", value: joNum },
@@ -2020,6 +2026,12 @@ const renderFirstPageWithHeading = async (customHeading) => {
     { label: "Party Name", value: val("Party Name") },
     { label: "Brand", value: val("Brand") },
   ], { cols: 5, rowGap: 12 });
+
+  // ADDED: FABRIC SUPERVISOR and Order No.
+  await drawGridRowForPage([
+    { label: "FABRIC SUPERVISOR", value: val("FABRIC_SUPERVISOR") },
+    { label: "Order No.", value: val("Order No.") },
+  ], { cols: 2, rowGap: 12 });
 
   await drawGridRowForPage([
     { label: "Fabric", value: val("Fabric") },
@@ -2037,28 +2049,27 @@ const renderFirstPageWithHeading = async (customHeading) => {
     { label: "Priority", value: val("Priority") },
   ], { cols: 5, rowGap: 12 });
 
-  // Keep shade as comma-separated value - it will auto-wrap using splitTextToSize
   await drawGridRowForPage([
     { label: "Shade", value: val("Shade") }
   ], { cols: 1, rowGap: 12 });
 
   await sectionHeaderForPage("Accessories");
 
-const collar = val("Collar") !== "—" ? val("Collar") : "—";
-const bone = val("Bone") !== "—" ? val("Bone") : "—";
-const tapeLace = val("Tape/Lace") !== "—" ? val("Tape/Lace") : "—";
-const bottomType = val("Bottom Type") !== "—" ? val("Bottom Type") : "—";
-const zip = val("Zip") !== "—" ? val("Zip") : "—";
-const fullBaju = val("FULL BAJU") !== "—" ? val("FULL BAJU") : "—";  // Changed to "FULL BAJU"
+  const collar = val("Collar") !== "—" ? val("Collar") : "—";
+  const bone = val("Bone") !== "—" ? val("Bone") : "—";
+  const tapeLace = val("Tape/Lace") !== "—" ? val("Tape/Lace") : "—";
+  const bottomType = val("Bottom Type") !== "—" ? val("Bottom Type") : "—";
+  const zip = val("Zip") !== "—" ? val("Zip") : "—";
+  const fullBaju = val("FULL BAJU") !== "—" ? val("FULL BAJU") : "—";
 
-await drawGridRowForPage([
-  { label: "Collar", value: collar },
-  { label: "Bone", value: bone },
-  { label: "Tape/Lace", value: tapeLace },
-  { label: "Bottom Type", value: bottomType },
-  { label: "Zip", value: zip },
-  { label: "FULL BAJU", value: fullBaju },  // Added FULL BAJU
-], { cols: 6, rowGap: 12 });  // Changed cols to 6
+  await drawGridRowForPage([
+    { label: "Collar", value: collar },
+    { label: "Bone", value: bone },
+    { label: "Tape/Lace", value: tapeLace },
+    { label: "Bottom Type", value: bottomType },
+    { label: "Zip", value: zip },
+    { label: "FULL BAJU", value: fullBaju },
+  ], { cols: 6, rowGap: 12 });
 
   await sectionHeaderForPage("Special Processes");
 
@@ -2080,7 +2091,7 @@ await drawGridRowForPage([
   await sectionHeaderForPage("Remarks & Visual Reference");
   
   const twoColW = (contentW() - GRID_COL_GAP) / 2;
-  const imageHeight = 220; // Increased from 200
+  const imageHeight = 220;
   
   const startY = y;
   
@@ -2150,438 +2161,440 @@ await drawGridRowForPage([
     doc.text("No image provided / failed to load", imageX + twoColW / 2, startY + finalHeight / 2, { align: "center" });
   }
   
-  // REDUCED BOTTOM MARGIN
   y = startY + finalHeight + 8;
   
   await pause(0);
 };
     
-    const renderSecondPage = async () => {
-      PAGE = innerPageScaffold();
-      
-      const priorityText = val("Priority")?.toString() || "";
-      const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
-                         priorityText.toLowerCase().includes("repeated_lot") || 
-                         priorityText.toLowerCase().includes("repeated") ||
-                         priorityText.toLowerCase().includes("repeat");
-      
-      let startY = 50;
-      if (shouldStars) {
-        startY = 80;
-      }
+  const renderSecondPage = async () => {
+  PAGE = innerPageScaffold();
+  
+  const priorityText = val("Priority")?.toString() || "";
+  const shouldStars = priorityText.toLowerCase().includes("lot_repeated") || 
+                     priorityText.toLowerCase().includes("repeated_lot") || 
+                     priorityText.toLowerCase().includes("repeated") ||
+                     priorityText.toLowerCase().includes("repeat");
+  
+  let startY = 50;
+  if (shouldStars) {
+    startY = 80;
+  }
 
-      setFont("bold", 24);
-      const lotNum = asText(row?.["Lot Number"]);
-      doc.text(
-        `JOB ORDER SUMMARY ${lotNum !== "—" ? `(${lotNum})` : ""}`,
-        doc.internal.pageSize.getWidth() / 2,
-        startY,
-        { align: "center" }
-      );
+  setFont("bold", 24);
+  const lotNum = asText(row?.["Lot Number"]);
+  doc.text(
+    `JOB ORDER SUMMARY ${lotNum !== "—" ? `(${lotNum})` : ""}`,
+    doc.internal.pageSize.getWidth() / 2,
+    startY,
+    { align: "center" }
+  );
 
-      if (shouldStars) {
-        const starSize = 12;
-        const starSpacing = 24;
-        const totalWidth = 5 * starSpacing - starSpacing/2;
-        const startX = PAGE.w / 2 - totalWidth / 2;
-        const starY = startY + 25;
-        
-        for (let i = 0; i < 5; i++) {
-          drawStar(doc, startX + (i * starSpacing), starY, starSize);
-        }
-        
-        setFont("bold", 16);
-        doc.text("LOT REPEATED", PAGE.w / 2, starY + 30, { align: "center" });
-        
-        y = starY + 55;
-      } else {
-        y = startY + 35;
-      }
-
-      {
-        const short = (s, n) => {
-          s = asText(s);
-          return s === "—" || s.length <= n ? s : s.slice(0, n - 1) + "…";
-        };
-
-        const pairs = [
-          { label: "Job Order No", value: joNum },
-          { label: "Date", value: vDate("Date") },
-          { label: "Lot Number", value: val("Lot Number") },
-          { label: "Party Name", value: short(val("Party Name"), 28) },
-          { label: "Fabric", value: short(val("Fabric"), 40) },
-          { label: "Brand", value: short(val("Brand"), 40) },
-          { label: "Garment Type", value: short(val("Garment Type"), 40) },
-          { label: "Section", value: short(val("Section"), 40) },
-          { label: "Season", value: short(val("Season"), 40) },
-          { label: "Shade", value: short(val("Shade"), 40) },
-          { label: "Quantity", value: val("Quantity") },
-          { label: "Unit", value: val("Unit") },
-          { label: "Style", value: short(val("Style"), 40) },
-          { label: "Priority", value: val("Priority") },
-          { label: "Pattern", value: short(val("Pattern"), 40) },
-          { label: "Size", value: short(val("Size"), 40) },
-          { label: "Embroidery", value: short(val("Emb"), 40) },
-          { label: "Printing", value: short(val("Printing"), 40) },
-          { label: "Direct Stitching", value: asBool(row?.["Direct Stitching"]) ? "Yes" : asText(row?.["Direct Stitching"]) },
-          { label: "Embroidery Details", value: short(val("Emb Details"), 50) },
-          { label: "Printing Details", value: short(val("Printing Details"), 50) },
-          { label: "Component", value: short(val("Component"), 40) },
-          { label: "Collar", value: short(val("Collar"), 40) },
-          { label: "Bone", value: short(val("Bone"), 40) },
-          { label: "Remarks", value: short(row?.["Remarks"] ?? "No remarks provided", 80) }
-        ];
-
-        const cols = 4;
-        const rowHeight = 24;
-        const rowGap = 10;
-        const pad = 18;
-        const titleH = 26;
-        const titleGap = 10;
-
-        const rows = Math.ceil(pairs.length / cols);
-        const gridH = rows * (rowHeight + rowGap) - rowGap;
-        const boxW = contentW();
-        const boxH = pad + titleH + titleGap + gridH + pad;
-
-        await ensurePageRoom(boxH);
-
-        const boxX = M;
-        const boxY = y;
-
-        doc.setDrawColor(...C.black);
-        doc.setFillColor(...C.white);
-        doc.setLineWidth(1);
-        doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8, "FD");
-
-        setFont("bold", F.h3);
-        doc.text("Order Summary", boxX + pad, boxY + pad + titleH - 6);
-
-        const innerX = boxX + pad;
-        const innerYStart = boxY + pad + titleH + titleGap;
-        const colW = (boxW - pad * 2 - GRID_COL_GAP * (cols - 1)) / cols;
-
-        let drawY = innerYStart;
-        for (let i = 0; i < pairs.length; i += cols) {
-          const rowSlice = pairs.slice(i, i + cols);
-
-          rowSlice.forEach((p, idx) => {
-            const x = innerX + idx * (colW + GRID_COL_GAP);
-
-            setFont("bold", F.small);
-            doc.text((p.label || "").toUpperCase(), x, drawY);
-
-            setFont("bold", F.small);
-
-            const line = doc.splitTextToSize(asText(p.value), colW)[0] || "—";
-            doc.text(line, x, drawY + 12);
-          });
-
-          drawY += rowHeight + rowGap;
-        }
-
-        y = boxY + boxH + GRID_ROW_GAP;
-      }
-
-      await sectionHeader("Full Remarks & Visual");
-      const colGap = GRID_COL_GAP;
-      const colW = (contentW() - colGap) / 2;
-      const leftX = M;
-      const rightX = M + colW + colGap;
-      const yTop = y;
-
-      const remarksTextFull = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
-      await drawCard({ label: "Complete Remarks", value: remarksTextFull, x: leftX, w: colW });
-      const bottomLeft = y;
-
-      y = yTop;
-      const estRightH = Math.max(220, bottomLeft - yTop);
-      await tryDrawImage({
-        url: row?.["Image URL"],
-        x: rightX, w: colW, h: estRightH
-      });
-      const bottomRight = yTop + estRightH;
-
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1);
-      doc.line(M + colW + colGap / 2, yTop + 6, M + colW + colGap / 2, Math.max(bottomLeft, bottomRight) - 6);
-
-      y = Math.max(bottomLeft, bottomRight) + GRID_ROW_GAP;
-
-      await sectionHeader("Cutting Schedule");
-      const shades = parseShades(val("Shade"));
-      const minRows = Math.max(6, shades.length);
-      const rowCount = Math.min(10, Math.max(minRows, shades.length));
-
-      const tableHeaders = [
-        { label: "Table", key: "table", width: 1 },
-        { label: "Shade", key: "shade", width: 2 },
-        { label: "Quantity", key: "qty", width: 1 },
-        { label: "Kharcha", key: "kharcha", width: 1 },
-        { label: "Date of Cutting", key: "cut", width: 1.5 },
-      ];
-
-      const tableData = Array.from({ length: rowCount }, (_, i) => ({
-        table: "",
-        shade: i < shades.length ? String(shades[i]) : "",
-        qty: "",
-        kharcha: "Yes / No",
-        cut: "",
-      }));
-
-      await drawTable(tableHeaders, tableData, { rowH: 26, headerH: 32, fontScale: 0.95 });
-      y += 40;
-    };
+  if (shouldStars) {
+    const starSize = 12;
+    const starSpacing = 24;
+    const totalWidth = 5 * starSpacing - starSpacing/2;
+    const startX = PAGE.w / 2 - totalWidth / 2;
+    const starY = startY + 25;
     
-    const renderThirdPage = async () => {
-      PAGE = innerPageScaffold();
-      y = 75;
+    for (let i = 0; i < 5; i++) {
+      drawStar(doc, startX + (i * starSpacing), starY, starSize);
+    }
+    
+    setFont("bold", 16);
+    doc.text("LOT REPEATED", PAGE.w / 2, starY + 30, { align: "center" });
+    
+    y = starY + 55;
+  } else {
+    y = startY + 35;
+  }
 
-      const shortenText = (text, maxLength) => {
-        if (!text || text === "—") return "—";
-        if (text.length <= maxLength) return text;
-        return text.substring(0, maxLength - 3) + "...";
-      };
+  {
+    const short = (s, n) => {
+      s = asText(s);
+      return s === "—" || s.length <= n ? s : s.slice(0, n - 1) + "…";
+    };
 
-      setFont("bold", 28);
-      doc.text("MATERIAL REQUISITION PLANNING", PAGE.w / 2, 55, { align: "center" });
-      
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(3);
-      doc.line(PAGE.w / 2 - 120, 65, PAGE.w / 2 + 120, 65);
-      
-      y += 25;
-      
-      doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1);
-      doc.rect(M, y - 5, contentW(), 40, "FD");
-      
-      setFont("bold", 14);
-      doc.text(`JOB ORDER: ${joNum}`, M + 25, y + 10);
-      
-      setFont("bold", 14);
-      doc.text(`LOT NUMBER: ${val("Lot Number")}`, M + 180, y + 10);
-      
-      setFont("bold", 14);
-      doc.text(`PARTY: ${shortenText(val("Party Name"), 22)}`, M + 350, y + 10);
-      
-      setFont("bold", 14);
-      doc.text(`DATE: ${vDate("Date")}`, PAGE.w - M - 25, y + 10, { align: "right" });
+    const pairs = [
+      { label: "Job Order No", value: joNum },
+      { label: "Date", value: vDate("Date") },
+      { label: "Lot Number", value: val("Lot Number") },
+      { label: "Party Name", value: short(val("Party Name"), 28) },
+      { label: "FABRIC SUPERVISOR", value: short(val("FABRIC_SUPERVISOR"), 28) }, // ADDED
+      { label: "Order No.", value: short(val("Order No."), 28) }, // ADDED
+      { label: "Fabric", value: short(val("Fabric"), 40) },
+      { label: "Brand", value: short(val("Brand"), 40) },
+      { label: "Garment Type", value: short(val("Garment Type"), 40) },
+      { label: "Section", value: short(val("Section"), 40) },
+      { label: "Season", value: short(val("Season"), 40) },
+      { label: "Shade", value: short(val("Shade"), 40) },
+      { label: "Quantity", value: val("Quantity") },
+      { label: "Unit", value: val("Unit") },
+      { label: "Style", value: short(val("Style"), 40) },
+      { label: "Priority", value: val("Priority") },
+      { label: "Pattern", value: short(val("Pattern"), 40) },
+      { label: "Size", value: short(val("Size"), 40) },
+      { label: "Embroidery", value: short(val("Emb"), 40) },
+      { label: "Printing", value: short(val("Printing"), 40) },
+      { label: "Direct Stitching", value: asBool(row?.["Direct Stitching"]) ? "Yes" : asText(row?.["Direct Stitching"]) },
+      { label: "Embroidery Details", value: short(val("Emb Details"), 50) },
+      { label: "Printing Details", value: short(val("Printing Details"), 50) },
+      { label: "Component", value: short(val("Component"), 40) },
+      { label: "Collar", value: short(val("Collar"), 40) },
+      { label: "Bone", value: short(val("Bone"), 40) },
+      { label: "Remarks", value: short(row?.["Remarks"] ?? "No remarks provided", 80) }
+    ];
 
-      y += 50;
+    const cols = 4;
+    const rowHeight = 24;
+    const rowGap = 10;
+    const pad = 18;
+    const titleH = 26;
+    const titleGap = 10;
 
-      const colGap = 25;
-      const leftColW = (contentW() - colGap) * 0.55;
-      const rightColW = (contentW() - colGap) * 0.45;
+    const rows = Math.ceil(pairs.length / cols);
+    const gridH = rows * (rowHeight + rowGap) - rowGap;
+    const boxW = contentW();
+    const boxH = pad + titleH + titleGap + gridH + pad;
 
-      const leftX = M;
-      const leftStartY = y;
-      
-      doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1);
-      doc.rect(leftX, y, leftColW, 38, "FD");
-      
-      setFont("bold", 18);
-      doc.text("MATERIAL SPECIFICATIONS", leftX + leftColW / 2, y + 24, { align: "center" });
-      
-      y += 48;
+    await ensurePageRoom(boxH);
 
-      const materialData = [
-        { label: "FABRIC", value: val("Fabric") },
-        { label: "BRAND", value: val("Brand") },
-        { label: "GARMENT TYPE", value: val("Garment Type") },
-        { label: "QUANTITY", value: `${val("Quantity")} ${val("Unit")}` },
-        { label: "SIZE", value: val("Size") },
-        { label: "STYLE", value: val("Style") },
-        { label: "PATTERN", value: val("Pattern") },
-        { label: "TAPE/LACE", value: val("Tape/Lace") },
-        { label: "BOTTOM TYPE", value: val("Bottom Type") },
-        { label: "ZIP", value: val("Zip") },
-        { label: "COLLAR", value: val("Collar") },
-        { label: "BONE", value: val("Bone") },
-        { label: "OTHER COMPONENTS", value: val("Component") },
-        { label: "SECTION", value: val("Section") },
-        { label: "SEASON", value: val("Season") },
-        { label: "PRIORITY", value: val("Priority") },
-        { label: "SUBMITTED BY", value: val("Submitted By") },
-        { label: "REMARKS", value: shortenText(row?.["Remarks"] ?? "", 50) },
-      ];
+    const boxX = M;
+    const boxY = y;
 
-      const rowHeight = 23;
-      const labelWidth = 130;
-      
-      for (let i = 0; i < materialData.length; i++) {
-        const item = materialData[i];
-        
-        if (item.separator) {
-          doc.setDrawColor(...C.black);
-          doc.setLineWidth(0.5);
-          doc.line(leftX + 10, y + 8, leftX + leftColW - 10, y + 8);
-          y += 15;
-          continue;
-        }
-        
-        await ensurePageRoom(rowHeight);
-        
-        setFont("bold", 11);
-        doc.text(item.label, leftX + 15, y + 15);
-        
-        setFont("bold", 12);
-        
-        const valueText = item.value || "—";
-        const maxWidth = leftColW - labelWidth - 25;
-        
-        const lines = doc.splitTextToSize(valueText, maxWidth);
-        if (lines.length > 1) {
-          for (let idx = 0; idx < lines.length; idx++) {
-            doc.text(lines[idx], leftX + labelWidth + 15, y + 15 + (idx * 11));
-          }
-          y += (lines.length * 11) + 10;
-        } else {
-          doc.text(valueText, leftX + labelWidth + 15, y + 15);
-          y += rowHeight;
-        }
-      }
-      
-      const leftColumnBottom = y;
+    doc.setDrawColor(...C.black);
+    doc.setFillColor(...C.white);
+    doc.setLineWidth(1);
+    doc.roundedRect(boxX, boxY, boxW, boxH, 8, 8, "FD");
 
-      const rightX = M + leftColW + colGap;
-      const rightStartY = leftStartY;
-      let rightY = rightStartY;
-      
-      doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1);
-      doc.rect(rightX, rightY, rightColW, 38, "FD");
-      
-      setFont("bold", 18);
-      doc.text("VISUAL REFERENCE", rightX + rightColW / 2, rightY + 24, { align: "center" });
-      
-      rightY += 48;
-      
-      await ensurePageRoom(200);
-      doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1.5);
-      doc.rect(rightX, rightY, rightColW, 190, "FD");
-      
-      const hasImage = row?.["Image URL"] && String(row?.["Image URL"]).trim() !== "";
-      if (hasImage) {
-        try {
-          const dataUrl = await withTimeout(
-            loadImageAsBase64ForPdf(row["Image URL"], { maxWidth: 350, maxHeight: 150 }),
-            IMG_TIMEOUT_MS
-          );
-          if (dataUrl) {
-            const p = doc.getImageProperties(dataUrl);
-            const fitW = rightColW - 50;
-            const fitH = 150;
-            const ratio = Math.min(fitW / p.width, fitH / p.height);
-            const iw = Math.max(1, p.width * ratio);
-            const ih = Math.max(1, p.height * ratio);
-            const ix = rightX + (rightColW - iw) / 2;
-            const iy = rightY + 20;
-            doc.addImage(dataUrl, "JPEG", ix, iy, iw, ih);
-          } else {
-            setFont("normal", 13);
-            doc.text("No image available", rightX + rightColW / 2, rightY + 100, { align: "center" });
-          }
-        } catch {
-          setFont("normal", 13);
-          doc.text("Image load failed", rightX + rightColW / 2, rightY + 100, { align: "center" });
-        }
-      } else {
-        setFont("normal", 13);
-        doc.text("No image provided", rightX + rightColW / 2, rightY + 100, { align: "center" });
-      }
-      
-      rightY += 205;
-      
-      doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1);
-      doc.rect(rightX, rightY, rightColW, 38, "FD");
-      
-      setFont("bold", 18);
-      doc.text("PLANNING STATUS", rightX + rightColW / 2, rightY + 24, { align: "center" });
-      
-      rightY += 48;
-      
-      const planningItems = [
-        { label: "Material Ordered" },
-        { label: "Zip Received" },
-        { label: "Dori Received" },
-        { label: "Label Received" },
-        { label: "Tag Received" },
-        { label: "Washcare Received" },
-      ];
-      
-      for (let idx = 0; idx < planningItems.length; idx++) {
-        const item = planningItems[idx];
-        
-        doc.setDrawColor(...C.black);
-        doc.setLineWidth(1.2);
-        doc.rect(rightX + 20, rightY - 5, 14, 14);
-        
-        setFont("normal", 13);
-        doc.text(item.label, rightX + 45, rightY + 3);
-        
-        setFont("normal", 12);
-        doc.text("__ / __ / ____", rightX + rightColW - 25, rightY + 3, { align: "right" });
-        
-        rightY += 22;
-      }
-      
-      const rightColumnBottom = rightY;
-      y = Math.max(leftColumnBottom, rightColumnBottom);
-      y += 30;
+    setFont("bold", F.h3);
+    doc.text("Order Summary", boxX + pad, boxY + pad + titleH - 6);
 
-      await ensurePageRoom(50);
-      
-      doc.setFillColor(...C.white);
-      doc.setDrawColor(...C.black);
-      doc.setLineWidth(1);
-      doc.rect(M, y, contentW(), 42, "FD");
-      
-      setFont("bold", 18);
-      doc.text("MATERIAL REQUIREMENTS", M + contentW() / 2, y + 26, { align: "center" });
-      
-      y += 52;
+    const innerX = boxX + pad;
+    const innerYStart = boxY + pad + titleH + titleGap;
+    const colW = (boxW - pad * 2 - GRID_COL_GAP * (cols - 1)) / cols;
 
-      const requirementsHeaders = [
-        { label: "MATERIAL ITEM", key: "item", width: 2 },
-        { label: "DESCRIPTION", key: "description", width: 2 },
-        { label: "ORDERED QTY", key: "ordered", width: 1 },
-        { label: "RECEIVED QTY", key: "received", width: 1 },
-        { label: "STATUS", key: "status", width: 1.5 },
-      ];
+    let drawY = innerYStart;
+    for (let i = 0; i < pairs.length; i += cols) {
+      const rowSlice = pairs.slice(i, i + cols);
 
-      const requirementsData = [
-        { item: "MAIN FABRIC", description: val("Fabric"), ordered: "", received: "", status: "" },
-        { item: "COLLAR", description: val("Collar") || "As per design", ordered: "", received: "", status: "" },
-        { item: "BONE", description: val("Bone") || "As per design", ordered: "", received: "", status: "" },
-        { item: "ZIPPERS", description: val("Zip") || "As per design", ordered: "", received: "", status: "" },
-        { item: "TAPE/LACE", description: val("Tape/Lace") || "As required", ordered: "", received: "", status: "" },
-        { item: "BOTTOM MATERIAL", description: val("Bottom Type") || "As per style", ordered: "", received: "", status: "" },
-        { item: "THREAD", description: "Matching thread", ordered: "", received: "", status: "" },
-        { item: "LABELS", description: "Brand Labels", ordered: "", received: "", status: "" },
-        { item: "Tag", description: "Tag", ordered: "", received: "", status: "" },
-        { item: "PACKAGING", description: "Polybags", ordered: "", received: "", status: "" },
-        { item: "OTHER COMPONENTS", description: val("Component") || "Various trims", ordered: "", received: "", status: "" },
-        { item: "", description: "", ordered: "", received: "", status: "" },
-      ];
+      rowSlice.forEach((p, idx) => {
+        const x = innerX + idx * (colW + GRID_COL_GAP);
 
-      await drawTable(requirementsHeaders, requirementsData, {
-        rowH: 28,
-        headerH: 34,
-        fontScale: 0.9
+        setFont("bold", F.small);
+        doc.text((p.label || "").toUpperCase(), x, drawY);
+
+        setFont("bold", F.small);
+
+        const line = doc.splitTextToSize(asText(p.value), colW)[0] || "—";
+        doc.text(line, x, drawY + 12);
       });
 
-      // Minimal spacing - no extra content to prevent blank page
+      drawY += rowHeight + rowGap;
+    }
+
+    y = boxY + boxH + GRID_ROW_GAP;
+  }
+
+  await sectionHeader("Full Remarks & Visual");
+  const colGap = GRID_COL_GAP;
+  const colW = (contentW() - colGap) / 2;
+  const leftX = M;
+  const rightX = M + colW + colGap;
+  const yTop = y;
+
+  const remarksTextFull = (row?.["Remarks"] ?? "").toString().trim() || "No remarks provided";
+  await drawCard({ label: "Complete Remarks", value: remarksTextFull, x: leftX, w: colW });
+  const bottomLeft = y;
+
+  y = yTop;
+  const estRightH = Math.max(220, bottomLeft - yTop);
+  await tryDrawImage({
+    url: row?.["Image URL"],
+    x: rightX, w: colW, h: estRightH
+  });
+  const bottomRight = yTop + estRightH;
+
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1);
+  doc.line(M + colW + colGap / 2, yTop + 6, M + colW + colGap / 2, Math.max(bottomLeft, bottomRight) - 6);
+
+  y = Math.max(bottomLeft, bottomRight) + GRID_ROW_GAP;
+
+  await sectionHeader("Cutting Schedule");
+  const shades = parseShades(val("Shade"));
+  const minRows = Math.max(6, shades.length);
+  const rowCount = Math.min(10, Math.max(minRows, shades.length));
+
+  const tableHeaders = [
+    { label: "Table", key: "table", width: 1 },
+    { label: "Shade", key: "shade", width: 2 },
+    { label: "Quantity", key: "qty", width: 1 },
+    { label: "Kharcha", key: "kharcha", width: 1 },
+    { label: "Date of Cutting", key: "cut", width: 1.5 },
+  ];
+
+  const tableData = Array.from({ length: rowCount }, (_, i) => ({
+    table: "",
+    shade: i < shades.length ? String(shades[i]) : "",
+    qty: "",
+    kharcha: "Yes / No",
+    cut: "",
+  }));
+
+  await drawTable(tableHeaders, tableData, { rowH: 26, headerH: 32, fontScale: 0.95 });
+  y += 40;
+};
+    
+const renderThirdPage = async () => {
+  PAGE = innerPageScaffold();
+  y = 75;
+
+  const shortenText = (text, maxLength) => {
+    if (!text || text === "—") return "—";
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength - 3) + "...";
+  };
+
+  setFont("bold", 28);
+  doc.text("MATERIAL REQUISITION PLANNING", PAGE.w / 2, 55, { align: "center" });
+  
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(3);
+  doc.line(PAGE.w / 2 - 120, 65, PAGE.w / 2 + 120, 65);
+  
+  y += 25;
+  
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1);
+  doc.rect(M, y - 5, contentW(), 40, "FD");
+  
+  setFont("bold", 14);
+  doc.text(`JOB ORDER: ${joNum}`, M + 25, y + 10);
+  
+  setFont("bold", 14);
+  doc.text(`LOT NUMBER: ${val("Lot Number")}`, M + 180, y + 10);
+  
+  setFont("bold", 14);
+  doc.text(`PARTY: ${shortenText(val("Party Name"), 22)}`, M + 350, y + 10);
+  
+  setFont("bold", 14);
+  doc.text(`DATE: ${vDate("Date")}`, PAGE.w - M - 25, y + 10, { align: "right" });
+
+  y += 50;
+
+  const colGap = 25;
+  const leftColW = (contentW() - colGap) * 0.55;
+  const rightColW = (contentW() - colGap) * 0.45;
+
+  const leftX = M;
+  const leftStartY = y;
+  
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1);
+  doc.rect(leftX, y, leftColW, 38, "FD");
+  
+  setFont("bold", 18);
+  doc.text("MATERIAL SPECIFICATIONS", leftX + leftColW / 2, y + 24, { align: "center" });
+  
+  y += 48;
+
+  const materialData = [
+    { label: "FABRIC", value: val("Fabric") },
+    { label: "BRAND", value: val("Brand") },
+    { label: "GARMENT TYPE", value: val("Garment Type") },
+    { label: "FABRIC SUPERVISOR", value: val("FABRIC_SUPERVISOR") }, // ADDED
+    { label: "ORDER NO.", value: val("Order No.") }, // ADDED
+    { label: "QUANTITY", value: `${val("Quantity")} ${val("Unit")}` },
+    { label: "SIZE", value: val("Size") },
+    { label: "STYLE", value: val("Style") },
+    { label: "PATTERN", value: val("Pattern") },
+    { label: "TAPE/LACE", value: val("Tape/Lace") },
+    { label: "BOTTOM TYPE", value: val("Bottom Type") },
+    { label: "ZIP", value: val("Zip") },
+    { label: "COLLAR", value: val("Collar") },
+    { label: "BONE", value: val("Bone") },
+    { label: "OTHER COMPONENTS", value: val("Component") },
+    { label: "SECTION", value: val("Section") },
+    { label: "SEASON", value: val("Season") },
+    { label: "PRIORITY", value: val("Priority") },
+    { label: "SUBMITTED BY", value: val("Submitted By") },
+    { label: "REMARKS", value: shortenText(row?.["Remarks"] ?? "", 50) },
+  ];
+
+  const rowHeight = 23;
+  const labelWidth = 130;
+  
+  for (let i = 0; i < materialData.length; i++) {
+    const item = materialData[i];
+    
+    if (item.separator) {
+      doc.setDrawColor(...C.black);
+      doc.setLineWidth(0.5);
+      doc.line(leftX + 10, y + 8, leftX + leftColW - 10, y + 8);
       y += 15;
-    };
+      continue;
+    }
+    
+    await ensurePageRoom(rowHeight);
+    
+    setFont("bold", 11);
+    doc.text(item.label, leftX + 15, y + 15);
+    
+    setFont("bold", 12);
+    
+    const valueText = item.value || "—";
+    const maxWidth = leftColW - labelWidth - 25;
+    
+    const lines = doc.splitTextToSize(valueText, maxWidth);
+    if (lines.length > 1) {
+      for (let idx = 0; idx < lines.length; idx++) {
+        doc.text(lines[idx], leftX + labelWidth + 15, y + 15 + (idx * 11));
+      }
+      y += (lines.length * 11) + 10;
+    } else {
+      doc.text(valueText, leftX + labelWidth + 15, y + 15);
+      y += rowHeight;
+    }
+  }
+  
+  const leftColumnBottom = y;
+
+  const rightX = M + leftColW + colGap;
+  const rightStartY = leftStartY;
+  let rightY = rightStartY;
+  
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1);
+  doc.rect(rightX, rightY, rightColW, 38, "FD");
+  
+  setFont("bold", 18);
+  doc.text("VISUAL REFERENCE", rightX + rightColW / 2, rightY + 24, { align: "center" });
+  
+  rightY += 48;
+  
+  await ensurePageRoom(200);
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1.5);
+  doc.rect(rightX, rightY, rightColW, 190, "FD");
+  
+  const hasImage = row?.["Image URL"] && String(row?.["Image URL"]).trim() !== "";
+  if (hasImage) {
+    try {
+      const dataUrl = await withTimeout(
+        loadImageAsBase64ForPdf(row["Image URL"], { maxWidth: 350, maxHeight: 150 }),
+        IMG_TIMEOUT_MS
+      );
+      if (dataUrl) {
+        const p = doc.getImageProperties(dataUrl);
+        const fitW = rightColW - 50;
+        const fitH = 150;
+        const ratio = Math.min(fitW / p.width, fitH / p.height);
+        const iw = Math.max(1, p.width * ratio);
+        const ih = Math.max(1, p.height * ratio);
+        const ix = rightX + (rightColW - iw) / 2;
+        const iy = rightY + 20;
+        doc.addImage(dataUrl, "JPEG", ix, iy, iw, ih);
+      } else {
+        setFont("normal", 13);
+        doc.text("No image available", rightX + rightColW / 2, rightY + 100, { align: "center" });
+      }
+    } catch {
+      setFont("normal", 13);
+      doc.text("Image load failed", rightX + rightColW / 2, rightY + 100, { align: "center" });
+    }
+  } else {
+    setFont("normal", 13);
+    doc.text("No image provided", rightX + rightColW / 2, rightY + 100, { align: "center" });
+  }
+  
+  rightY += 205;
+  
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1);
+  doc.rect(rightX, rightY, rightColW, 38, "FD");
+  
+  setFont("bold", 18);
+  doc.text("PLANNING STATUS", rightX + rightColW / 2, rightY + 24, { align: "center" });
+  
+  rightY += 48;
+  
+  const planningItems = [
+    { label: "Material Ordered" },
+    { label: "Zip Received" },
+    { label: "Dori Received" },
+    { label: "Label Received" },
+    { label: "Tag Received" },
+    { label: "Washcare Received" },
+  ];
+  
+  for (let idx = 0; idx < planningItems.length; idx++) {
+    const item = planningItems[idx];
+    
+    doc.setDrawColor(...C.black);
+    doc.setLineWidth(1.2);
+    doc.rect(rightX + 20, rightY - 5, 14, 14);
+    
+    setFont("normal", 13);
+    doc.text(item.label, rightX + 45, rightY + 3);
+    
+    setFont("normal", 12);
+    doc.text("__ / __ / ____", rightX + rightColW - 25, rightY + 3, { align: "right" });
+    
+    rightY += 22;
+  }
+  
+  const rightColumnBottom = rightY;
+  y = Math.max(leftColumnBottom, rightColumnBottom);
+  y += 30;
+
+  await ensurePageRoom(50);
+  
+  doc.setFillColor(...C.white);
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(1);
+  doc.rect(M, y, contentW(), 42, "FD");
+  
+  setFont("bold", 18);
+  doc.text("MATERIAL REQUIREMENTS", M + contentW() / 2, y + 26, { align: "center" });
+  
+  y += 52;
+
+  const requirementsHeaders = [
+    { label: "MATERIAL ITEM", key: "item", width: 2 },
+    { label: "DESCRIPTION", key: "description", width: 2 },
+    { label: "ORDERED QTY", key: "ordered", width: 1 },
+    { label: "RECEIVED QTY", key: "received", width: 1 },
+    { label: "STATUS", key: "status", width: 1.5 },
+  ];
+
+  const requirementsData = [
+    { item: "MAIN FABRIC", description: val("Fabric"), ordered: "", received: "", status: "" },
+    { item: "COLLAR", description: val("Collar") || "As per design", ordered: "", received: "", status: "" },
+    { item: "BONE", description: val("Bone") || "As per design", ordered: "", received: "", status: "" },
+    { item: "ZIPPERS", description: val("Zip") || "As per design", ordered: "", received: "", status: "" },
+    { item: "TAPE/LACE", description: val("Tape/Lace") || "As required", ordered: "", received: "", status: "" },
+    { item: "BOTTOM MATERIAL", description: val("Bottom Type") || "As per style", ordered: "", received: "", status: "" },
+    { item: "THREAD", description: "Matching thread", ordered: "", received: "", status: "" },
+    { item: "LABELS", description: "Brand Labels", ordered: "", received: "", status: "" },
+    { item: "Tag", description: "Tag", ordered: "", received: "", status: "" },
+    { item: "PACKAGING", description: "Polybags", ordered: "", received: "", status: "" },
+    { item: "OTHER COMPONENTS", description: val("Component") || "Various trims", ordered: "", received: "", status: "" },
+    { item: "", description: "", ordered: "", received: "", status: "" },
+  ];
+
+  await drawTable(requirementsHeaders, requirementsData, {
+    rowH: 28,
+    headerH: 34,
+    fontScale: 0.9
+  });
+
+  y += 15;
+};
 
 const renderLandscapeTablePage = async () => {
   doc.addPage("a4", "landscape");
@@ -2631,168 +2644,186 @@ const renderLandscapeTablePage = async () => {
     return text.substring(0, maxLength - 3) + "...";
   };
   
-  const drawPageHeader = (pageNumber, totalPages) => {
-    const TOP_MARGIN = 8; // Reduced from 15 to 8
-    const starAdjustment = shouldStars ? 35 : 0; // Reduced from 45 to 35
-    
-    doc.setFillColor(...C.white);
-    doc.rect(0, 0, LANDSCAPE_W, 65 + TOP_MARGIN + starAdjustment, "F");
-    
-    const quantity = val("Quantity") || "";
-    const unit = val("Unit") || "sets";
-    
-    // LEFT COLUMN - Job Details (more compact)
-    let leftY = 12 + TOP_MARGIN; // Reduced from 22 to 12
-    
-    setFont("bold", 9); // Reduced from 10 to 9
-    doc.text(`JOB: ${joNum} | ${vDate("Date")}`, M, leftY);
-    leftY += 12; // Reduced from 14 to 12
-    
-    const style = val("Style") || "—";
-    setFont("normal", 9);
-    doc.text(`STYLE: ${style}`, M, leftY);
-    leftY += 12;
-    
-    if (quantity) {
-      setFont("bold", 9);
-      const quantityText = `QTY: ${quantity} ${unit}`;
-      doc.text(quantityText, M, leftY);
-      leftY += 12;
-    }
-    
-    const season = val("Season") || "—";
-    if (season && season !== "—") {
-      setFont("normal", 8);
-      doc.text(`SEASON: ${season}`, M, leftY);
-      leftY += 10; // Reduced from 12 to 10
-    }
-    
-    const section = val("Section") || "—";
-    if (section && section !== "—") {
-      setFont("normal", 8);
-      doc.text(`SECTION: ${section}`, M, leftY);
-      leftY += 10;
-    }
-    
-    // RIGHT COLUMN - Brand and Stitching Details (more compact)
-    let rightY = 12 + TOP_MARGIN;
-    
+const drawPageHeader = (pageNumber, totalPages) => {
+  const TOP_MARGIN = 8;
+  const starAdjustment = shouldStars ? 35 : 0;
+  
+  doc.setFillColor(...C.white);
+  doc.rect(0, 0, LANDSCAPE_W, 65 + TOP_MARGIN + starAdjustment, "F");
+  
+  const quantity = val("Quantity") || "";
+  const unit = val("Unit") || "sets";
+  
+  // LEFT COLUMN - Job Details (more compact)
+  let leftY = 12 + TOP_MARGIN;
+  
+  setFont("bold", 9);
+  doc.text(`JOB: ${joNum} | ${vDate("Date")}`, M, leftY);
+  leftY += 12;
+  
+  const style = val("Style") || "—";
+  setFont("normal", 9);
+  doc.text(`STYLE: ${style}`, M, leftY);
+  leftY += 12;
+  
+  if (quantity) {
     setFont("bold", 9);
-    const brand = val("Brand") || "—";
-    doc.text(`BRAND: ${brand}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    const quantityText = `QTY: ${quantity} ${unit}`;
+    doc.text(quantityText, M, leftY);
+    leftY += 12;
+  }
+  
+  const season = val("Season") || "—";
+  if (season && season !== "—") {
+    setFont("normal", 8);
+    doc.text(`SEASON: ${season}`, M, leftY);
+    leftY += 10;
+  }
+  
+  const section = val("Section") || "—";
+  if (section && section !== "—") {
+    setFont("normal", 8);
+    doc.text(`SECTION: ${section}`, M, leftY);
+    leftY += 10;
+  }
+  
+  // RIGHT COLUMN - Brand and Stitching Details (more compact)
+  let rightY = 12 + TOP_MARGIN;
+  
+  setFont("bold", 9);
+  const brand = val("Brand") || "—";
+  doc.text(`BRAND: ${brand}`, LANDSCAPE_W - M, rightY, { align: "right" });
+  rightY += 12;
+  
+  // ADDED: FABRIC SUPERVISOR
+  const fabricSupervisor = val("FABRIC_SUPERVISOR") || "—";
+  if (fabricSupervisor !== "—") {
+    setFont("normal", 8);
+    doc.text(`FABRIC SUPV: ${shortenText(fabricSupervisor, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 10;
+  }
+  
+  // ADDED: Order No.
+  const orderNo = val("Order No.") || "—";
+  if (orderNo !== "—") {
+    setFont("normal", 8);
+    doc.text(`ORDER NO: ${shortenText(orderNo, 20)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 10;
+  }
+  
+  if (dsEnabled) {
+    setFont("bold", 9);
+    doc.text(`DIRECT STITCHING: YES`, LANDSCAPE_W - M, rightY, { align: "right" });
     rightY += 12;
-    
-    if (dsEnabled) {
+  } else {
+    const dsValue = asText(row?.["Direct Stitching"]);
+    if (dsValue && dsValue !== "—" && dsValue.toLowerCase() !== "no") {
       setFont("bold", 9);
-      doc.text(`DIRECT STITCHING: YES`, LANDSCAPE_W - M, rightY, { align: "right" });
+      doc.text(`Direct Stitching: ${dsValue}`, LANDSCAPE_W - M, rightY, { align: "right" });
       rightY += 12;
-    } else {
-      const dsValue = asText(row?.["Direct Stitching"]);
-      if (dsValue && dsValue !== "—" && dsValue.toLowerCase() !== "no") {
-        setFont("bold", 9);
-        doc.text(`Direct Stitching: ${dsValue}`, LANDSCAPE_W - M, rightY, { align: "right" });
-        rightY += 12;
-      }
     }
-    
-    // Add collar and bone information on right side
-    if (collar && collar !== "") {
-      setFont("normal", 8);
-      doc.text(`COLLAR: ${shortenText(collar, 18)}`, LANDSCAPE_W - M, rightY, { align: "right" });
-      rightY += 10;
-    }
-    
-    if (bone && bone !== "") {
-      setFont("normal", 8);
-      doc.text(`BONE: ${shortenText(bone, 18)}`, LANDSCAPE_W - M, rightY, { align: "right" });
-      rightY += 10;
-    }
-    
-    if (zip && zip !== "") {
-      setFont("normal", 8);
-      doc.text(`ZIP: ${shortenText(zip, 18)}`, LANDSCAPE_W - M, rightY, { align: "right" });
-      rightY += 10;
-    }
-    
+  }
+  
+  // Add collar and bone information on right side
+  if (collar && collar !== "") {
     setFont("normal", 8);
-    const pattern = val("Pattern") || "—";
-    const garmentType = val("Garment Type") || "—";
-    const patternGarment = `${pattern} | ${garmentType}`;
-    if (patternGarment !== "— | —") {
-      doc.text(patternGarment, LANDSCAPE_W - M, rightY, { align: "right" });
-      rightY += 10;
-    }
-    
-    // COMPONENT - Now on right side just below garment type
-    if (component && component !== "") {
-      setFont("normal", 7);
-      const componentText = `COMP: ${shortenText(component, 35)}`;
-      doc.text(componentText, LANDSCAPE_W - M, rightY, { align: "right" });
-      rightY += 9;
-    }
-    
-    // CENTER - Title and Lot Info (more compact)
-    let centerY = 12 + TOP_MARGIN;
-    
-    setFont("bold", 15); // Reduced from 16 to 14
-    doc.text("CUTTING TABLE______", LANDSCAPE_W / 2, centerY, { align: "center" });
-    centerY += 14; // Reduced from 16 to 14
-    
-    if (shouldStars) {
-      const starSize = 8; // Reduced from 10 to 8
-      const starSpacing = 16; // Reduced from 20 to 16
-      const totalWidth = 5 * starSpacing - starSpacing/2;
-      const startX = LANDSCAPE_W / 2 - totalWidth / 2;
-      const starY = centerY;
-      
-      for (let i = 0; i < 5; i++) {
-        drawStar(doc, startX + (i * starSpacing), starY, starSize);
-      }
-      
-      setFont("bold", 12); // Reduced from 14 to 12
-      doc.text("LOT REPEATED", LANDSCAPE_W / 2, starY + 20, { align: "center" });
-      centerY = starY + 32; // Reduced from 40 to 32
-    }
-    
-    const lotNumber = val("Lot Number") || "—";
-    setFont("bold", 12); // Reduced from 14 to 12
-    doc.text(`LOT: ${lotNumber}`, LANDSCAPE_W / 2, centerY, { align: "center" });
-    centerY += 13; // Reduced from 16 to 13
-    
-    setFont("bold", 9); // Reduced from 10 to 9
-    const fabric = val("Fabric") || "—";
-    const fabricShort = shortenText(fabric, 40);
-    doc.text(`Fabric: ${fabricShort}`, LANDSCAPE_W / 2, centerY, { align: "center" });
-    centerY += 11; // Reduced from 14 to 11
-    
+    doc.text(`COLLAR: ${shortenText(collar, 18)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 10;
+  }
+  
+  if (bone && bone !== "") {
     setFont("normal", 8);
-    const remarksText = row?.["Remarks"] ? String(row["Remarks"]).trim() : "";
-    if (remarksText && remarksText !== "") {
-      const maxRemarksLength = 70;
-      const displayRemarks = remarksText.length > maxRemarksLength 
-        ? remarksText.substring(0, maxRemarksLength - 3) + "..." 
-        : remarksText;
-      
-      doc.text(`Remarks: ${displayRemarks}`, LANDSCAPE_W / 2, centerY, { align: "center" });
-      centerY += 11;
+    doc.text(`BONE: ${shortenText(bone, 18)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 10;
+  }
+  
+  if (zip && zip !== "") {
+    setFont("normal", 8);
+    doc.text(`ZIP: ${shortenText(zip, 18)}`, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 10;
+  }
+  
+  setFont("normal", 8);
+  const pattern = val("Pattern") || "—";
+  const garmentType = val("Garment Type") || "—";
+  const patternGarment = `${pattern} | ${garmentType}`;
+  if (patternGarment !== "— | —") {
+    doc.text(patternGarment, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 10;
+  }
+  
+  // COMPONENT - Now on right side just below garment type
+  if (component && component !== "") {
+    setFont("normal", 7);
+    const componentText = `COMP: ${shortenText(component, 35)}`;
+    doc.text(componentText, LANDSCAPE_W - M, rightY, { align: "right" });
+    rightY += 9;
+  }
+  
+  // CENTER - Title and Lot Info (more compact)
+  let centerY = 12 + TOP_MARGIN;
+  
+  setFont("bold", 15);
+  doc.text("CUTTING TABLE______", LANDSCAPE_W / 2, centerY, { align: "center" });
+  centerY += 14;
+  
+  if (shouldStars) {
+    const starSize = 8;
+    const starSpacing = 16;
+    const totalWidth = 5 * starSpacing - starSpacing/2;
+    const startX = LANDSCAPE_W / 2 - totalWidth / 2;
+    const starY = centerY;
+    
+    for (let i = 0; i < 5; i++) {
+      drawStar(doc, startX + (i * starSpacing), starY, starSize);
     }
     
-    // Calculate header height for separator line
-    let headerHeight = 55 + TOP_MARGIN + starAdjustment; // Reduced from 75 to 55
+    setFont("bold", 12);
+    doc.text("LOT REPEATED", LANDSCAPE_W / 2, starY + 20, { align: "center" });
+    centerY = starY + 32;
+  }
+  
+  const lotNumber = val("Lot Number") || "—";
+  setFont("bold", 12);
+  doc.text(`LOT: ${lotNumber}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+  centerY += 13;
+  
+  setFont("bold", 9);
+  const fabric = val("Fabric") || "—";
+  const fabricShort = shortenText(fabric, 40);
+  doc.text(`Fabric: ${fabricShort}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+  centerY += 11;
+  
+  setFont("normal", 8);
+  const remarksText = row?.["Remarks"] ? String(row["Remarks"]).trim() : "";
+  if (remarksText && remarksText !== "") {
+    const maxRemarksLength = 70;
+    const displayRemarks = remarksText.length > maxRemarksLength 
+      ? remarksText.substring(0, maxRemarksLength - 3) + "..." 
+      : remarksText;
     
-    if (remarksText && remarksText !== "") headerHeight += 11;
-    if (collar && collar !== "") headerHeight += 10;
-    if (bone && bone !== "") headerHeight += 10;
-    if (zip && zip !== "") headerHeight += 10;
-    if (component && component !== "") headerHeight += 9; // Added component to height calculation
-    
-    const separatorY = headerHeight + 3; // Reduced from 5 to 3
-    doc.setDrawColor(...C.black);
-    doc.setLineWidth(0.5);
-    doc.line(M, separatorY, LANDSCAPE_W - M, separatorY);
-    
-    return separatorY + 5; // Reduced from 10 to 5
-  };
+    doc.text(`Remarks: ${displayRemarks}`, LANDSCAPE_W / 2, centerY, { align: "center" });
+    centerY += 11;
+  }
+  
+  // Calculate header height for separator line
+  let headerHeight = 55 + TOP_MARGIN + starAdjustment;
+  
+  if (remarksText && remarksText !== "") headerHeight += 11;
+  if (collar && collar !== "") headerHeight += 10;
+  if (bone && bone !== "") headerHeight += 10;
+  if (zip && zip !== "") headerHeight += 10;
+  if (component && component !== "") headerHeight += 9;
+  if (fabricSupervisor && fabricSupervisor !== "—") headerHeight += 10; // ADDED
+  if (orderNo && orderNo !== "—") headerHeight += 10; // ADDED
+  
+  const separatorY = headerHeight + 3;
+  doc.setDrawColor(...C.black);
+  doc.setLineWidth(0.5);
+  doc.line(M, separatorY, LANDSCAPE_W - M, separatorY);
+  
+  return separatorY + 5;
+};
   
  const drawStickerBox = (startY, pageNumber) => {
   const boxWidth = 130;
@@ -3496,8 +3527,6 @@ const exportBatchPages = async (which /* "first" | "second" | "material" */) => 
       await pause(0);
     };
 
-    // ====== RENDER FIRST PAGE ======
-  // ====== RENDER FIRST PAGE (Matching generatePdf style) ======
 const renderFirstPage = async (row) => {
   const joNum = (row?.["Job Order No"] ?? "").toString().trim() || "Unknown";
   
@@ -3712,8 +3741,11 @@ const renderFirstPage = async (row) => {
     await pause(0);
   };
 
-  // Render Order Details
-  await sectionHeaderForPage("Order Details", { rightBigText: ` ${val("Lot Number", row)}` });
+  const fabricSupervisor = val("FABRIC_SUPERVISOR", row) || "";
+const orderDetailsTitle = fabricSupervisor && fabricSupervisor !== "—" 
+  ? `Order Details (${fabricSupervisor})` 
+  : "Order Details";
+await sectionHeaderForPage(orderDetailsTitle, { rightBigText: ` ${val("Lot Number", row)}` });
   
   await drawGridRowForPage([
     { label: "Job Order No", value: joNum },
@@ -3722,6 +3754,12 @@ const renderFirstPage = async (row) => {
     { label: "Party Name", value: val("Party Name", row) },
     { label: "Brand", value: val("Brand", row) },
   ], { cols: 5, rowGap: 12 });
+
+  // ADDED: FABRIC SUPERVISOR and Order No.
+  await drawGridRowForPage([
+    { label: "FABRIC SUPERVISOR", value: val("FABRIC_SUPERVISOR", row) },
+    { label: "Order No.", value: val("Order No.", row) },
+  ], { cols: 2, rowGap: 12 });
 
   await drawGridRowForPage([
     { label: "Fabric", value: val("Fabric", row) },

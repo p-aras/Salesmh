@@ -10,7 +10,7 @@ const SHEET_ID1 = "1fKSwGBIpzWEFk566WRQ4bzQ0anJlmasoY8TwrTLQHXI";
 
 const MAX_ROWS = 10000;
 const GAS_WEB_APP_URL =
-  "https://script.google.com/macros/s/AKfycbzelSoypwKdJOT1vAeSsuHJ6B8H8e9JoWnhjmIWpi0qRX5pgxpWbtvLhWSE-A-f0CFV3Q/exec";
+  "https://script.google.com/macros/s/AKfycbxCARYdZJL_BNnZhDHT41Cl_gRQVvIEPlSOFARnLymIKlFvy8k52CCx-RsMtdtTLdvdYw/exec";
 
 const HEADER_MAP = {
   partyName: "Party Name",
@@ -21,8 +21,9 @@ const HEADER_MAP = {
   printing: "Printing",
   pattern: "Pattern",
   style: "Style",
-  fabric: "FABRIC",      // ← Change to uppercase FABRIC
-  brand: "BRAND"         // ← Change to uppercase BRAND
+  fabric: "FABRIC",
+  brand: "BRAND",
+  fabricSupervisor: "FABRIC_SUPERVISOR"  // ADD THIS LINE
 };
 const UNIT_OPTIONS = ["SETS", "ROLLS", "PCS"];
 const ZIP_OPTIONS = ["YES", "NO", "NOT DECIDED"];
@@ -44,7 +45,7 @@ const JobOrderForm = () => {
   const location = useLocation();
   const [params] = useSearchParams();
 
-  const [formData, setFormData] = useState({
+const [formData, setFormData] = useState({
   jobOrderNo: "",
   date: today,
   fabric: "",
@@ -71,7 +72,8 @@ const JobOrderForm = () => {
   sticker: "",
   bone: "",
   collar: "",
-  fullBaju: "NO", // ADD THIS LINE
+  fullBaju: "NO",
+  fabricSupervisor: "",  // ADD THIS LINE
 });
 
   const [lists, setLists] = useState(
@@ -111,7 +113,7 @@ const JobOrderForm = () => {
   const [repeatedLotNumber, setRepeatedLotNumber] = useState("");
   const [showRepeatedLotDialog, setShowRepeatedLotDialog] = useState(false);
 
-  const JOB_HEADERS = [
+const JOB_HEADERS = [
   "Job Order No",
   "Order No.",
   "Date",
@@ -139,7 +141,8 @@ const JobOrderForm = () => {
   "Sticker",
   "Bone",
   "Collar",
-  "Full Baju", // ADD THIS LINE
+  "Full Baju",
+  "Fabric Supervisor",  // ADD THIS LINE
   "Submitted By",
   "Image URL",
   "Priority",
@@ -262,7 +265,7 @@ function parseShadeString(s) {
     return "";
   }
 
- function mapOrderRowForPrefill(src = {}) {
+function mapOrderRowForPrefill(src = {}) {
   const directRaw = pick(src, "Direct Stitching", "DirectStitching", "Direct_Stitching");
   const direct = String(directRaw).toLowerCase();
   const isDirect = ["yes", "true", "y", "1"].includes(direct);
@@ -295,7 +298,8 @@ function parseShadeString(s) {
     "Sticker": pick(src, "Sticker", "Sticker Option"),
     "Bone": pick(src, "Bone", "Bone Option"),
     "Collar": pick(src, "Collar", "Collar Option"),
-    "Full Baju": pick(src, "Full Baju", "FullBaju", "Full Baju Attribute"), // ADD THIS LINE
+    "Full Baju": pick(src, "Full Baju", "FullBaju", "Full Baju Attribute"),
+    "Fabric Supervisor": pick(src, "Fabric Supervisor", "Fabric_Supervisor"),  // ADD THIS LINE
   };
 }
 
@@ -332,7 +336,8 @@ function getEmptyForm(currentOrderNo = "") {
     sticker: "",
     bone: "",
     collar: "",
-    fullBaju: "NO", // ADD THIS LINE
+    fullBaju: "NO",
+    fabricSupervisor: "",  // ADD THIS LINE
   };
 }
 
@@ -874,7 +879,7 @@ function getEmptyForm(currentOrderNo = "") {
     }
   }, [fetchNextJobNo, fetchRecentOrders]);
 
- function applyOrderToForm(row) {
+function applyOrderToForm(row) {
   const isDirect =
     String(row["Direct Stitching"] || "").toLowerCase() === "true" ||
     String(row["Direct Stitching"] || "").toLowerCase() === "yes";
@@ -921,7 +926,8 @@ function getEmptyForm(currentOrderNo = "") {
     sticker: String(row["Sticker"] || ""),
     bone: String(row["Bone"] || ""),
     collar: String(row["Collar"] || ""),
-    fullBaju: String(row["Full Baju"] || ""), // ADD THIS LINE
+    fullBaju: String(row["Full Baju"] || ""),
+    fabricSupervisor: String(row["Fabric Supervisor"] || ""),  // ADD THIS LINE
   }));
   setEmbPositions(nextEmbPos);
   setPrintPositions(nextPrintPos);
@@ -931,7 +937,6 @@ function getEmptyForm(currentOrderNo = "") {
   }
   setShowRepeatDialog(false);
 }
-
   useEffect(() => {
     const prefillRow = location.state?.prefill;
     if (!prefillRow) return;
@@ -1010,7 +1015,8 @@ const handleClearAll = useCallback(() => {
     sticker: "",
     bone: "",
     collar: "",
-    fullBaju: "NO", // ADD THIS LINE
+    fullBaju: "NO",
+    fabricSupervisor: "",  // ADD THIS LINE
   }));
   setImageFile(null);
   setEmbPositions({
@@ -1056,7 +1062,6 @@ const handleClearAll = useCallback(() => {
   setError("");
   setSubmitSuccess(false);
 }, []);
-
 
 const handleChange = (e) => {
   const { name } = e.target;
@@ -1353,6 +1358,7 @@ const handleSubmit = async (e) => {
       bone: formData.bone || "",
       collar: formData.collar || "",
       fullBaju: formData.fullBaju || "",
+      fabricSupervisor: formData.fabricSupervisor || "",  // ✅ ADD THIS LINE
       embDetails: isDirect
         ? ""
         : (() => {
@@ -1529,6 +1535,16 @@ const handleSubmit = async (e) => {
   onChange={handleChange}
   loading={loading}
   required={false}
+/>
+<SearchableSelect
+  label="Fabric Supervisor"
+  emoji="👔"
+  name="fabricSupervisor"
+  value={formData.fabricSupervisor}
+  options={lists.fabricSupervisor}
+  onChange={handleChange}
+  loading={loading}
+  required={true}
 />
               <Select
                 label="Style"
