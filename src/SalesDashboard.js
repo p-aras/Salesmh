@@ -32,75 +32,87 @@ const FiActivity = lazy(() => import('react-icons/fi').then(mod => ({ default: m
 const FiCheckCircle = lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiCheckCircle })));
 const FiAlertCircle = lazy(() => import('react-icons/fi').then(mod => ({ default: mod.FiAlertCircle })));
 
-// Elegant Navy & White Theme
+// Premium Pearl & Alabaster Light Theme System
 const THEME = {
-  navy: {
-    darkest: '#0a1128',
-    dark: '#0f1a3a',
-    medium: '#162447',
-    light: '#1e2a5a',
-    muted: '#2a3a7a',
-  },
-  white: '#ffffff',
-  offWhite: '#ffffff',
-  gray: {
-    50: '#f9fafb',
-    100: '#f1f5f9',
-    200: '#e2e8f0',
-    300: '#cbd5e1',
-    400: '#94a3b8',
-    500: '#64748b',
-    600: '#475569',
-    700: '#334155',
-    800: '#002a6d',
-    900: '#0f172a',
+  bg: '#ffffffff',
+  cardBg: '#ffffff',
+  border: '#e2e8f0',
+  borderHover: '#cbd5e1',
+  text: {
+    primary: '#0f172a',
+    secondary: '#475569',
+    muted: '#94a3b8',
   },
   accent: {
-    blue: '#3b82f6',
-    cyan: '#06b6d4',
+    indigo: '#4f46e5',
+    indigoLight: '#e0e7ff',
+    purple: '#8b5cf6',
+    purpleLight: '#f3e8ff',
+    cyan: '#0891b2',
+    cyanLight: '#ecfeff',
     emerald: '#10b981',
-    amber: '#f59e0b',
-    rose: '#ef4444',
-    violet: '#8b5cf6',
-  },
-  gradient: {
-    primary: 'linear-gradient(135deg, #0f1a3a 0%, #162447 100%)',
-    secondary: 'linear-gradient(135deg, #1e2a5a 0%, #2a3a7a 100%)',
-    glow: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
+    emeraldLight: '#d1fae5',
+    amber: '#d97706',
+    amberLight: '#fef3c7',
+    rose: '#e11d48',
+    roseLight: '#ffe4e6',
   },
   shadow: {
-    sm: '0 2px 4px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03)',
-    md: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
-    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.02)',
-    glow: '0 8px 30px rgba(59, 130, 246, 0.15)',
-  },
+    sm: '0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.025)',
+    md: '0 10px 15px -3px rgba(15, 23, 42, 0.04), 0 4px 6px -2px rgba(15, 23, 42, 0.02)',
+    lg: '0 20px 25px -5px rgba(15, 23, 42, 0.06), 0 10px 10px -5px rgba(15, 23, 42, 0.03)',
+    glow: '0 8px 30px rgba(79, 70, 229, 0.08)',
+  }
 };
 
-// Animations
-const fadeIn = keyframes`
-  from { opacity: 0; }
-  to { opacity: 1; }
-`;
+// Production Pipeline Stages Configuration
+const PIPELINE_STAGES = [
+  { id: 'sales_planning', label: 'Sales & Planning', color: '#4f46e5', rgb: '79, 70, 229', icon: 'FiShoppingCart' },
+  { id: 'material_cutting', label: 'Material & Cutting', color: '#0891b2', rgb: '8, 145, 178', icon: 'FiScissors' },
+  { id: 'embellish_processing', label: 'Embellishments & Process', color: '#8b5cf6', rgb: '139, 92, 246', icon: 'FiBox' },
+  { id: 'logistics_reference', label: 'Logistics & Reference', color: '#10b981', rgb: '16, 185, 129', icon: 'FiPackage' }
+];
 
-const slideUp = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-`;
+const getCardStage = (cardId) => {
+  if ([1, 2, 3, 16, 17, 18].includes(cardId)) return 'sales_planning';
+  if ([4, 6, 7, 8, 11, 12].includes(cardId)) return 'material_cutting';
+  if ([9, 10, 13, 14, 19].includes(cardId)) return 'embellish_processing';
+  return 'logistics_reference';
+};
 
-const scaleIn = keyframes`
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
-`;
+const getPriorityStyles = (priority) => {
+  const styles = {
+    critical: {
+      color: '#e11d48',
+      bgColor: '#ffe4e6',
+      borderColor: '#fecdd3',
+      rgb: '225, 29, 72'
+    },
+    high: {
+      color: '#d97706',
+      bgColor: '#fef3c7',
+      borderColor: '#fde68a',
+      rgb: '217, 119, 6'
+    },
+    medium: {
+      color: '#2563eb',
+      bgColor: '#dbeafe',
+      borderColor: '#bfdbfe',
+      rgb: '37, 99, 235'
+    },
+    low: {
+      color: '#059669',
+      bgColor: '#d1fae5',
+      borderColor: '#a7f3d0',
+      rgb: '5, 150, 101'
+    },
+  };
+  return styles[priority] || { color: '#475569', bgColor: '#f1f5f9', borderColor: '#e2e8f0', rgb: '71, 85, 105' };
+};
 
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
-`;
-
-const float = keyframes`
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-4px); }
 `;
 
 // Card Data
@@ -128,16 +140,16 @@ const CARDS = [
 
 // Category config
 const CATEGORIES = [
-  { id: 'all', label: 'Overview', icon: 'FiGrid', color: '#3b82f6' },
-  { id: 'Orders', label: 'Orders', icon: 'FiShoppingCart', color: '#3b82f6' },
-  { id: 'Cutting', label: 'Cutting', icon: 'FiScissors', color: '#06b6d4' },
+  { id: 'all', label: 'Overview', icon: 'FiGrid', color: '#4f46e5' },
+  { id: 'Orders', label: 'Orders', icon: 'FiShoppingCart', color: '#2563eb' },
+  { id: 'Cutting', label: 'Cutting', icon: 'FiScissors', color: '#0891b2' },
   { id: 'Embroidery', label: 'Embroidery', icon: 'FiBox', color: '#8b5cf6' },
-  { id: 'Printing', label: 'Printing', icon: 'FiPrinter', color: '#f59e0b' },
-  { id: 'Planning', label: 'Planning', icon: 'FiTrendingUp', color: '#10b981' },
-  { id: 'Design', label: 'Design', icon: 'FiSettings', color: '#ec4899' },
-  { id: 'Fabric', label: 'Fabric', icon: 'FiUsers', color: '#ef4444' },
-  { id: 'Documents', label: 'Documents', icon: 'FiFileText', color: '#64748b' },
-  { id: 'Logistics', label: 'Logistics', icon: 'FiPackage', color: '#3b82f6' },
+  { id: 'Printing', label: 'Printing', icon: 'FiPrinter', color: '#d97706' },
+  { id: 'Planning', label: 'Planning', icon: 'FiTrendingUp', color: '#059669' },
+  { id: 'Design', label: 'Design', icon: 'FiSettings', color: '#db2777' },
+  { id: 'Fabric', label: 'Fabric', icon: 'FiUsers', color: '#e11d48' },
+  { id: 'Documents', label: 'Documents', icon: 'FiFileText', color: '#475569' },
+  { id: 'Logistics', label: 'Logistics', icon: 'FiPackage', color: '#2563eb' },
   { id: 'Production', label: 'Production', icon: 'FiActivity', color: '#8b5cf6' },
 ];
 
@@ -153,8 +165,10 @@ const CANCEL_ROUTES = {
   job: '/cancel-order/job',
 };
 
-// Global Styles
+// Global Styles Override
 const GlobalStyle = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
   * {
     margin: 0;
     padding: 0;
@@ -162,10 +176,14 @@ const GlobalStyle = createGlobalStyle`
   }
 
   body {
-    font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: ${THEME.offWhite};
-    color: ${THEME.gray[800]};
+    font-family: 'Plus Jakarta Sans', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: ${THEME.bg} !important;
+    color: ${THEME.text.primary} !important;
     overflow-x: hidden;
+  }
+
+  html, body, #root {
+    background-color: ${THEME.bg} !important;
   }
 
   ::-webkit-scrollbar {
@@ -174,17 +192,16 @@ const GlobalStyle = createGlobalStyle`
   }
 
   ::-webkit-scrollbar-track {
-    background: ${THEME.gray[200]};
-    border-radius: 10px;
+    background: #f1f5f9;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: ${THEME.gray[400]};
+    background: #cbd5e1;
     border-radius: 10px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: ${THEME.navy.medium};
+    background: #94a3b8;
   }
 `;
 
@@ -193,12 +210,14 @@ const SalesDashboard = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCancelPicker, setShowCancelPicker] = useState(false);
+  const [viewMode, setViewMode] = useState('board'); // 'board' or 'list'
   const [favorites, setFavorites] = useState(() => {
     const saved = localStorage.getItem('favoriteModulesModern');
     return saved ? JSON.parse(saved) : [1, 4, 7];
   });
 
   useEffect(() => {
+    document.title = "Workspace Control Center | Manufacturing Hub";
     localStorage.setItem('favoriteModulesModern', JSON.stringify(favorites));
   }, [favorites]);
 
@@ -209,8 +228,8 @@ const SalesDashboard = () => {
     }
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(card => 
-        card.title.toLowerCase().includes(query) || 
+      filtered = filtered.filter(card =>
+        card.title.toLowerCase().includes(query) ||
         card.description.toLowerCase().includes(query)
       );
     }
@@ -232,7 +251,7 @@ const SalesDashboard = () => {
 
   const toggleFavorite = useCallback((cardId, e) => {
     e.stopPropagation();
-    setFavorites(prev => 
+    setFavorites(prev =>
       prev.includes(cardId) ? prev.filter(id => id !== cardId) : [...prev, cardId]
     );
   }, []);
@@ -242,130 +261,150 @@ const SalesDashboard = () => {
     return IconComponent ? <IconComponent {...props} /> : null;
   };
 
-  const getPriorityColor = (priority) => {
-    const colors = {
-      critical: THEME.accent.rose,
-      high: THEME.accent.amber,
-      medium: THEME.accent.blue,
-      low: THEME.accent.emerald,
-    };
-    return colors[priority] || THEME.gray[500];
-  };
+  const favoriteCardsData = useMemo(() => {
+    return CARDS.filter(c => favorites.includes(c.id));
+  }, [favorites]);
 
   return (
     <>
       <GlobalStyle />
       <DashboardContainer>
-        {/* Elegant Sidebar */}
-        <Sidebar>
-          <SidebarHeader>
-            <Logo>
-              <LogoIcon>
-                <span>M</span>
-                <span>H</span>
-              </LogoIcon>
-              <LogoText>Manufacturing<span>Hub</span></LogoText>
-            </Logo>
-          </SidebarHeader>
+        {/* Top Control Bar */}
+        <TopBar>
+          <WelcomeSection>
+            <GreetingIcon>✨</GreetingIcon>
+            <GreetingText>
+              Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : ' Evening'},
+              <span> Production Manager</span>
+            </GreetingText>
+          </WelcomeSection>
 
-          <SidebarNav>
-            {CATEGORIES.map((category) => (
-              <NavItem
-                key={category.id}
-                $active={activeCategory === category.id}
-                onClick={() => setActiveCategory(category.id)}
+          <ActionGroup>
+            {/* View Mode Toggle */}
+            <ViewModeToggle>
+              <ToggleButton
+                $active={viewMode === 'board'}
+                onClick={() => setViewMode('board')}
               >
-                <NavIcon $active={activeCategory === category.id} $color={category.color}>
-                  {renderIcon(category.icon, { size: 20 })}
-                </NavIcon>
-                <NavLabel>{category.label}</NavLabel>
-                {activeCategory === category.id && <ActiveIndicator />}
-              </NavItem>
-            ))}
-          </SidebarNav>
+                {renderIcon('FiLayers', { size: 14 })}
+                <span>Pipeline Board</span>
+              </ToggleButton>
+              <ToggleButton
+                $active={viewMode === 'list'}
+                onClick={() => setViewMode('list')}
+              >
+                {renderIcon('FiList', { size: 14 })}
+                <span>Workspace List</span>
+              </ToggleButton>
+            </ViewModeToggle>
 
-          <SidebarFooter>
-            <UserAvatar>
-              <span>PM</span>
-            </UserAvatar>
-            <UserInfo>
-              <UserName>Production Manager</UserName>
-              <UserRole>Manufacturing Hub</UserRole>
-            </UserInfo>
-          </SidebarFooter>
-        </Sidebar>
+            <SearchBar>
+              {renderIcon('FiSearch', { size: 18 })}
+              <SearchInput
+                type="text"
+                placeholder="Search modules..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </SearchBar>
 
-        {/* Main Content */}
-        <MainContent>
-          {/* Elegant Top Bar */}
-          <TopBar>
-            <WelcomeSection>
-              <GreetingIcon>✨</GreetingIcon>
-              <GreetingText>
-                Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : ' Evening'},
-                <span> Production Manager</span>
-              </GreetingText>
-            </WelcomeSection>
+            <NotificationBtn>
+              {renderIcon('FiBell', { size: 18 })}
+              <NotificationBadge>3</NotificationBadge>
+            </NotificationBtn>
+          </ActionGroup>
+        </TopBar>
 
-            <ActionGroup>
-              <SearchBar>
-                {renderIcon('FiSearch', { size: 18 })}
-                <SearchInput 
-                  type="text" 
-                  placeholder="Search modules..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </SearchBar>
-              
-              <NotificationBtn>
-                {renderIcon('FiBell', { size: 20 })}
-                <NotificationBadge>3</NotificationBadge>
-              </NotificationBtn>
-            </ActionGroup>
-          </TopBar>
+        {/* Mobile Horizontal Scrolling Tabs */}
+        <MobileCategoryList>
+          {CATEGORIES.map((category) => (
+            <MobileCategoryItem
+              key={category.id}
+              $active={activeCategory === category.id}
+              onClick={() => setActiveCategory(category.id)}
+            >
+              {renderIcon(category.icon, { size: 14 })}
+              <span>{category.label}</span>
+            </MobileCategoryItem>
+          ))}
+        </MobileCategoryList>
 
-          {/* Hero Stats Section */}
-          <HeroSection>
-            <HeroTitle>
-              <h1>Production Dashboard</h1>
-              <p>Monitor and manage all manufacturing operations from a single view</p>
-            </HeroTitle>
-            
+        {/* Split Pane Layout */}
+        <WorkspaceLayout>
+
+          {/* Left Pane: Categories Navigation & Favorites Bookmarks */}
+          <LeftPane>
+            <CategoryCard>
+              <CategoryTitle>Workspace Categories</CategoryTitle>
+              {CATEGORIES.map((category) => (
+                <NavItem
+                  key={category.id}
+                  $active={activeCategory === category.id}
+                  onClick={() => setActiveCategory(category.id)}
+                >
+                  <NavIcon $active={activeCategory === category.id} $color={category.color}>
+                    {renderIcon(category.icon, { size: 16 })}
+                  </NavIcon>
+                  <NavLabel>{category.label}</NavLabel>
+                </NavItem>
+              ))}
+            </CategoryCard>
+
+            <FavoritesCard>
+              <CategoryTitle>Quick Favorites</CategoryTitle>
+              <FavList>
+                {favoriteCardsData.map((card) => (
+                  <FavItem key={card.id} onClick={() => handleCardClick(card)}>
+                    {renderIcon(card.icon, { size: 14, color: THEME.accent.indigo })}
+                    <span>{card.title}</span>
+                  </FavItem>
+                ))}
+                {favoriteCardsData.length === 0 && (
+                  <div style={{ fontSize: '0.75rem', color: THEME.text.muted, padding: '0.5rem', textAlign: 'center' }}>
+                    No favorites added yet
+                  </div>
+                )}
+              </FavList>
+            </FavoritesCard>
+          </LeftPane>
+
+          {/* Right Pane: Stats Cards + Workspaces (Board / List View) */}
+          <RightPane>
+            {/* KPI Stats deck */}
             <StatsGrid>
-              <StatCard $gradient>
-                <StatIcon>
-                  {renderIcon('FiGrid', { size: 24 })}
+              <StatCard>
+                <StatIcon $color={THEME.accent.indigo} $bgColor="rgba(79, 70, 229, 0.08)" $borderColor="rgba(79, 70, 229, 0.15)">
+                  {renderIcon('FiGrid', { size: 20 })}
                 </StatIcon>
                 <StatInfo>
                   <StatValue>{filteredCards.length}</StatValue>
                   <StatLabel>Active Modules</StatLabel>
                 </StatInfo>
               </StatCard>
-              
+
               <StatCard>
-                <StatIcon style={{ background: THEME.navy.light }}>
-                  {renderIcon('FiStar', { size: 24 })}
+                <StatIcon $color={THEME.accent.amber} $bgColor="rgba(217, 119, 6, 0.08)" $borderColor="rgba(217, 119, 6, 0.15)">
+                  {renderIcon('FiStar', { size: 20 })}
                 </StatIcon>
                 <StatInfo>
                   <StatValue>{favorites.length}</StatValue>
                   <StatLabel>Favorites</StatLabel>
                 </StatInfo>
               </StatCard>
-              
+
               <StatCard>
-                <StatIcon style={{ background: THEME.navy.light }}>
-                  {renderIcon('FiClock', { size: 24 })}
+                <StatIcon $color={THEME.accent.rose} $bgColor="rgba(225, 29, 72, 0.08)" $borderColor="rgba(225, 29, 72, 0.15)">
+                  {renderIcon('FiClock', { size: 20 })}
                 </StatIcon>
                 <StatInfo>
                   <StatValue>{filteredCards.filter(c => c.priority === 'critical' || c.priority === 'high').length}</StatValue>
                   <StatLabel>High Priority</StatLabel>
                 </StatInfo>
               </StatCard>
-              
+
               <StatCard>
-                <StatIcon style={{ background: THEME.navy.light }}>
-                  {renderIcon('FiTrendingUp', { size: 24 })}
+                <StatIcon $color={THEME.accent.emerald} $bgColor="rgba(16, 185, 129, 0.08)" $borderColor="rgba(16, 185, 129, 0.15)">
+                  {renderIcon('FiTrendingUp', { size: 20 })}
                 </StatIcon>
                 <StatInfo>
                   <StatValue>98%</StatValue>
@@ -373,334 +412,394 @@ const SalesDashboard = () => {
                 </StatInfo>
               </StatCard>
             </StatsGrid>
-          </HeroSection>
 
-          {/* Modules Section */}
-          <ModulesSection>
-            <SectionHeader>
-              <SectionTitle>
-                {activeCategory === 'all' ? 'All Modules' : activeCategory}
-                <ModuleCount>{filteredCards.length}</ModuleCount>
-              </SectionTitle>
-              <ViewAllBtn>
-                View All
-                {renderIcon('FiArrowRight', { size: 16 })}
-              </ViewAllBtn>
-            </SectionHeader>
+            {/* Content Switcher Section */}
+            <ModulesSection>
+              <SectionHeader>
+                <SectionTitle>
+                  {activeCategory === 'all' ? 'All Workspace' : activeCategory}
+                  <ModuleCount>{filteredCards.length}</ModuleCount>
+                </SectionTitle>
+                <ResetFiltersBtn onClick={() => { setActiveCategory('all'); setSearchQuery(''); }}>
+                  Reset Filters
+                  {renderIcon('FiArrowRight', { size: 14 })}
+                </ResetFiltersBtn>
+              </SectionHeader>
 
-            <Suspense fallback={<LoadingGrid />}>
-              <ModulesGrid>
-                <AnimatePresence mode="wait">
-                  {[...filteredCards]
-                    .sort((a, b) => {
-                      const aFav = favorites.includes(a.id);
-                      const bFav = favorites.includes(b.id);
-                      if (aFav && !bFav) return -1;
-                      if (!aFav && bFav) return 1;
-                      return 0;
-                    })
-                    .map((card) => (
-                      <ModuleCard
-                        key={card.id}
-                        onClick={() => handleCardClick(card)}
-                        whileHover={{ y: -4 }}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <CardGradient $priority={card.priority} />
-                        <CardHeader>
-                          <CardIcon $priority={card.priority}>
-                            {renderIcon(card.icon, { size: 22 })}
-                          </CardIcon>
-                          <FavoriteBtn 
-                            $isFavorite={favorites.includes(card.id)} 
-                            onClick={(e) => toggleFavorite(card.id, e)}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            {renderIcon('FiStar', { size: 16, fill: favorites.includes(card.id) ? THEME.accent.amber : 'none', stroke: favorites.includes(card.id) ? THEME.accent.amber : THEME.gray[400] })}
-                          </FavoriteBtn>
-                        </CardHeader>
-                        <CardTitle>{card.title}</CardTitle>
-                        <CardDescription>{card.description}</CardDescription>
-                        <CardFooter>
-                          <PriorityBadge $color={getPriorityColor(card.priority)}>
-                            <BadgeDot $color={getPriorityColor(card.priority)} />
-                            {card.priority}
-                          </PriorityBadge>
-                          <StatBadge>
-                            {renderIcon('FiClock', { size: 12 })}
-                            <span>{card.stats}</span>
-                          </StatBadge>
-                        </CardFooter>
-                      </ModuleCard>
-                    ))}
-                </AnimatePresence>
-              </ModulesGrid>
-            </Suspense>
+              <Suspense fallback={<LoadingGrid />}>
+                {viewMode === 'board' ? (
+                  /* WORKFLOW PIPELINE BOARD (KANBAN FORMAT) */
+                  <BoardLayout>
+                    {PIPELINE_STAGES.map((stage) => {
+                      const stageCards = filteredCards.filter(c => getCardStage(c.id) === stage.id);
+                      return (
+                        <BoardColumn key={stage.id}>
+                          <ColumnHeader $color={stage.color}>
+                            <ColumnTitleGroup>
+                              <ColumnTitle>{stage.label}</ColumnTitle>
+                              <span>{stageCards.length}</span>
+                            </ColumnTitleGroup>
+                            <ColumnIcon $color={stage.color}>
+                              {renderIcon(stage.icon, { size: 16 })}
+                            </ColumnIcon>
+                          </ColumnHeader>
 
-            {filteredCards.length === 0 && (
-              <EmptyState>
-                <EmptyIcon>🔍</EmptyIcon>
-                <EmptyTitle>No modules found</EmptyTitle>
-                <EmptyDesc>Try adjusting your search or category filter</EmptyDesc>
-              </EmptyState>
-            )}
-          </ModulesSection>
-        </MainContent>
+                          <BoardColumnBody>
+                            <AnimatePresence mode="popLayout">
+                              {stageCards
+                                .sort((a, b) => {
+                                  const aFav = favorites.includes(a.id);
+                                  const bFav = favorites.includes(b.id);
+                                  if (aFav && !bFav) return -1;
+                                  if (!aFav && bFav) return 1;
+                                  return 0;
+                                })
+                                .map((card) => {
+                                  const pStyle = getPriorityStyles(card.priority);
+                                  return (
+                                    <RowCard
+                                      key={card.id}
+                                      onClick={() => handleCardClick(card)}
+                                      $priorityColor={pStyle.color}
+                                      whileHover={{ y: -2 }}
+                                      layout
+                                      initial={{ opacity: 0, scale: 0.95 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      exit={{ opacity: 0, scale: 0.95 }}
+                                      transition={{ duration: 0.18 }}
+                                    >
+                                      <RowIcon $color={pStyle.color} $bgColor={pStyle.bgColor}>
+                                        {renderIcon(card.icon, { size: 18 })}
+                                      </RowIcon>
+                                      <RowContent>
+                                        <RowTitleGroup>
+                                          <RowTitle>{card.title}</RowTitle>
+                                        </RowTitleGroup>
+                                        <RowDesc>{card.description}</RowDesc>
+                                      </RowContent>
+                                      <RowRight>
+                                        <RowFavBtn
+                                          onClick={(e) => toggleFavorite(card.id, e)}
+                                          whileTap={{ scale: 0.9 }}
+                                        >
+                                          {renderIcon('FiStar', {
+                                            size: 13,
+                                            fill: favorites.includes(card.id) ? THEME.accent.amber : 'none',
+                                            stroke: favorites.includes(card.id) ? THEME.accent.amber : THEME.text.muted
+                                          })}
+                                        </RowFavBtn>
+                                        {renderIcon('FiArrowRight', { size: 14, color: THEME.accent.indigo })}
+                                      </RowRight>
+                                    </RowCard>
+                                  );
+                                })}
+                            </AnimatePresence>
+                            {stageCards.length === 0 && (
+                              <ColumnEmptyState>No active items</ColumnEmptyState>
+                            )}
+                          </BoardColumnBody>
+                        </BoardColumn>
+                      );
+                    })}
+                  </BoardLayout>
+                ) : (
+                  /* WORKSPACE LIST VIEW (HIGH DENSITY ROW TABLE FORMAT) */
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <tr>
+                          <Th style={{ width: '35%' }}>Module Name</Th>
+                          <Th style={{ width: '30%' }}>Description</Th>
+                          <Th style={{ width: '15%' }}>Category</Th>
+                          <Th style={{ width: '10%' }}>Priority</Th>
+                          <Th style={{ width: '10%', textAlign: 'right' }}>Actions</Th>
+                        </tr>
+                      </TableHead>
+                      <TableBody>
+                        <AnimatePresence mode="popLayout">
+                          {[...filteredCards]
+                            .sort((a, b) => {
+                              const aFav = favorites.includes(a.id);
+                              const bFav = favorites.includes(b.id);
+                              if (aFav && !bFav) return -1;
+                              if (!aFav && bFav) return 1;
+                              return 0;
+                            })
+                            .map((card) => {
+                              const pStyle = getPriorityStyles(card.priority);
+                              return (
+                                <Tr key={card.id} onClick={() => handleCardClick(card)}>
+                                  <Td>
+                                    <ListModuleCell>
+                                      <ListIconWrapper $color={pStyle.color} $bgColor={pStyle.bgColor}>
+                                        {renderIcon(card.icon, { size: 18 })}
+                                      </ListIconWrapper>
+                                      <div>
+                                        <ListModuleTitle>{card.title}</ListModuleTitle>
+                                        <div style={{ fontSize: '0.7rem', color: THEME.text.muted }}>{card.stats}</div>
+                                      </div>
+                                    </ListModuleCell>
+                                  </Td>
+                                  <Td>
+                                    <ListModuleDesc>{card.description}</ListModuleDesc>
+                                  </Td>
+                                  <Td>
+                                    <CategoryBadge>{card.category}</CategoryBadge>
+                                  </Td>
+                                  <Td>
+                                    <PriorityBadge $color={pStyle.color} $bgColor={pStyle.bgColor} $borderColor={pStyle.borderColor}>
+                                      <BadgeDot $color={pStyle.color} />
+                                      {card.priority}
+                                    </PriorityBadge>
+                                  </Td>
+                                  <Td style={{ textAlign: 'right' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                                      <FavoriteBtn
+                                        $isFavorite={favorites.includes(card.id)}
+                                        onClick={(e) => toggleFavorite(card.id, e)}
+                                        whileTap={{ scale: 0.9 }}
+                                      >
+                                        {renderIcon('FiStar', {
+                                          size: 14,
+                                          fill: favorites.includes(card.id) ? THEME.accent.amber : 'none',
+                                          stroke: favorites.includes(card.id) ? THEME.accent.amber : THEME.text.muted
+                                        })}
+                                      </FavoriteBtn>
+                                      <LaunchBtn onClick={() => handleCardClick(card)}>
+                                        {renderIcon('FiArrowRight', { size: 14 })}
+                                      </LaunchBtn>
+                                    </div>
+                                  </Td>
+                                </Tr>
+                              );
+                            })}
+                        </AnimatePresence>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </Suspense>
 
-        {/* Cancel Modal */}
-        <AnimatePresence>
-          {showCancelPicker && (
-            <ModalOverlay
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowCancelPicker(false)}
-            >
-              <ModalContent
-                initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ModalHeader>
-                  <ModalTitle>Cancel Order</ModalTitle>
-                  <CloseBtn onClick={() => setShowCancelPicker(false)}>
-                    {renderIcon('FiX', { size: 20 })}
-                  </CloseBtn>
-                </ModalHeader>
-                <ModalBody>
-                  <ModalDesc>Select the type of order you want to cancel</ModalDesc>
-                  <OptionGrid>
-                    <OptionItem onClick={() => handlePick('sale')}>
-                      <OptionIcon $color={THEME.accent.blue}>
-                        {renderIcon('FiShoppingCart', { size: 22 })}
-                      </OptionIcon>
-                      <OptionInfo>
-                        <OptionName>Sales Order</OptionName>
-                        <OptionDesc>Cancel customer-facing sales orders</OptionDesc>
-                      </OptionInfo>
-                      {renderIcon('FiArrowRight', { size: 16 })}
-                    </OptionItem>
-                    <OptionItem onClick={() => handlePick('job')}>
-                      <OptionIcon $color={THEME.accent.cyan}>
-                        {renderIcon('FiLayers', { size: 22 })}
-                      </OptionIcon>
-                      <OptionInfo>
-                        <OptionName>Job Order</OptionName>
-                        <OptionDesc>Cancel internal production job orders</OptionDesc>
-                      </OptionInfo>
-                      {renderIcon('FiArrowRight', { size: 16 })}
-                    </OptionItem>
-                  </OptionGrid>
-                </ModalBody>
-              </ModalContent>
-            </ModalOverlay>
-          )}
-        </AnimatePresence>
+              {filteredCards.length === 0 && (
+                <EmptyState>
+                  <EmptyIcon>🔍</EmptyIcon>
+                  <EmptyTitle>No modules found</EmptyTitle>
+                  <EmptyDesc>Try adjusting your search or category filter</EmptyDesc>
+                </EmptyState>
+              )}
+            </ModulesSection>
+          </RightPane>
+
+        </WorkspaceLayout>
       </DashboardContainer>
+
+      {/* Cancel Modal */}
+      <AnimatePresence>
+        {showCancelPicker && (
+          <ModalOverlay
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowCancelPicker(false)}
+          >
+            <ModalContent
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ModalHeader>
+                <ModalTitle>Cancel Order</ModalTitle>
+                <CloseBtn onClick={() => setShowCancelPicker(false)}>
+                  {renderIcon('FiX', { size: 18 })}
+                </CloseBtn>
+              </ModalHeader>
+              <ModalBody>
+                <ModalDesc>Select the type of order you want to cancel</ModalDesc>
+                <OptionGrid>
+                  <OptionItem onClick={() => handlePick('sale')}>
+                    <OptionIcon $color="#4f46e5" $bgColor="#e0e7ff" $borderColor="#c7d2fe">
+                      {renderIcon('FiShoppingCart', { size: 20 })}
+                    </OptionIcon>
+                    <OptionInfo>
+                      <OptionName>Sales Order</OptionName>
+                      <OptionDesc>Cancel customer-facing sales orders</OptionDesc>
+                    </OptionInfo>
+                    {renderIcon('FiArrowRight', { size: 16 })}
+                  </OptionItem>
+                  <OptionItem onClick={() => handlePick('job')}>
+                    <OptionIcon $color="#0891b2" $bgColor="#ecfeff" $borderColor="#c5f2f7">
+                      {renderIcon('FiLayers', { size: 20 })}
+                    </OptionIcon>
+                    <OptionInfo>
+                      <OptionName>Job Order</OptionName>
+                      <OptionDesc>Cancel internal production job orders</OptionDesc>
+                    </OptionInfo>
+                    {renderIcon('FiArrowRight', { size: 16 })}
+                  </OptionItem>
+                </OptionGrid>
+              </ModalBody>
+            </ModalContent>
+          </ModalOverlay>
+        )}
+      </AnimatePresence>
     </>
   );
 };
 
 // Loading Components
 const LoadingGrid = () => (
-  <ModulesGrid>
-    {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-  </ModulesGrid>
+  <BoardLayout>
+    {[...Array(4)].map((_, i) => (
+      <SkeletonCard key={i} />
+    ))}
+  </BoardLayout>
 );
 
 const SkeletonCard = styled.div`
-  background: ${THEME.white};
-  border-radius: 24px;
+  background: #ffffffff;
+  border-radius: 20px;
   padding: 1.5rem;
   animation: ${shimmer} 1.5s infinite;
-  background: linear-gradient(90deg, ${THEME.gray[100]} 25%, ${THEME.gray[200]} 50%, ${THEME.gray[100]} 75%);
+  background: linear-gradient(90deg, #ffffffff 25%, #ffffffff 50%, #ffffffff 75%);
   background-size: 200% 100%;
-  height: 200px;
+  height: 350px;
+  border: 1px solid ${THEME.border};
 `;
 
 // ========== STYLED COMPONENTS ==========
 
 const DashboardContainer = styled.div`
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  background: ${THEME.offWhite};
+  background-color: ${THEME.bg};
+  padding: 2.25rem 2rem;
+  max-width: 1950px;
+  margin: 0 auto;
+  position: relative;
+  
+  @media (max-width: 768px) {
+    padding: 1.25rem 1rem;
+  }
 `;
 
-const Sidebar = styled.aside`
-  width: 280px;
-  background: ${THEME.navy.dark};
+const WorkspaceLayout = styled.div`
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+  
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+`;
+
+const LeftPane = styled.div`
+  width: 260px;
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-  z-index: 100;
+  gap: 1.5rem;
+  flex-shrink: 0;
   
-  &::-webkit-scrollbar {
-    width: 4px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: ${THEME.navy.medium};
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${THEME.navy.light};
+  @media (max-width: 1024px) {
+    display: none;
   }
 `;
 
-const SidebarHeader = styled.div`
-  padding: 2rem 1.5rem;
-  border-bottom: 1px solid ${THEME.navy.light};
-`;
-
-const Logo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
-
-const LogoIcon = styled.div`
-  display: flex;
-  gap: 0.1rem;
-  
-  span {
-    width: 28px;
-    height: 28px;
-    background: ${THEME.gradient.glow};
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: ${THEME.white};
-    font-weight: 800;
-    font-size: 1rem;
-    
-    &:first-child {
-      border-top-right-radius: 4px;
-      border-bottom-right-radius: 4px;
-    }
-    
-    &:last-child {
-      border-top-left-radius: 4px;
-      border-bottom-left-radius: 4px;
-      background: ${THEME.navy.light};
-    }
-  }
-`;
-
-const LogoText = styled.h1`
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: ${THEME.white};
-  
-  span {
-    font-weight: 400;
-    color: ${THEME.accent.blue};
-  }
-`;
-
-const SidebarNav = styled.nav`
+const RightPane = styled.div`
   flex: 1;
-  padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 2rem;
+`;
+
+const CategoryCard = styled.div`
+  background: ${THEME.cardBg};
+  border: 1px solid ${THEME.border};
+  border-radius: 24px;
+  padding: 1.25rem;
+  box-shadow: ${THEME.shadow.md};
+`;
+
+const FavoritesCard = styled.div`
+  background: ${THEME.cardBg};
+  border: 1px solid ${THEME.border};
+  border-radius: 24px;
+  padding: 1.25rem;
+  box-shadow: ${THEME.shadow.md};
+`;
+
+const CategoryTitle = styled.h4`
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: ${THEME.text.muted};
+  margin-bottom: 0.85rem;
+  font-weight: 800;
+  padding-left: 0.4rem;
 `;
 
 const NavItem = styled.button`
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.85rem 1rem;
+  gap: 0.8rem;
+  padding: 0.65rem 0.85rem;
   width: 100%;
-  background: ${props => props.$active ? THEME.navy.light : 'transparent'};
+  background: ${props => props.$active ? 'rgba(79, 70, 229, 0.06)' : 'transparent'};
   border: none;
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
-  color: ${props => props.$active ? THEME.white : THEME.gray[400]};
-  position: relative;
+  color: ${props => props.$active ? THEME.accent.indigo : THEME.text.secondary};
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: left;
   transition: all 0.2s ease;
+  margin-bottom: 0.25rem;
   
   &:hover {
-    background: ${THEME.navy.light};
-    color: ${THEME.white};
+    background: rgba(79, 70, 229, 0.04);
+    color: ${THEME.text.primary};
   }
 `;
 
 const NavIcon = styled.span`
   display: flex;
   align-items: center;
-  color: ${props => props.$active ? props.$color : 'currentColor'};
+  color: ${props => props.$active ? props.$color : 'inherit'};
 `;
 
 const NavLabel = styled.span`
   flex: 1;
   text-align: left;
-  font-weight: 500;
-  font-size: 0.9rem;
-`;
-
-const ActiveIndicator = styled.div`
-  position: absolute;
-  right: 0;
-  width: 3px;
-  height: 20px;
-  background: ${THEME.accent.blue};
-  border-radius: 3px;
-`;
-
-const SidebarFooter = styled.div`
-  padding: 1.5rem;
-  border-top: 1px solid ${THEME.navy.light};
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
-
-const UserAvatar = styled.div`
-  width: 40px;
-  height: 40px;
-  background: ${THEME.navy.light};
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  span {
-    font-weight: 700;
-    font-size: 0.9rem;
-    color: ${THEME.white};
-  }
-`;
-
-const UserInfo = styled.div`
-  flex: 1;
-`;
-
-const UserName = styled.div`
-  font-size: 0.85rem;
   font-weight: 600;
-  color: ${THEME.white};
 `;
 
-const UserRole = styled.div`
-  font-size: 0.7rem;
-  color: ${THEME.gray[400]};
+const FavList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 `;
 
-const MainContent = styled.main`
-  flex: 1;
-  padding: 1.5rem 2.5rem;
-  overflow-x: hidden;
+const FavItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  width: 100%;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: ${THEME.text.secondary};
+  transition: all 0.2s;
   
-  @media (max-width: 768px) {
-    padding: 1rem 1.5rem;
+  &:hover {
+    background: #f1f5f9;
+    color: ${THEME.accent.indigo};
   }
 `;
 
@@ -708,9 +807,10 @@ const TopBar = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid ${THEME.border};
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1.25rem;
 `;
 
 const WelcomeSection = styled.div`
@@ -720,16 +820,16 @@ const WelcomeSection = styled.div`
 `;
 
 const GreetingIcon = styled.span`
-  font-size: 1.5rem;
+  font-size: 1.4rem;
 `;
 
 const GreetingText = styled.span`
-  font-size: 0.9rem;
-  color: ${THEME.gray[600]};
+  font-size: 0.95rem;
+  color: ${THEME.text.secondary};
   
   span {
-    font-weight: 600;
-    color: ${THEME.navy.dark};
+    font-weight: 800;
+    color: ${THEME.text.primary};
   }
 `;
 
@@ -737,22 +837,72 @@ const ActionGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+`;
+
+const ViewModeToggle = styled.div`
+  display: flex;
+  background: #f1f5f9;
+  padding: 0.25rem;
+  border-radius: 12px;
+  border: 1px solid ${THEME.border};
+  box-shadow: ${THEME.shadow.sm};
+  
+  @media (max-width: 580px) {
+    width: 100%;
+  }
+`;
+
+const ToggleButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border: none;
+  background: ${props => props.$active ? '#ffffff' : 'transparent'};
+  color: ${props => props.$active ? THEME.accent.indigo : THEME.text.secondary};
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  box-shadow: ${props => props.$active ? '0 1px 3px rgba(0,0,0,0.05)' : 'none'};
+  transition: all 0.15s ease;
+  
+  &:hover {
+    color: ${THEME.text.primary};
+  }
+
+  @media (max-width: 580px) {
+    flex: 1;
+  }
 `;
 
 const SearchBar = styled.div`
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  background: ${THEME.white};
-  padding: 0.6rem 1.2rem;
-  border-radius: 40px;
-  border: 1px solid ${THEME.gray[200]};
-  color: ${THEME.gray[400]};
-  transition: all 0.2s;
+  background: #ffffff;
+  padding: 0.65rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid ${THEME.border};
+  color: ${THEME.text.secondary};
+  transition: all 0.2s ease;
+  width: 260px;
+  box-shadow: ${THEME.shadow.sm};
   
   &:focus-within {
-    border-color: ${THEME.accent.blue};
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: ${THEME.accent.indigo};
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1), ${THEME.shadow.sm};
+    color: ${THEME.text.primary};
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
   }
 `;
 
@@ -760,60 +910,83 @@ const SearchInput = styled.input`
   border: none;
   outline: none;
   background: transparent;
-  font-size: 0.9rem;
-  width: 220px;
+  font-size: 0.85rem;
+  color: ${THEME.text.primary};
+  width: 100%;
   
   &::placeholder {
-    color: ${THEME.gray[400]};
+    color: ${THEME.text.muted};
   }
 `;
 
 const NotificationBtn = styled.button`
   position: relative;
-  background: ${THEME.white};
-  border: 1px solid ${THEME.gray[200]};
-  padding: 0.6rem;
-  border-radius: 40px;
+  background: #ffffff;
+  border: 1px solid ${THEME.border};
+  padding: 0.65rem;
+  border-radius: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  color: ${THEME.gray[600]};
+  color: ${THEME.text.secondary};
   transition: all 0.2s;
+  box-shadow: ${THEME.shadow.sm};
   
   &:hover {
-    background: ${THEME.gray[100]};
+    background: #f8fafc;
+    border-color: ${THEME.borderHover};
+    color: ${THEME.text.primary};
   }
 `;
 
 const NotificationBadge = styled.span`
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: -3px;
+  right: -3px;
   background: ${THEME.accent.rose};
-  color: ${THEME.white};
+  color: #ffffff;
   font-size: 0.6rem;
   padding: 0.1rem 0.35rem;
   border-radius: 20px;
-  font-weight: 700;
+  font-weight: 800;
+  box-shadow: 0 0 6px ${THEME.accent.rose};
 `;
 
-const HeroSection = styled.div`
-  margin-bottom: 2.5rem;
-`;
-
-const HeroTitle = styled.div`
-  margin-bottom: 2rem;
+const MobileCategoryList = styled.div`
+  display: none;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding: 0.25rem 0 0.75rem 0;
+  margin-bottom: 1rem;
+  -webkit-overflow-scrolling: touch;
   
-  h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    color: ${THEME.navy.dark};
-    margin-bottom: 0.5rem;
+  &::-webkit-scrollbar {
+    display: none;
   }
   
-  p {
-    color: ${THEME.gray[600]};
-    font-size: 0.9rem;
+  @media (max-width: 1024px) {
+    display: flex;
+  }
+`;
+
+const MobileCategoryItem = styled.button`
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  border: 1px solid ${props => props.$active ? THEME.accent.indigo : THEME.border};
+  background: ${props => props.$active ? 'rgba(79, 70, 229, 0.06)' : '#ffffff'};
+  color: ${props => props.$active ? THEME.accent.indigo : THEME.text.secondary};
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: ${THEME.shadow.sm};
+  
+  &:active {
+    transform: scale(0.97);
   }
 `;
 
@@ -822,45 +995,43 @@ const StatsGrid = styled.div`
   grid-template-columns: repeat(4, 1fr);
   gap: 1.25rem;
   
-  @media (max-width: 768px) {
+  @media (max-width: 1200px) {
     grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: 580px) {
+    grid-template-columns: 1fr;
   }
 `;
 
 const StatCard = styled.div`
-  background: ${THEME.white};
-  padding: 1.25rem;
-  border-radius: 24px;
+  background: #ffffff;
+  padding: 1.25rem 1.5rem;
+  border-radius: 20px;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  border: 1px solid ${THEME.gray[200]};
-  transition: all 0.2s;
-  
-  ${props => props.$gradient && `
-    background: ${THEME.gradient.primary};
-    border: none;
-    
-    ${StatValue}, ${StatLabel} {
-      color: ${THEME.white};
-    }
-  `}
+  gap: 1.25rem;
+  border: 1px solid ${THEME.border};
+  box-shadow: ${THEME.shadow.md};
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: ${THEME.shadow.lg};
+    transform: translateY(-4px);
+    border-color: ${THEME.borderHover};
+    box-shadow: ${THEME.shadow.lg}, ${THEME.shadow.glow};
   }
 `;
 
 const StatIcon = styled.div`
-  width: 52px;
-  height: 52px;
-  background: ${THEME.navy.dark};
-  border-radius: 18px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${THEME.white};
+  color: ${props => props.$color || '#ffffff'};
+  background: ${props => props.$bgColor};
+  border: 1px solid ${props => props.$borderColor || 'transparent'};
+  flex-shrink: 0;
 `;
 
 const StatInfo = styled.div`
@@ -869,212 +1040,439 @@ const StatInfo = styled.div`
 `;
 
 const StatValue = styled.div`
-  font-size: 1.75rem;
+  font-size: 1.6rem;
   font-weight: 800;
-  color: ${THEME.navy.dark};
+  color: ${THEME.text.primary};
+  line-height: 1.2;
 `;
 
 const StatLabel = styled.div`
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: ${THEME.gray[500]};
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: ${THEME.text.secondary};
+  margin-top: 0.1rem;
 `;
 
-const ModulesSection = styled.div``;
+const ModulesSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+`;
 
 const SectionHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
 `;
 
 const SectionTitle = styled.h3`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: ${THEME.navy.dark};
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
-
-const ModuleCount = styled.span`
-  background: ${THEME.gray[200]};
-  padding: 0.2rem 0.6rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${THEME.gray[700]};
-`;
-
-const ViewAllBtn = styled.button`
-  background: none;
-  border: none;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: ${THEME.accent.blue};
-  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: ${THEME.text.primary};
   display: flex;
   align-items: center;
   gap: 0.5rem;
+`;
+
+const ModuleCount = styled.span`
+  background: #f1f5f9;
+  border: 1px solid ${THEME.border};
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: ${THEME.text.secondary};
+`;
+
+const ResetFiltersBtn = styled.button`
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: ${THEME.accent.indigo};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   transition: all 0.2s;
   
   &:hover {
-    gap: 0.75rem;
+    gap: 0.6rem;
+    color: ${THEME.text.primary};
   }
 `;
 
-const ModulesGrid = styled.div`
+/* KANBAN PIPELINE BOARD STYLES */
+
+const BoardLayout = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+  
+  @media (max-width: 1440px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
-const ModuleCard = styled(motion.div)`
-  background: ${THEME.white};
-  border-radius: 24px;
-  padding: 1.5rem;
+const BoardColumn = styled.div`
+  background: #ffffff;
+  border: 1px solid ${THEME.border};
+  border-radius: 22px;
+  padding: 1.25rem 1rem;
+  box-shadow: ${THEME.shadow.md};
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 480px;
+  min-width: 0;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    border-color: ${THEME.borderHover};
+    box-shadow: ${THEME.shadow.lg};
+  }
+`;
+
+const ColumnHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid ${props => props.$color};
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+`;
+
+const ColumnTitleGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: ${THEME.text.primary};
+  
+  span {
+    font-size: 0.7rem;
+    color: ${THEME.text.secondary};
+    background: #f1f5f9;
+    padding: 0.15rem 0.45rem;
+    border-radius: 10px;
+    font-weight: 800;
+  }
+`;
+
+const ColumnTitle = styled.h4`
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+`;
+
+const ColumnIcon = styled.div`
+  color: ${props => props.$color};
+  display: flex;
+  align-items: center;
+`;
+
+const BoardColumnBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+`;
+
+const RowCard = styled(motion.div)`
+  background: #ffffff;
+  border: 1px solid ${THEME.border};
+  border-left: 4px solid ${props => props.$priorityColor};
+  border-radius: 16px;
+  padding: 0.9rem;
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
-  border: 1px solid ${THEME.gray[200]};
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.01);
+  min-width: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   
   &:hover {
-    box-shadow: ${THEME.shadow.xl};
-    border-color: transparent;
+    border-color: ${THEME.accent.indigo};
+    transform: translateY(-2px);
+    box-shadow: ${THEME.shadow.md};
   }
 `;
 
-const CardGradient = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: ${props => getPriorityColor(props.$priority)};
-`;
-
-const CardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-`;
-
-const CardIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  background: ${props => `${getPriorityColor(props.$priority)}15`};
-  border-radius: 16px;
+const RowIcon = styled.div`
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: ${props => props.$bgColor};
+  color: ${props => props.$color};
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${props => getPriorityColor(props.$priority)};
+  flex-shrink: 0;
+`;
+
+const RowContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const RowTitleGroup = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+`;
+
+const RowTitle = styled.h5`
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: ${THEME.text.primary};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const RowDesc = styled.p`
+  font-size: 0.75rem;
+  color: ${THEME.text.secondary};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.1rem;
+`;
+
+const RowRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+`;
+
+const RowFavBtn = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  color: ${THEME.text.muted};
+  transition: background 0.15s;
+  
+  &:hover {
+    background: #f1f5f9;
+  }
+`;
+
+const ColumnEmptyState = styled.div`
+  text-align: center;
+  padding: 2rem 1rem;
+  color: ${THEME.text.muted};
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px dashed ${THEME.border};
+  border-radius: 14px;
+  background: #fcfdfe;
+`;
+
+/* TABLE LIST VIEW STYLES */
+
+const TableContainer = styled.div`
+  background: #ffffff;
+  border: 1px solid ${THEME.border};
+  border-radius: 24px;
+  box-shadow: ${THEME.shadow.md};
+  overflow: hidden;
+  
+  @media (max-width: 768px) {
+    overflow-x: auto;
+  }
+`;
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  
+  @media (max-width: 768px) {
+    min-width: 650px;
+  }
+`;
+
+const TableHead = styled.thead`
+  background: #f8fafc;
+  border-bottom: 1px solid ${THEME.border};
+`;
+
+const Th = styled.th`
+  padding: 1.1rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: ${THEME.text.secondary};
+  letter-spacing: 0.5px;
+`;
+
+const TableBody = styled.tbody``;
+
+const Tr = styled.tr`
+  border-bottom: 1px solid ${THEME.border};
+  transition: all 0.15s ease;
+  cursor: pointer;
+  
+  &:hover {
+    background: #f8fafc;
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const Td = styled.td`
+  padding: 1rem 1.25rem;
+  vertical-align: middle;
+`;
+
+const ListModuleCell = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+`;
+
+const ListIconWrapper = styled.div`
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: ${props => props.$bgColor};
+  color: ${props => props.$color};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+`;
+
+const ListModuleTitle = styled.div`
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: ${THEME.text.primary};
+`;
+
+const ListModuleDesc = styled.div`
+  font-size: 0.8rem;
+  color: ${THEME.text.secondary};
+  line-height: 1.4;
+`;
+
+const CategoryBadge = styled.span`
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  background: #f1f5f9;
+  border: 1px solid ${THEME.border};
+  color: ${THEME.text.secondary};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
 const FavoriteBtn = styled(motion.button)`
   background: none;
   border: none;
   cursor: pointer;
-  color: ${props => props.$isFavorite ? THEME.accent.amber : THEME.gray[400]};
-  padding: 0.25rem;
+  padding: 0.35rem;
   border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
   
   &:hover {
-    color: ${THEME.accent.amber};
+    background: #f1f5f9;
   }
 `;
 
-const CardTitle = styled.h4`
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  color: ${THEME.navy.dark};
-`;
-
-const CardDescription = styled.p`
-  font-size: 0.85rem;
-  color: ${THEME.gray[600]};
-  margin-bottom: 1rem;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const CardFooter = styled.div`
-  display: flex;
-  justify-content: space-between;
+const LaunchBtn = styled.div`
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  color: ${THEME.accent.indigo};
+  transition: background 0.15s;
+  
+  &:hover {
+    background: #f1f5f9;
+  }
 `;
 
 const PriorityBadge = styled.span`
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.3rem 0.8rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
   border-radius: 20px;
-  background: ${props => `${props.$color}10`};
+  background: ${props => props.$bgColor};
+  border: 1px solid ${props => props.$borderColor || 'transparent'};
   color: ${props => props.$color};
-  text-transform: capitalize;
-  display: flex;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
   align-items: center;
   gap: 0.35rem;
 `;
 
 const BadgeDot = styled.span`
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: ${props => props.$color};
 `;
 
-const StatBadge = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: ${THEME.gray[500]};
-  
-  span {
-    font-weight: 600;
-    color: ${THEME.gray[700]};
-  }
-`;
-
 const EmptyState = styled.div`
   text-align: center;
-  padding: 4rem;
-  background: ${THEME.white};
-  border-radius: 28px;
-  border: 1px solid ${THEME.gray[200]};
+  padding: 4rem 2rem;
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid ${THEME.border};
+  max-width: 460px;
+  margin: 2rem auto;
+  box-shadow: ${THEME.shadow.md};
 `;
 
 const EmptyIcon = styled.div`
-  font-size: 3rem;
+  font-size: 2.5rem;
   margin-bottom: 1rem;
   opacity: 0.6;
 `;
 
 const EmptyTitle = styled.h4`
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
-  color: ${THEME.navy.dark};
+  margin-bottom: 0.3rem;
+  color: ${THEME.text.primary};
 `;
 
 const EmptyDesc = styled.p`
-  color: ${THEME.gray[500]};
-  font-size: 0.85rem;
+  color: ${THEME.text.secondary};
+  font-size: 0.8rem;
 `;
+
+/* CANCEL MODAL STYLES */
 
 const ModalOverlay = styled(motion.div)`
   position: fixed;
   inset: 0;
-  background: rgba(10, 17, 40, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1083,12 +1481,13 @@ const ModalOverlay = styled(motion.div)`
 `;
 
 const ModalContent = styled(motion.div)`
-  background: ${THEME.white};
-  border-radius: 28px;
+  background: #ffffff;
+  border-radius: 24px;
   max-width: 440px;
   width: 100%;
   overflow: hidden;
-  box-shadow: ${THEME.shadow.xl};
+  box-shadow: ${THEME.shadow.lg};
+  border: 1px solid ${THEME.border};
 `;
 
 const ModalHeader = styled.div`
@@ -1096,25 +1495,29 @@ const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid ${THEME.gray[200]};
+  border-bottom: 1px solid ${THEME.border};
 `;
 
 const ModalTitle = styled.h3`
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: ${THEME.navy.dark};
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: ${THEME.text.primary};
 `;
 
 const CloseBtn = styled.button`
   background: none;
   border: none;
   cursor: pointer;
-  color: ${THEME.gray[400]};
+  color: ${THEME.text.secondary};
   padding: 0.35rem;
   border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   &:hover {
-    background: ${THEME.gray[100]};
+    background: #f1f5f9;
+    color: ${THEME.text.primary};
   }
 `;
 
@@ -1123,15 +1526,16 @@ const ModalBody = styled.div`
 `;
 
 const ModalDesc = styled.p`
-  color: ${THEME.gray[600]};
+  color: ${THEME.text.secondary};
   margin-bottom: 1.5rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
 `;
 
 const OptionGrid = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 `;
 
 const OptionItem = styled.div`
@@ -1139,26 +1543,31 @@ const OptionItem = styled.div`
   align-items: center;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid ${THEME.gray[200]};
-  border-radius: 20px;
+  border: 1px solid ${THEME.border};
+  background: #ffffff;
+  border-radius: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  box-shadow: ${THEME.shadow.sm};
   
   &:hover {
-    border-color: ${THEME.accent.blue};
-    background: ${THEME.gray[50]};
+    border-color: ${THEME.accent.indigo};
+    background: #f8fafc;
+    transform: translateY(-2px);
   }
 `;
 
 const OptionIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  background: ${props => `${props.$color}10`};
-  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  background: ${props => props.$bgColor};
+  border: 1px solid ${props => props.$borderColor || 'transparent'};
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: ${props => props.$color};
+  flex-shrink: 0;
 `;
 
 const OptionInfo = styled.div`
@@ -1168,23 +1577,13 @@ const OptionInfo = styled.div`
 const OptionName = styled.div`
   font-weight: 700;
   font-size: 0.95rem;
-  margin-bottom: 0.25rem;
-  color: ${THEME.navy.dark};
+  margin-bottom: 0.15rem;
+  color: ${THEME.text.primary};
 `;
 
 const OptionDesc = styled.div`
   font-size: 0.75rem;
-  color: ${THEME.gray[500]};
+  color: ${THEME.text.secondary};
 `;
-
-function getPriorityColor(priority) {
-  const colors = {
-    critical: '#ef4444',
-    high: '#f59e0b',
-    medium: '#3b82f6',
-    low: '#10b981',
-  };
-  return colors[priority] || '#64748b';
-}
 
 export default React.memo(SalesDashboard);
